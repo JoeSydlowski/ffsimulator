@@ -7,6 +7,7 @@
 #' @param rosters a dataframe of rosters, as created by `ffs_rosters()` - optional, reduces computation to just rostered players
 #' @param n_seasons number of seasons, default is 100
 #' @param weeks a numeric vector of weeks to simulate, defaults to 1:14
+#' @param version projection method: "v2" (default) samples weekly ranks iid from the draft-rank crosswalk, "v1" samples scores directly by preseason rank, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation
 #'
 #' @examples \donttest{
 #' # cached examples
@@ -24,10 +25,10 @@ ffs_generate_projections <- function(adp_outcomes,
                                      latest_rankings,
                                      n_seasons = 100,
                                      weeks = 1:14,
-                                     version = c("v2","v1"),
+                                     version = c("v2","v1","v3"),
                                      rosters = NULL
 ) {
-  version <- rlang::arg_match0(version,values = c("v2","v1"))
+  version <- rlang::arg_match0(version,values = c("v2","v1","v3"))
   checkmate::assert_number(n_seasons, lower = 1)
   checkmate::assert_numeric(weeks, lower = 1, min.len = 1)
   assert_df(adp_outcomes, c("pos", "rank", "prob_gp", "week_outcomes"))
@@ -50,7 +51,8 @@ ffs_generate_projections <- function(adp_outcomes,
   .ffs_projections <- switch(
     version,
     "v2" = .ffs_projections_v2,
-    "v1" = .ffs_projections_v1
+    "v1" = .ffs_projections_v1,
+    "v3" = .ffs_projections_v3
   )
 
   ps <- .ffs_projections(
@@ -179,8 +181,154 @@ ffs_generate_projections <- function(adp_outcomes,
   return(projected_scores[])
 }
 
+.ffs_projections_v3 <- function(adp_outcomes, latest_rankings, n_seasons, weeks, n_weeks, rosters){
+
+  season <- fantasypros_id <- player <- pos <- team <- bye <- ecr <- draft_rank <- NULL
+  week <- week_rank <- week_outcomes <- projection <- gp_model <- projected_score <- scrape_date <- NULL
+  trajectories <- NULL
+
+  draft_rankings <- latest_rankings[
+    latest_rankings$fantasypros_id %in% rosters$fantasypros_id
+  ][
+    ,
+    list(
+      scrape_date = rep(.SD$scrape_date),
+      player = rep(.SD$player),
+      pos = rep(.SD$pos),
+      team = rep(.SD$team),
+      bye = rep(.SD$bye),
+      ecr = rep(.SD$ecr),
+      sd = rep(.SD$sd),
+      season = seq_len(n_seasons),
+      draft_rank = .replace_zero(round(stats::rnorm(n = n_seasons, mean = .SD$ecr, sd = .SD$sd / 2)))
+    ),
+    by = "fantasypros_id"
+  ]
+
+  week_ranks <- merge(
+    draft_rankings,
+    .ffs_draft_to_week_trajectories(),
+    by = c("pos", "draft_rank"),
+    all.x = TRUE
+  )[
+    !is.na(ecr)
+  ][
+    # draft ranks beyond the historical draft-rank range have no trajectory
+    # population to resample from
+    !sapply(trajectories, is.null)
+  ][
+    , list(
+      week = weeks,
+      # one whole historical player-season of weekly ranks: within-season
+      # autocorrelation (busts/breakouts/injuries persist across weeks) and
+      # never-ranked weeks stay in the data as NA (= zero points)
+      week_rank = {
+        pool <- .SD$trajectories[[1]]
+        as.numeric(pool[[sample.int(length(pool), 1)]][weeks])
+      }
+    ),
+    by = c("season", "fantasypros_id", "player", "pos", "team", "bye", "ecr", "sd", "draft_rank", "scrape_date")
+  ]
+
+  projected_scores <- merge(
+    week_ranks,
+    adp_outcomes[, list(pos, week_rank = rank, avg_week, week_outcomes)],
+    by = c("pos", "week_rank"),
+    all.x = TRUE
+  )[
+    ,
+    `:=`(
+      # availability is encoded by the trajectory itself (unranked week = NA
+      # = zero), so no separate games-played model is applied
+      gp_model = as.integer(!is.na(week_rank)),
+      projection = sapply(week_outcomes, function(x) {
+        x <- x[!is.na(x)]
+        if (length(x) == 0) return(0)
+        sample(x = x, size = 1)
+      })
+    )
+  ][
+    ,
+    `:=`(
+      projected_score = projection * gp_model * (week != bye),
+      week_outcomes = NULL
+    )
+  ][
+    order(season, week, pos, ecr)
+  ]
+
+  return(projected_scores[])
+}
+
 .replace_zero <- function(x) {
   replace(x, x == 0, 1)
+}
+
+#' Build draft-rank keyed pools of historical weekly-rank trajectories
+#'
+#' For every preseason-ranked player-season, records the full sequence of
+#' weekly FantasyPros ranks over that season's non-bye weeks (NA where the
+#' player went unranked). Pools these trajectories by position and draft rank
+#' (expanded via `.ff_rank_expand()`), so a simulated season can resample one
+#' coherent historical season rather than independent weeks. Player-seasons
+#' with zero weekly rankings are retained as all-NA trajectories, pricing in
+#' flameout/irrelevance risk.
+#'
+#' @keywords internal
+.ffs_draft_to_week_trajectories <- function(max_week = 16){
+
+  season <- fantasypros_id <- player_name <- pos <- team <- rank <- week <- NULL
+  draft_rank <- week_rank <- trajectory <- NULL
+
+  draft <- data.table::as.data.table(fp_rankings_history())[
+    , list(season, fantasypros_id, pos, team, draft_rank = rank)
+  ]
+
+  wk <- data.table::as.data.table(fp_rankings_history_week())[
+    week <= max_week,
+    list(season, week, fantasypros_id, team, week_rank = rank)
+  ]
+
+  # infer team bye weeks from the weekly rankings themselves: a team's bye is
+  # a week in which none of its players are ranked
+  team_weeks <- unique(wk[!is.na(team) & team != "FA", list(season, team, week)])
+  teams <- unique(team_weeks[, list(season, team)])
+  byes <- teams[
+    , list(week = seq_len(max_week)), by = list(season, team)
+  ][
+    !team_weeks, on = c("season", "team", "week")
+  ]
+
+  player_weeks <- draft[
+    , list(week = seq_len(max_week)),
+    by = list(season, fantasypros_id, pos, team, draft_rank)
+  ][
+    !byes, on = c("season", "team", "week")
+  ]
+
+  trajectories <- merge(
+    player_weeks,
+    wk[, list(season, week, fantasypros_id, week_rank)],
+    by = c("season", "fantasypros_id", "week"),
+    all.x = TRUE
+  )[
+    order(week),
+    list(trajectory = list(week_rank)),
+    by = list(season, fantasypros_id, pos, draft_rank)
+  ][
+    , list(
+      pos = rep(pos, each = 5),
+      trajectory = rep(trajectory, each = 5),
+      draft_rank = unlist(lapply(draft_rank, .ff_rank_expand))
+    )
+  ][
+    , list(trajectories = list(trajectory)),
+    by = list(pos, draft_rank)
+  ][
+    order(pos, draft_rank)
+  ]
+
+  return(trajectories)
 }
 
 .ffs_draft_to_week <- function(){

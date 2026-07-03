@@ -70,6 +70,26 @@ test_that("ffs_generate_projections() returns a tibble and specific columns", {
   )
 })
 
+test_that("ffs_generate_projections() version v3 works", {
+  projected_scores_v3 <- ffs_generate_projections(
+    adp_outcomes = cache$adp_outcomes,
+    latest_rankings = cache$latest_rankings,
+    n_seasons = 2,
+    weeks = 1:5,
+    version = "v3",
+    rosters = cache$mfl_rosters
+  )
+
+  checkmate::expect_data_frame(projected_scores_v3, min.rows = 3000)
+  checkmate::expect_subset(
+    c("fantasypros_id", "pos", "projected_score", "season", "week",
+      "draft_rank", "week_rank", "projection", "gp_model"),
+    names(projected_scores_v3)
+  )
+  # trajectory sampling must never emit NA projections (NA weeks are zeroes)
+  expect_true(all(!is.na(projected_scores_v3$projection)))
+})
+
 test_that("ffs_add_replacement_level() works", {
 
   rosters_rl <- ffs_add_replacement_level(

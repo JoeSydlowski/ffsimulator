@@ -9,7 +9,7 @@ ffs_generate_projections(
   latest_rankings,
   n_seasons = 100,
   weeks = 1:14,
-  version = c("v2", "v1"),
+  version = c("v2", "v1", "v3"),
   rosters = NULL
 )
 }
@@ -21,6 +21,8 @@ ffs_generate_projections(
 \item{n_seasons}{number of seasons, default is 100}
 
 \item{weeks}{a numeric vector of weeks to simulate, defaults to 1:14}
+
+\item{version}{projection method: "v2" (default) samples weekly ranks iid from the draft-rank crosswalk, "v1" samples scores directly by preseason rank, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation}
 
 \item{rosters}{a dataframe of rosters, as created by \code{ffs_rosters()} - optional, reduces computation to just rostered players}
 }

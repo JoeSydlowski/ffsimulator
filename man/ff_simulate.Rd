@@ -11,12 +11,12 @@ ff_simulate(
   best_ball = FALSE,
   seed = NULL,
   gp_model = c("simple", "none"),
-  base_seasons = 2012:2022,
+  base_seasons = 2012:nflreadr::most_recent_season(),
   actual_schedule = FALSE,
   replacement_level = TRUE,
   pos_filter = c("QB", "RB", "WR", "TE", "K"),
   verbose = NULL,
-  version = c("v2", "v1"),
+  version = c("v2", "v1", "v3"),
   return = c("default", "all")
 )
 }
@@ -42,6 +42,8 @@ ff_simulate(
 \item{pos_filter}{a character vector of positions to filter/run, default is c("QB","RB","WR","TE","K")}
 
 \item{verbose}{a logical: print status messages? default is TRUE, configure with options(ffsimulator.verbose)}
+
+\item{version}{projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation}
 
 \item{return}{one of c("default", "all") - what objects to return in the output list}
 }

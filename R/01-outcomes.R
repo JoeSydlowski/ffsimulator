@@ -6,6 +6,7 @@
 #' @param scoring_history a scoring history table as created by `ffscrapr::ff_scoringhistory()`
 #' @param gp_model either "simple" or "none" - simple uses the average games played per season for each position/adp combination, none assumes every game is played.
 #' @param pos_filter a character vector: filter the positions returned to these specific positions, default: c("QB","RB","WR","TE)
+#' @param version projection method: "v2"/"v3" build outcome pools keyed by weekly rank, "v1" keys pools by preseason rank
 #'
 #' @return a dataframe with position, rank, probability of games played, and a corresponding nested list per row of all week score outcomes.
 #'
@@ -26,7 +27,7 @@
 ffs_adp_outcomes <- function(scoring_history,
                              gp_model = "simple",
                              pos_filter = c("QB", "RB", "WR", "TE"),
-                             version = c("v2", "v1")) {
+                             version = c("v2", "v1", "v3")) {
   # ASSERTIONS #
   version <- rlang::arg_match(version)
   checkmate::assert_choice(gp_model, choices = c("simple", "none"))
@@ -37,6 +38,7 @@ ffs_adp_outcomes <- function(scoring_history,
   ao <- switch(
     version,
     "v2" = ffs_adp_outcomes_week(scoring_history, pos_filter = pos_filter),
+    "v3" = ffs_adp_outcomes_week(scoring_history, pos_filter = pos_filter),
     "v1" = .ffs_adp_outcomes_v1(scoring_history = scoring_history, pos_filter = pos_filter)
   )
 

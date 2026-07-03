@@ -22,6 +22,7 @@ ff_wins_added(conn, ...)
     \item{\code{replacement_level}}{a logical: use best available on waiver as  replacement level? defaults to TRUE}
     \item{\code{pos_filter}}{a character vector of positions to filter/run, default is c("QB","RB","WR","TE","K")}
     \item{\code{verbose}}{a logical: print status messages? default is TRUE, configure with options(ffsimulator.verbose)}
+    \item{\code{version}}{projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation}
     \item{\code{return}}{one of c("default", "all") - what objects to return in the output list}
   }}
 }

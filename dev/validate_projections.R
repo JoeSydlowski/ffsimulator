@@ -114,7 +114,7 @@ for (Y in holdouts) {
     , list(actual_total = sum(points), actual_weeks = .N), by = "fantasypros_id"
   ]
 
-  for (v in c("v1", "v2")) {
+  for (v in c("v1", "v2", "v3")) {
     ao <- ffs_adp_outcomes(sh_train, gp_model = "simple",
                            pos_filter = pos_filter, version = v)
     ps <- ffs_generate_projections(

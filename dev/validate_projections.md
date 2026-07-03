@@ -75,6 +75,35 @@ Fine for starters, biased for deep-roster/replacement questions. → Phase 3
 fix #2 (retain as explicit zero/unranked outcomes) matters for WAR, not for
 top-of-roster projections.
 
+## 5. v3 (whole-trajectory resampling) largely fixes the dispersion problem
+
+Update 2026-07-03: implemented `version = "v3"` — per simulated season, sample
+one whole historical player-season of weekly ranks (matched on pos + draft
+rank ±2, byes inferred from the weekly rankings themselves), then map each
+weekly rank to a score draw. Backtest (same protocol, all three versions):
+
+| metric (startable tiers, ranks 1–36) | v1 | v2 | v3 |
+|---|---|---|---|
+| cover50 (ideal 0.50) | 0.23–0.39 | 0.12–0.30 | **0.32–0.49** |
+| cover80 (ideal 0.80) | 0.40–0.61 | 0.32–0.56 | **0.45–0.73** |
+| PIT tail share (ideal 0.20) | 0.40–0.60 | 0.46–0.66 | **0.19–0.34** |
+| PIT mean (ideal 0.50) | 0.48–0.57 | 0.61–0.74 | **0.46–0.60** |
+| Spearman (all players) | 0.77–0.80 | 0.76–0.78 | 0.77–0.79 |
+
+Deep tiers (37+): v3 cover80 = 0.84–0.93, near ideal; v1/v2 = 0.42–0.75.
+MAE is within a few points of v1 everywhere — the calibration gain is free.
+v3 also drops zero ranked players (trajectory pools retain player-seasons
+with no weekly rankings as all-NA = zero-point seasons), structurally fixing
+the survivorship issue (#4).
+
+Residual: elite QB (tier 1–12) is still under-dispersed (tail share 0.53) —
+top-rank trajectory pools are thin; consider widening `.ff_rank_expand` size
+for ranks ≤ 12 or pooling adjacent seasons.
+
+**Recommendation: v3 should become the default for season simulation and the
+basis for WAR.** It directly implements the "preseason rank → weekly ranks →
+points" theory with coherent seasons instead of iid weeks.
+
 ## Recommendations for Phase 3 (priority order, revised)
 
 1. **Within-season autocorrelation** (was #3) — biggest calibration win for

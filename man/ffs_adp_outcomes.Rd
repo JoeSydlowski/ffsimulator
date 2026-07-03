@@ -8,7 +8,7 @@ ffs_adp_outcomes(
   scoring_history,
   gp_model = "simple",
   pos_filter = c("QB", "RB", "WR", "TE"),
-  version = c("v2", "v1")
+  version = c("v2", "v1", "v3")
 )
 }
 \arguments{
@@ -17,6 +17,8 @@ ffs_adp_outcomes(
 \item{gp_model}{either "simple" or "none" - simple uses the average games played per season for each position/adp combination, none assumes every game is played.}
 
 \item{pos_filter}{a character vector: filter the positions returned to these specific positions, default: c("QB","RB","WR","TE)}
+
+\item{version}{projection method: "v2"/"v3" build outcome pools keyed by weekly rank, "v1" keys pools by preseason rank}
 }
 \value{
 a dataframe with position, rank, probability of games played, and a corresponding nested list per row of all week score outcomes.
