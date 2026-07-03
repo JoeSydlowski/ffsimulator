@@ -284,7 +284,9 @@ ffs_generate_projections <- function(adp_outcomes,
     , list(season, fantasypros_id, pos, team, draft_rank = rank)
   ]
 
-  wk <- data.table::as.data.table(fp_rankings_history_week())[
+  # bye-adjusted so trajectory ranks share units with the bye-adjusted
+  # outcome pools built by ffs_adp_outcomes(version = "v3")
+  wk <- .ff_bye_adjust_rank(fp_rankings_history_week())[
     week <= max_week,
     list(season, week, fantasypros_id, team, week_rank = rank)
   ]

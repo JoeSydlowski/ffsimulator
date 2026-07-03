@@ -100,6 +100,15 @@ Residual: elite QB (tier 1–12) is still under-dispersed (tail share 0.53) —
 top-rank trajectory pools are thin; consider widening `.ff_rank_expand` size
 for ranks ≤ 12 or pooling adjacent seasons.
 
+**Bye adjustment (v3 only):** weekly ranks are rescaled to full-slate
+equivalents (`.ff_bye_adjust_rank()`: rank × n_teams / n_teams_playing, byes
+inferred from rankings coverage) in both the outcome pools and the trajectory
+values. Re-running the backtest showed this is *neutral on season-total
+calibration* (mean coverage deltas < 0.01, MAE −0.1) — the per-week
+distortion averages out over 14 weeks. It is kept because it makes the
+weekly rank → points mapping semantically correct at the week level, which
+is where WAR replacement-level comparisons happen, and it costs nothing.
+
 **Recommendation: v3 should become the default for season simulation and the
 basis for WAR.** It directly implements the "preseason rank → weekly ranks →
 points" theory with coherent seasons instead of iid weeks.

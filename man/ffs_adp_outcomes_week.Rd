@@ -4,12 +4,18 @@
 \alias{ffs_adp_outcomes_week}
 \title{Connects ff_scoringhistory to past ADP rankings}
 \usage{
-ffs_adp_outcomes_week(scoring_history, pos_filter = c("QB", "RB", "WR", "TE"))
+ffs_adp_outcomes_week(
+  scoring_history,
+  pos_filter = c("QB", "RB", "WR", "TE"),
+  bye_adjust = FALSE
+)
 }
 \arguments{
 \item{scoring_history}{a scoring history table as created by \code{ffscrapr::ff_scoringhistory()}}
 
 \item{pos_filter}{a character vector: filter the positions returned to these specific positions, default: c("QB","RB","WR","TE)}
+
+\item{bye_adjust}{a logical (default FALSE): rescale weekly ranks to full-slate equivalents so rank N means the same thing in heavy-bye and no-bye weeks; see \code{.ff_bye_adjust_rank()}}
 }
 \value{
 a dataframe with position, rank, probability of games played, and a corresponding nested list per row of all week score outcomes.

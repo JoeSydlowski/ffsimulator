@@ -38,7 +38,7 @@ ffs_adp_outcomes <- function(scoring_history,
   ao <- switch(
     version,
     "v2" = ffs_adp_outcomes_week(scoring_history, pos_filter = pos_filter),
-    "v3" = ffs_adp_outcomes_week(scoring_history, pos_filter = pos_filter),
+    "v3" = ffs_adp_outcomes_week(scoring_history, pos_filter = pos_filter, bye_adjust = TRUE),
     "v1" = .ffs_adp_outcomes_v1(scoring_history = scoring_history, pos_filter = pos_filter)
   )
 
