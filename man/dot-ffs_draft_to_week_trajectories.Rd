@@ -6,7 +6,7 @@
 \usage{
 .ffs_draft_to_week_trajectories(
   max_week = 16,
-  bandwidth = getOption("ffsimulator.v3_bandwidth", NULL)
+  bandwidth = getOption("ffsimulator.v3_bandwidth", c(QB = 11, RB = 7, WR = 7, TE = 4))
 )
 }
 \description{
@@ -22,7 +22,10 @@ Pool width around each draft rank is controlled by
 \code{options(ffsimulator.v3_bandwidth = c(QB = 4, RB = 6, ...))}: a triangular
 kernel replicates each trajectory into nearby draft ranks with weight
 declining in rank distance (bandwidth = the distance at which weight hits
-zero). Unset (default), the historical hard +/-2 uniform window
-(\code{.ff_rank_expand()}) is used.
+zero). Positions not named in the option fall back to bandwidth 2. The
+defaults were tuned by held-out backtest (dev/validate_projections.md) -
+QB needs wide pools (elite QB seasons are scarce), TE narrow ones (steep
+quality cliff). Set the option to \code{NA} to use the legacy hard +/-2 uniform
+window (\code{.ff_rank_expand()}).
 }
 \keyword{internal}

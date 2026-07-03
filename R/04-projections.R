@@ -268,14 +268,28 @@ ffs_generate_projections <- function(adp_outcomes,
 #'
 #' For every preseason-ranked player-season, records the full sequence of
 #' weekly FantasyPros ranks over that season's non-bye weeks (NA where the
-#' player went unranked). Pools these trajectories by position and draft rank
-#' (expanded via `.ff_rank_expand()`), so a simulated season can resample one
-#' coherent historical season rather than independent weeks. Player-seasons
-#' with zero weekly rankings are retained as all-NA trajectories, pricing in
-#' flameout/irrelevance risk.
+#' player went unranked). Pools these trajectories by position and draft rank,
+#' so a simulated season can resample one coherent historical season rather
+#' than independent weeks. Player-seasons with zero weekly rankings are
+#' retained as all-NA trajectories, pricing in flameout/irrelevance risk.
+#'
+#' Pool width around each draft rank is controlled by
+#' `options(ffsimulator.v3_bandwidth = c(QB = 4, RB = 6, ...))`: a triangular
+#' kernel replicates each trajectory into nearby draft ranks with weight
+#' declining in rank distance (bandwidth = the distance at which weight hits
+#' zero). Positions not named in the option fall back to bandwidth 2. The
+#' defaults were tuned by held-out backtest (dev/validate_projections.md) -
+#' QB needs wide pools (elite QB seasons are scarce), TE narrow ones (steep
+#' quality cliff). Set the option to `NA` to use the legacy hard +/-2 uniform
+#' window (`.ff_rank_expand()`).
 #'
 #' @keywords internal
-.ffs_draft_to_week_trajectories <- function(max_week = 16){
+.ffs_draft_to_week_trajectories <- function(max_week = 16,
+                                            bandwidth = getOption(
+                                              "ffsimulator.v3_bandwidth",
+                                              c(QB = 11, RB = 7, WR = 7, TE = 4)
+                                            )){
+  if (length(bandwidth) == 1 && is.na(bandwidth)) bandwidth <- NULL
 
   season <- fantasypros_id <- player_name <- pos <- team <- rank <- week <- NULL
   draft_rank <- week_rank <- trajectory <- NULL
@@ -317,20 +331,43 @@ ffs_generate_projections <- function(adp_outcomes,
     order(week),
     list(trajectory = list(week_rank)),
     by = list(season, fantasypros_id, pos, draft_rank)
-  ][
-    , list(
-      pos = rep(pos, each = 5),
-      trajectory = rep(trajectory, each = 5),
-      draft_rank = unlist(lapply(draft_rank, .ff_rank_expand))
-    )
-  ][
+  ]
+
+  if (is.null(bandwidth)) {
+    # historical behavior: uniform hard +/-2 window
+    expanded <- trajectories[
+      , list(
+        pos = rep(pos, each = 5),
+        trajectory = rep(trajectory, each = 5),
+        draft_rank = unlist(lapply(draft_rank, .ff_rank_expand))
+      )
+    ]
+  } else {
+    # triangular kernel: copies = round(4 * (1 - |offset| / h)), per position
+    offset <- copies <- h <- NULL
+    bw <- unlist(bandwidth)
+    kernel <- data.table::rbindlist(lapply(
+      unique(trajectories$pos),
+      function(p) {
+        h <- if (is.null(names(bw))) bw[[1]] else if (p %in% names(bw)) bw[[p]] else 2
+        off <- seq.int(-ceiling(h) + 1L, ceiling(h) - 1L)
+        data.table::data.table(pos = p, offset = off,
+                               copies = pmax(1L, as.integer(round(4 * (1 - abs(off) / h)))))
+      }
+    ))
+    expanded <- merge(trajectories, kernel, by = "pos", allow.cartesian = TRUE)
+    expanded <- expanded[rep(seq_len(.N), copies)]
+    expanded[, `:=`(draft_rank = pmax(1L, draft_rank + offset), offset = NULL, copies = NULL)]
+  }
+
+  pools <- expanded[
     , list(trajectories = list(trajectory)),
     by = list(pos, draft_rank)
   ][
     order(pos, draft_rank)
   ]
 
-  return(trajectories)
+  return(pools)
 }
 
 .ffs_draft_to_week <- function(){

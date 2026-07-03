@@ -113,7 +113,30 @@ is where WAR replacement-level comparisons happen, and it costs nothing.
 basis for WAR.** It directly implements the "preseason rank → weekly ranks →
 points" theory with coherent seasons instead of iid weeks.
 
-## 6. Rank-based start/sit: lineup efficiency now emerges from the sim
+## 6. Weekly-level calibration: the weekly mapping was never the problem
+
+The backtest now also scores each *player-week* against its simulated
+distribution. At the weekly level all three versions are close to nominal
+(startable tiers: cover80 0.86–0.88, PIT tail 0.20–0.22; v2 shows its bias
+here too, weekly PIT mean 0.581). The season-level failures of v1/v2 come
+entirely from aggregation — independent weeks don't cohere into realistic
+seasons. This is direct evidence that (a) the rank→points pools are sound,
+(b) trajectory correlation (v3) was the missing piece, and (c) v3's simulated
+weekly ranks are trustworthy inputs for start/sit modeling.
+
+## 7. Trajectory-window tuning: per-position triangular kernel
+
+Replaced the hard ±2 uniform rank window with a triangular kernel and tuned
+bandwidth per position on the backtest grid (h ∈ {4, 7, 11} + legacy):
+QB wants wide pools (h=11: season cover80 0.611→0.652, PIT tail 0.377→0.340,
+deep-QB tail 0.196→0.150 — elite QB seasons are scarce, so borrow from
+neighbors), WR/RB medium (h=7), TE narrow (h=4, steep quality cliff). MAE
+unchanged; weekly-level metrics unchanged or slightly better; no degradation
+at deep tiers. Now the v3 default via
+`options(ffsimulator.v3_bandwidth = c(QB = 11, RB = 7, WR = 7, TE = 4))`;
+`NA` restores the legacy window.
+
+## 8. Rank-based start/sit: lineup efficiency now emerges from the sim
 
 `ffs_optimise_lineups(lineup_method = "rank")` (and `ff_simulate(lineup_method
 = "rank")`, requires v2/v3): lineups are chosen by the points a manager would

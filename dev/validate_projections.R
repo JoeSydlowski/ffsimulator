@@ -74,7 +74,21 @@ pit_of <- function(sim, actual) {
   (sum(sim < actual) + stats::runif(1) * sum(sim == actual)) / length(sim)
 }
 
+# configurable for tuning runs: FFS_VERSIONS="v3" FFS_OUT_SUFFIX="_bw6"
+# FFS_BW="QB=8,RB=5" (v3 trajectory kernel bandwidth; unset = hard +/-2 window)
+run_versions <- strsplit(Sys.getenv("FFS_VERSIONS", "v1,v2,v3"), ",")[[1]]
+out_suffix <- Sys.getenv("FFS_OUT_SUFFIX", "")
+bw_env <- Sys.getenv("FFS_BW", "")
+if (nzchar(bw_env)) {
+  bw_pairs <- strsplit(strsplit(bw_env, ",")[[1]], "=")
+  bw <- as.numeric(vapply(bw_pairs, `[`, "", 2))
+  names(bw) <- vapply(bw_pairs, `[`, "", 1)
+  options(ffsimulator.v3_bandwidth = bw)
+  message("v3 trajectory kernel bandwidth: ", bw_env)
+}
+
 player_results <- list()
+weekly_results <- list()
 
 for (Y in holdouts) {
   message("=== holdout season ", Y, " ===")
@@ -107,14 +121,17 @@ for (Y in holdouts) {
   latest_rankings[is.na(bye), bye := 0]
 
   # actual weekly points for season Y keyed by fantasypros_id
-  actual <- merge(
+  actual_by_week <- merge(
     sh_test[!is.na(gsis_id), list(gsis_id, week, points)],
     dp_id, by = "gsis_id"
   )[
-    , list(actual_total = sum(points), actual_weeks = .N), by = "fantasypros_id"
+    , list(actual = sum(points)), by = c("fantasypros_id", "week")
+  ]
+  actual <- actual_by_week[
+    , list(actual_total = sum(actual), actual_weeks = .N), by = "fantasypros_id"
   ]
 
-  for (v in c("v1", "v2", "v3")) {
+  for (v in run_versions) {
     ao <- ffs_adp_outcomes(sh_train, gp_model = "simple",
                            pos_filter = pos_filter, version = v)
     ps <- ffs_generate_projections(
@@ -156,6 +173,33 @@ for (Y in holdouts) {
     )]
     res[, `:=`(holdout = Y, version = v)]
 
+    # weekly-level calibration: sim distribution per player-week vs actual.
+    # this is the level where start/sit decisions and the bye adjustment live
+    wk <- ps[
+      , list(
+        q10 = quantile(projected_score, .10),
+        q25 = quantile(projected_score, .25),
+        q75 = quantile(projected_score, .75),
+        q90 = quantile(projected_score, .90),
+        draws = list(projected_score)
+      ),
+      by = list(fantasypros_id, pos, ecr, week)
+    ]
+    wk <- merge(wk, actual_by_week, by = c("fantasypros_id", "week"), all.x = TRUE)
+    wk[is.na(actual), actual := 0]
+    wk[, pit := mapply(pit_of, draws, actual)]
+    weekly_results[[paste(Y, v)]] <- wk[
+      , list(
+        n = .N,
+        cover50 = mean(actual >= q25 & actual <= q75),
+        cover80 = mean(actual >= q10 & actual <= q90),
+        pit_tail_share = mean(pit < .1 | pit > .9),
+        pit_mean = mean(pit)
+      ),
+      by = list(pos, tier = cut(ecr, c(0, 12, 24, 36, Inf),
+                                labels = c("1-12", "13-24", "25-36", "37+")))
+    ][, `:=`(holdout = Y, version = v)]
+
     # how many ranked players never made it into the simulation (dropout)
     dropped <- latest_rankings[!fantasypros_id %in% unique(ps$fantasypros_id)]
     res_drop <- data.table(
@@ -174,7 +218,20 @@ for (Y in holdouts) {
 
 player_results <- rbindlist(player_results, fill = TRUE)
 player_results[is.na(dropped), dropped := FALSE]
-fwrite(player_results, file.path(out_dir, "backtest_player_results.csv"))
+fwrite(player_results, file.path(out_dir, paste0("backtest_player_results", out_suffix, ".csv")))
+
+weekly_results <- rbindlist(weekly_results)
+weekly_summary <- weekly_results[
+  , list(n = sum(n),
+         cover50 = weighted.mean(cover50, n),
+         cover80 = weighted.mean(cover80, n),
+         pit_tail_share = weighted.mean(pit_tail_share, n),
+         pit_mean = weighted.mean(pit_mean, n)),
+  by = list(version, pos, tier)
+][order(version, pos, tier)]
+fwrite(weekly_summary, file.path(out_dir, paste0("backtest_weekly_summary", out_suffix, ".csv")))
+cat("\n==== WEEKLY-level coverage / calibration by version x pos x tier ====\n")
+print(weekly_summary, nrows = 250)
 
 ## ---- summary metrics ------------------------------------------------------
 
@@ -202,8 +259,8 @@ spearman <- player_results[dropped == FALSE][
   by = list(version, pos, holdout)
 ][, list(spearman = mean(spearman)), by = list(version, pos)]
 
-fwrite(summary_metrics, file.path(out_dir, "backtest_summary.csv"))
-fwrite(spearman, file.path(out_dir, "backtest_spearman.csv"))
+fwrite(summary_metrics, file.path(out_dir, paste0("backtest_summary", out_suffix, ".csv")))
+fwrite(spearman, file.path(out_dir, paste0("backtest_spearman", out_suffix, ".csv")))
 
 cat("\n==== coverage / calibration by version x pos x preseason tier ====\n")
 print(summary_metrics, nrows = 200)
@@ -214,7 +271,7 @@ drop_summary <- player_results[
   , list(n_ranked = .N, n_dropped = sum(dropped)),
   by = list(version, pos, tier = rank_tier(ecr))
 ][order(version, pos, tier)]
-fwrite(drop_summary, file.path(out_dir, "backtest_dropout.csv"))
+fwrite(drop_summary, file.path(out_dir, paste0("backtest_dropout", out_suffix, ".csv")))
 cat("\n==== ranked players dropped from sim (crosswalk/merge losses) ====\n")
 print(drop_summary, nrows = 100)
 
