@@ -43,7 +43,8 @@ ffs_optimise_lineups <- function(roster_scores,
             c("pos", "pos_rank", "league_id", "franchise_id",
               "franchise_name", "season", "week", "projected_score")
   )
-  assert_df(lineup_constraints, c("pos", "min", "max", "offense_starters"))
+  # total_starters is consumed by .ff_optimise_one_lineup's constraint matrix
+  assert_df(lineup_constraints, c("pos", "min", "max", "offense_starters", "total_starters"))
 
   roster_scores <- data.table::as.data.table(roster_scores)
   lineup_constraints <- data.table::as.data.table(lineup_constraints)
