@@ -116,7 +116,7 @@ build_draft_rankings <- function(build_seasons = 2012:nflreadr::most_recent_seas
       dplyr::filter(page_pos == pos)
   }
 
-  fp_rankings_history <- bind_rows(fp_rankings_history2, fp_rankings_history)
+  fp_rankings_history <- dplyr::bind_rows(fp_rankings_history2, fp_rankings_history)
 
   if(nrow(fp_rankings_history) == 0) {
     cli::cli_abort("No rows from scrape - something went wrong!")
@@ -254,7 +254,7 @@ build_injury_model <- function(base_seasons = seq(2012, nflreadr::most_recent_se
   conn <- ffscrapr::mfl_connect(2021, 47747)
   cli::cli_alert_info("Retrieving ")
   scoring_history <- ffscrapr::ff_scoringhistory(conn, base_seasons)
-  model_gam <- function(data) mgcv::gam(games_played_rate ~ mgcv::s(rank, bs = "cs"), data = data)
+  model_gam <- function(data) mgcv::gam(games_played_rate ~ s(rank, bs = "cs"), data = data)
 
   fp_injury_table <- ffsimulator::fp_rankings_history() %>%
     dplyr::select(-"page_pos") %>%
