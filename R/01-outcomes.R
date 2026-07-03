@@ -45,6 +45,77 @@ ffs_adp_outcomes <- function(scoring_history,
   return(ao)
 }
 
+#' Connects scoring history to preseason rankings directly (v1 method)
+#'
+#' Builds the population of weekly score outcomes for every preseason
+#' positional rank by joining historical preseason rankings to weekly scoring
+#' history. The gp model is applied afterwards by `ffs_adp_outcomes()`.
+#'
+#' @keywords internal
+#' @return a dataframe of week outcomes by position and preseason rank
+.ffs_adp_outcomes_v1 <- function(scoring_history, pos_filter) {
+  gsis_id <- NULL
+  fantasypros_id <- NULL
+  pos <- NULL
+  rank <- NULL
+  points <- NULL
+  week <- NULL
+  week_outcomes <- NULL
+  player_name <- NULL
+  season <- NULL
+  games_played <- NULL
+
+  sh <- data.table::as.data.table(scoring_history)[
+    !is.na(gsis_id) & week <= 17
+    , c("gsis_id", "team", "season", "points")
+  ]
+  fp_rh <- data.table::as.data.table(fp_rankings_history())[, -"page_pos"]
+  dp_id <- data.table::as.data.table(ffscrapr::dp_playerids())[
+    !is.na(gsis_id) & !is.na(fantasypros_id)
+    , c("fantasypros_id", "gsis_id")
+  ]
+
+  ao <- fp_rh[
+    dp_id
+    , on = "fantasypros_id"
+    , nomatch = 0
+  ][
+    !is.na(gsis_id) & pos %in% pos_filter
+  ][
+    sh
+    , on = c("season", "gsis_id")
+    , nomatch = 0
+  ][
+    , list(week_outcomes = list(points), games_played = .N)
+    , by = c("season", "pos", "rank", "fantasypros_id", "player_name")
+  ][
+    , list(
+      season = rep(season, each = 5),
+      pos = rep(pos, each = 5),
+      fantasypros_id = rep(fantasypros_id, each = 5),
+      player_name = rep(player_name, each = 5),
+      games_played = rep(games_played, each = 5),
+      week_outcomes = rep(week_outcomes, each = 5),
+      rank = unlist(lapply(rank, .ff_rank_expand))
+    )
+  ][
+    , list(
+      week_outcomes = list(c(unlist(week_outcomes))),
+      player_name = list(player_name),
+      fantasypros_id = list(fantasypros_id)
+    )
+    , by = c("pos", "rank")
+  ][
+    , `:=`(avg_week = sapply(week_outcomes, mean, na.rm = TRUE))
+  ][
+    order(pos, rank)
+  ][
+    !is.na(fantasypros_id)
+  ]
+
+  return(ao)
+}
+
 #' Applies various injury models to adp outcomes
 #'
 #' @keywords internal

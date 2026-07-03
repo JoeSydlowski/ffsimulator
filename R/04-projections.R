@@ -91,6 +91,10 @@ ffs_generate_projections <- function(adp_outcomes,
   ps <- ps[
     !is.na(ps$ecr) & !is.na(ps$prob_gp)
   ][
+    # ranks with no week-outcome population (e.g. injury-table ranks beyond
+    # the training data) cannot be sampled - drop instead of crashing sample()
+    !sapply(week_outcomes, is.null)
+  ][
     , list(
       week = weeks,
       projection = as.numeric(sample(x = .SD$week_outcomes[[1]], size = n_weeks, replace = TRUE)),
@@ -136,6 +140,10 @@ ffs_generate_projections <- function(adp_outcomes,
     all.x = TRUE
   )[
     !is.na(ecr)
+  ][
+    # draft ranks with no historical weekly-rank population (no crosswalk
+    # match) cannot be sampled - drop them here instead of crashing sample()
+    !sapply(week_rank, is.null)
   ][
     , list(
       week = weeks,

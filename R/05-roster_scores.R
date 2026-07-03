@@ -23,8 +23,7 @@ ffs_score_rosters <- function(projected_scores, rosters) {
     projected_scores,
     c(
       "fantasypros_id", "ecr", "scrape_date", "season", "week",
-      "draft_rank","week_rank", "projection", "gp_model",
-      "projected_score"
+      "projection", "gp_model", "projected_score"
     )
   )
 
@@ -33,15 +32,15 @@ ffs_score_rosters <- function(projected_scores, rosters) {
     c("fantasypros_id", "league_id", "franchise_id", "pos")
   )
 
-  projected_scores <- data.table::as.data.table(
-    projected_scores[
-      ,  c(
-        "fantasypros_id", "ecr", "scrape_date", "season", "week",
-        "draft_rank","week_rank", "projection", "gp_model",
-        "projected_score"
-      )
-    ]
+  # rank columns differ by projection method: v1/weekly have "rank",
+  # v2 has "draft_rank" and "week_rank" - carry whichever are present
+  score_cols <- c(
+    "fantasypros_id", "ecr", "scrape_date", "season", "week",
+    intersect(c("rank", "draft_rank", "week_rank"), names(projected_scores)),
+    "projection", "gp_model", "projected_score"
   )
+
+  projected_scores <- data.table::as.data.table(projected_scores)[, score_cols, with = FALSE]
 
   data.table::setDT(rosters)
   data.table::setkeyv(projected_scores, "fantasypros_id")

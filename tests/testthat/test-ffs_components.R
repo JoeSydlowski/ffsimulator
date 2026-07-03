@@ -20,20 +20,22 @@ test_that("ffs_adp_outcomes() works for both the simple and none injury models",
   )
 
   checkmate::expect_data_frame(adp_outcomes, min.rows = 500)
-  checkmate::expect_data_frame(adp_outcomes_noinjury, min.rows = 500)
+  # without the injury-table join, rows = pos/rank combos present in the
+  # training data; the v2 weekly-outcome method yields fewer than v1 did
+  checkmate::expect_data_frame(adp_outcomes_noinjury, min.rows = 400)
   checkmate::expect_data_frame(adp_outcomes_week, min.rows = 400)
 
   checkmate::expect_subset(
     names(adp_outcomes),
-    c("pos", "rank", "prob_gp", "week_outcomes", "player_name", "fantasypros_id")
+    c("pos", "rank", "prob_gp", "week_outcomes", "player_name", "fantasypros_id", "avg_week")
   )
   checkmate::expect_subset(
     names(adp_outcomes_noinjury),
-    c("pos", "rank", "prob_gp", "week_outcomes", "player_name", "fantasypros_id")
+    c("pos", "rank", "prob_gp", "week_outcomes", "player_name", "fantasypros_id", "avg_week")
   )
   checkmate::expect_subset(
     names(adp_outcomes_week),
-    c("pos", "rank", "week_outcomes", "player_name", "fantasypros_id")
+    c("pos", "rank", "week_outcomes", "player_name", "fantasypros_id", "avg_week")
   )
 })
 
