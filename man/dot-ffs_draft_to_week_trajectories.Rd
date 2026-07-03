@@ -4,15 +4,25 @@
 \alias{.ffs_draft_to_week_trajectories}
 \title{Build draft-rank keyed pools of historical weekly-rank trajectories}
 \usage{
-.ffs_draft_to_week_trajectories(max_week = 16)
+.ffs_draft_to_week_trajectories(
+  max_week = 16,
+  bandwidth = getOption("ffsimulator.v3_bandwidth", NULL)
+)
 }
 \description{
 For every preseason-ranked player-season, records the full sequence of
 weekly FantasyPros ranks over that season's non-bye weeks (NA where the
-player went unranked). Pools these trajectories by position and draft rank
-(expanded via \code{.ff_rank_expand()}), so a simulated season can resample one
-coherent historical season rather than independent weeks. Player-seasons
-with zero weekly rankings are retained as all-NA trajectories, pricing in
-flameout/irrelevance risk.
+player went unranked). Pools these trajectories by position and draft rank,
+so a simulated season can resample one coherent historical season rather
+than independent weeks. Player-seasons with zero weekly rankings are
+retained as all-NA trajectories, pricing in flameout/irrelevance risk.
+}
+\details{
+Pool width around each draft rank is controlled by
+\code{options(ffsimulator.v3_bandwidth = c(QB = 4, RB = 6, ...))}: a triangular
+kernel replicates each trajectory into nearby draft ranks with weight
+declining in rank distance (bandwidth = the distance at which weight hits
+zero). Unset (default), the historical hard +/-2 uniform window
+(\code{.ff_rank_expand()}) is used.
 }
 \keyword{internal}

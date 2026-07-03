@@ -12,6 +12,7 @@ ffs_optimise_lineups(
   lineup_efficiency_sd = 0.05,
   best_ball = FALSE,
   pos_filter = c("QB", "RB", "WR", "TE"),
+  lineup_method = c("efficiency", "rank"),
   version = c("v2", "v1")
 )
 
@@ -22,6 +23,7 @@ ffs_optimize_lineups(
   lineup_efficiency_sd = 0.05,
   best_ball = FALSE,
   pos_filter = c("QB", "RB", "WR", "TE"),
+  lineup_method = c("efficiency", "rank"),
   version = c("v2", "v1")
 )
 }
@@ -37,6 +39,8 @@ ffs_optimize_lineups(
 \item{best_ball}{a logical: FALSE will apply a lineup efficiency factor and TRUE uses optimal scores as actual scores, default = FALSE}
 
 \item{pos_filter}{a character vector specifying which positions are eligible - defaults to \verb{c("QB","RB","WR","TE)}}
+
+\item{lineup_method}{one of "efficiency" (default: hindsight-optimal lineups scaled by a random efficiency factor) or "rank" (lineups set from weekly rankings like a real manager, efficiency emerges)}
 }
 \value{
 a dataframe of what each team scored for each week
@@ -46,6 +50,16 @@ Calculates optimal lineups for all franchises in the dataframe based on a table 
 }
 \details{
 Lineup efficiency is the percentage of optimal/best-ball score that is used as the actual score - by default, the lineup efficiency for a team in non-best-ball settings is normally distributed around a mean of 77.5\% and a standard deviation of 5\%.
+
+\code{lineup_method = "rank"} models the start/sit decision instead of assuming
+an efficiency: lineups are chosen by the points a manager would \emph{expect}
+from each player's simulated weekly ranking (the \code{avg_week} column, i.e.
+the historical average score at that weekly rank), then scored with the
+realized simulated points. Lineup efficiency emerges from the simulation
+(the manager benches surprise booms and starts highly-ranked duds) rather
+than being drawn from a normal distribution. Requires projections that
+carry weekly ranks (\code{version = "v2"} or \code{"v3"}); ignored when
+\code{best_ball = TRUE}.
 }
 \examples{
 \donttest{

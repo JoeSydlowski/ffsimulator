@@ -113,6 +113,30 @@ is where WAR replacement-level comparisons happen, and it costs nothing.
 basis for WAR.** It directly implements the "preseason rank → weekly ranks →
 points" theory with coherent seasons instead of iid weeks.
 
+## 6. Rank-based start/sit: lineup efficiency now emerges from the sim
+
+`ffs_optimise_lineups(lineup_method = "rank")` (and `ff_simulate(lineup_method
+= "rank")`, requires v2/v3): lineups are chosen by the points a manager would
+*expect* from each player's simulated weekly rank (`avg_week`), then scored
+with realized points — the manager benches surprise booms and starts
+highly-ranked duds, with no efficiency fudge factor. Unranked weeks (v3 NA
+trajectories) are benched, exactly as a real manager would.
+
+On the generic 12-team league (v3, 100 sims): **emergent efficiency mean
+0.923** (10th pct 0.816, median 0.942) vs the assumed-empirical 0.775. Read:
+0.92 is the *ceiling for a perfectly rankings-following manager* in a clean
+4-position league; the ~0.15 gap to the observed real-world number is manager
+suboptimality and roster frictions (missed byes, injury-report timing, deeper
+rosters) — now a measurable, modelable quantity rather than an assumption.
+Follow-up knob if desired: degrade the manager's signal (noise on the expected
+points before optimizing) and calibrate the noise so mean efficiency hits an
+empirical target.
+
+Why this matters for WAR: a player's usable value now depends on his
+*predictability* — points scored while ranked too low to start are captured as
+bench points, which is precisely the start/sit reality v1 (points straight
+from preseason rank) could never represent.
+
 ## Recommendations for Phase 3 (priority order, revised)
 
 1. **Within-season autocorrelation** (was #3) — biggest calibration win for

@@ -33,10 +33,11 @@ ffs_score_rosters <- function(projected_scores, rosters) {
   )
 
   # rank columns differ by projection method: v1/weekly have "rank",
-  # v2 has "draft_rank" and "week_rank" - carry whichever are present
+  # v2/v3 have "draft_rank" and "week_rank" - carry whichever are present;
+  # avg_week feeds rank-based lineup setting in ffs_optimise_lineups
   score_cols <- c(
     "fantasypros_id", "ecr", "scrape_date", "season", "week",
-    intersect(c("rank", "draft_rank", "week_rank"), names(projected_scores)),
+    intersect(c("rank", "draft_rank", "week_rank", "avg_week"), names(projected_scores)),
     "projection", "gp_model", "projected_score"
   )
 

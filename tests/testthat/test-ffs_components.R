@@ -153,6 +153,35 @@ test_that("ffs_optimize_lineups() returns a tibble and specific columns", {
   )
 })
 
+test_that("ffs_optimise_lineups() lineup_method = 'rank' sets lineups without hindsight", {
+  projected_scores <- ffs_generate_projections(
+    adp_outcomes = cache$adp_outcomes,
+    latest_rankings = cache$latest_rankings,
+    n_seasons = 2,
+    weeks = 1:5,
+    version = "v3",
+    rosters = cache$mfl_rosters
+  )
+  roster_scores <- ffs_score_rosters(projected_scores, cache$mfl_rosters)
+
+  rank_scores <- ffs_optimise_lineups(
+    roster_scores = roster_scores,
+    lineup_constraints = cache$mfl_lineup_constraints,
+    lineup_method = "rank"
+  )
+
+  checkmate::expect_data_frame(rank_scores, min.rows = 100)
+  checkmate::expect_subset(
+    c("franchise_id", "season", "week", "optimal_score", "actual_score",
+      "lineup_efficiency", "starter_player_id"),
+    names(rank_scores)
+  )
+  # a rankings-driven manager can never beat the hindsight-optimal lineup
+  expect_true(all(rank_scores$actual_score <= rank_scores$optimal_score + 1e-8))
+  # but should capture a sane share of it
+  expect_gt(mean(rank_scores$lineup_efficiency), 0.5)
+})
+
 test_that("schedules returns a tibble and specific columns", {
   schedules <- ffs_build_schedules(
     n_seasons = 2,

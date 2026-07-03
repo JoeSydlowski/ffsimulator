@@ -14,6 +14,7 @@
 #' @param pos_filter a character vector of positions to filter/run, default is c("QB","RB","WR","TE","K")
 #' @param verbose a logical: print status messages? default is TRUE, configure with options(ffsimulator.verbose)
 #' @param version projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation
+#' @param lineup_method "efficiency" (default) scales hindsight-optimal lineups by a random efficiency factor; "rank" (experimental, requires version "v2"/"v3") sets lineups from simulated weekly rankings like a real manager, so efficiency emerges from the start/sit decision
 #' @param return one of c("default", "all") - what objects to return in the output list
 #'
 #' @examples
@@ -42,6 +43,7 @@ ff_simulate <- function(conn,
                         pos_filter = c("QB", "RB", "WR", "TE", "K"),
                         verbose = NULL,
                         version = c("v2", "v1", "v3"),
+                        lineup_method = c("efficiency", "rank"),
                         return = c("default", "all")) {
 
   #### TEST ####
@@ -72,6 +74,10 @@ ff_simulate <- function(conn,
   gp_model <- rlang::arg_match0(gp_model, c("simple", "none"))
   return <- rlang::arg_match0(return, c("default", "all"))
   version <- rlang::arg_match0(version, c("v2", "v1", "v3"))
+  lineup_method <- rlang::arg_match0(lineup_method, c("efficiency", "rank"))
+  if (lineup_method == "rank" && version == "v1") {
+    cli::cli_abort("{.code lineup_method = \"rank\"} requires weekly ranks - use {.code version} \"v2\" or \"v3\"")
+  }
   pos_filter <- rlang::arg_match(pos_filter, c("QB", "RB", "WR", "TE", "K"), multiple = TRUE)
   checkmate::assert_numeric(base_seasons, lower = 2012, upper = nflreadr::most_recent_season())
   checkmate::assert_int(n_seasons, lower = 1)
@@ -187,7 +193,8 @@ ff_simulate <- function(conn,
     roster_scores = roster_scores,
     lineup_constraints = lineup_constraints,
     best_ball = best_ball,
-    pos_filter = pos_filter
+    pos_filter = pos_filter,
+    lineup_method = lineup_method
   )
 
   vcli_end(msg = "Optimizing Lineups...done! {Sys.time()}")
