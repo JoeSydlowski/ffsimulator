@@ -63,7 +63,6 @@ build_draft_rankings <- function(build_seasons = 2012:nflreadr::most_recent_seas
           stringr::str_squish(),
         season = seasons,
         fantasypros_id = as.character(fantasypros_id),
-        sportradar_id,
         player_name = nflreadr::clean_player_names(player_name),
         pos = dplyr::case_when(
           pos %in% c("CB", "S") ~ "DB",
@@ -107,7 +106,6 @@ build_draft_rankings <- function(build_seasons = 2012:nflreadr::most_recent_seas
           stringr::str_squish(),
         season = seasons2,
         fantasypros_id = as.character(fantasypros_id),
-        sportradar_id,
         player_name = nflreadr::clean_player_names(player_name),
         pos,
         team,
@@ -176,7 +174,6 @@ build_weekly_rankings <- function(build_seasons = 2012:nflreadr::most_recent_sea
         season = seasons,
         week = weeks,
         fantasypros_id = as.character(fantasypros_id),
-        sportradar_id,
         player_name = nflreadr::clean_player_names(player_name),
         pos = dplyr::case_when(
           pos %in% c("CB", "S") ~ "DB",
@@ -225,7 +222,6 @@ build_weekly_rankings <- function(build_seasons = 2012:nflreadr::most_recent_sea
         season = seasons2,
         week = weeks,
         fantasypros_id = as.character(fantasypros_id),
-        sportradar_id,
         player_name = nflreadr::clean_player_names(player_name),
         pos,
         team,

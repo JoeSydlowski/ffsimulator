@@ -4,7 +4,7 @@
 \alias{.ff_rank_expand}
 \title{Expand one rank into a vector of five ranks to broaden population of possible outcomes}
 \usage{
-.ff_rank_expand(.x)
+.ff_rank_expand(.x, size = 2)
 }
 \description{
 Expand one rank into a vector of five ranks to broaden population of possible outcomes

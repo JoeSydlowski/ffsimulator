@@ -11,7 +11,8 @@ ffs_optimise_lineups(
   lineup_efficiency_mean = 0.775,
   lineup_efficiency_sd = 0.05,
   best_ball = FALSE,
-  pos_filter = c("QB", "RB", "WR", "TE")
+  pos_filter = c("QB", "RB", "WR", "TE"),
+  version = c("v2", "v1")
 )
 
 ffs_optimize_lineups(
@@ -20,7 +21,8 @@ ffs_optimize_lineups(
   lineup_efficiency_mean = 0.775,
   lineup_efficiency_sd = 0.05,
   best_ball = FALSE,
-  pos_filter = c("QB", "RB", "WR", "TE")
+  pos_filter = c("QB", "RB", "WR", "TE"),
+  version = c("v2", "v1")
 )
 }
 \arguments{

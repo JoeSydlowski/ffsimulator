@@ -7,7 +7,7 @@ setwd(here::here())
 mfl_conn <- ffscrapr::mfl_connect(season = 2021, league_id = 22627)
 
 mfl_scoring_history <- ffscrapr::ff_scoringhistory(mfl_conn, 2019:2020) %>%
-  select(season, week, gsis_id, sportradar_id, mfl_id, player_name, pos, team, points)
+  select(season, week, gsis_id, mfl_id, player_name, pos, team, points)
 
 mfl_franchises <- ffs_franchises(mfl_conn)
 
@@ -25,7 +25,7 @@ saveRDS(mfl_lineup_constraints, "inst/cache/mfl_lineup_constraints.rds")
 sleeper_conn <- ff_connect(platform = "sleeper", league_id = "652718526494253056", season = 2021)
 
 sleeper_scoring_history <- ffscrapr::ff_scoringhistory(sleeper_conn, 2019:2020) %>%
-  select(season, week, gsis_id, sportradar_id, sleeper_id, player_name, pos, team, points)
+  select(season, week, gsis_id, sleeper_id, player_name, pos, team, points)
 
 sleeper_franchises <- ffs_franchises(sleeper_conn)
 sleeper_rosters <- ffs_rosters(sleeper_conn)
@@ -41,7 +41,7 @@ saveRDS(sleeper_lineup_constraints, "inst/cache/sleeper_lineup_constraints.rds")
 fleaflicker_conn <- fleaflicker_connect(2020, 206154)
 
 fleaflicker_scoring_history <- ffscrapr::ff_scoringhistory(fleaflicker_conn, 2019:2020) %>%
-  select(season, week, gsis_id, sportradar_id, player_name, pos, team, points)
+  select(season, week, gsis_id, player_name, pos, team, points)
 
 fleaflicker_franchises <- ffs_franchises(fleaflicker_conn)
 fleaflicker_rosters <- ffs_rosters(fleaflicker_conn)
@@ -57,7 +57,7 @@ saveRDS(fleaflicker_lineup_constraints, "inst/cache/fleaflicker_lineup_constrain
 espn_conn <- espn_connect(season = 2020, league_id = 899513)
 
 espn_scoring_history <- ffscrapr::ff_scoringhistory(espn_conn, 2019:2020) %>%
-  select(season, week, gsis_id, sportradar_id, player_name, pos, team, points)
+  select(season, week, gsis_id, player_name, pos, team, points)
 
 espn_franchises <- ffs_franchises(espn_conn)
 espn_rosters <- ffs_rosters(espn_conn)

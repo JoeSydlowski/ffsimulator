@@ -16,6 +16,7 @@ ff_simulate(
   replacement_level = TRUE,
   pos_filter = c("QB", "RB", "WR", "TE", "K"),
   verbose = NULL,
+  version = c("v2", "v1"),
   return = c("default", "all")
 )
 }

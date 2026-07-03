@@ -28,7 +28,6 @@ fp_rankings_history <- crossing(pages, seasons) %>%
         str_squish(),
     season = seasons,
     fantasypros_id = as.character(fantasypros_id),
-    sportradar_id,
     player_name = nflreadr::clean_player_names(player_name),
     pos = case_when(
       pos %in% c("CB", "S") ~ "DB",
@@ -63,7 +62,6 @@ fp_rankings_history2 <- crossing(pages2, seasons2) %>%
         str_squish(),
     season = seasons2,
     fantasypros_id = as.character(fantasypros_id),
-    sportradar_id,
     player_name = nflreadr::clean_player_names(player_name),
     pos,
     team,

@@ -38,7 +38,7 @@ fp_rankings_history <- function() {
   .fp_rankings_history <- .ffs_read_data("fp_rankings_history.rds")
   assert_df(
     .fp_rankings_history,
-    c("season", "fantasypros_id", "sportradar_id",
+    c("season", "fantasypros_id",
       "player_name", "pos", "team", "rank", "ecr", "sd")
   )
   return(.fp_rankings_history)
@@ -61,7 +61,7 @@ fp_rankings_history_week <- function() {
   .fp_rankings_history_week <- .ffs_read_data("fp_rankings_history_week.rds")
   assert_df(
     .fp_rankings_history_week,
-    c("season", "week", "fantasypros_id", "sportradar_id",
+    c("season", "week", "fantasypros_id",
       "player_name", "pos", "team", "rank", "ecr", "sd")
   )
   return(.fp_rankings_history_week)

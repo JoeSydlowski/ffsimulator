@@ -9,6 +9,7 @@ ffs_generate_projections(
   latest_rankings,
   n_seasons = 100,
   weeks = 1:14,
+  version = c("v2", "v1"),
   rosters = NULL
 )
 }
