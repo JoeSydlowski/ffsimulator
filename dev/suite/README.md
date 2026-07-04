@@ -1,0 +1,91 @@
+# League analysis suite
+
+Self-service tooling built on this fork's simulation engine (v3 trajectory
+projections, rank-based start/sit, calibrated knobs). Everything runs from
+the repo root with `devtools::load_all()` — the runners do that for you.
+
+## The one command
+
+```
+Rscript dev/suite/run_league_suite.R
+```
+
+Edit the `config` block at the top (or set env vars `FFS_LEAGUE_ID`,
+`FFS_SEASON`, `FFS_MY_TEAM`, `FFS_NSEASONS`). Produces a dated folder under
+`dev/league_sims/<league_id>/<date>/`:
+
+| file | what it is |
+|---|---|
+| `simulation.rds` | full `ff_simulation` object (`return = "all"`) — feed it to the trade functions below |
+| `summary_simulation.csv`, `playoff_odds.csv` | projected standings; playoff/top-seed/last-place rates |
+| `wins.png`, `rank.png`, `points.png` | the package autoplots |
+| `roster_drivers.csv` | which of *your* players separate your playoff sims from your basement sims (swing = started points in top-quartile vs bottom-quartile team seasons) |
+| `war_players.csv` | leave-one-out wins added for every rostered player, under your league's exact rules |
+| `trade_targets.csv` | league scan: `value_to_you` vs `value_to_owner` (h2h wins), `surplus` = the trade-asymmetry column, plus dynasty value/trend of each target |
+| `trade_offers.csv` | your roster ranked as trade bait: win value to you vs dynasty market value; `sell_score` highlights high-market-value / low-use / at-risk pieces |
+| `dynasty_outlook.csv` | per player: current dynasty value and the simulated post-season value distribution (mean/p10/p90, P(rise), P(exit)) |
+| `dynasty_capital.csv` | team-level dynasty capital, now and post-season expected |
+
+## Config notes
+
+- `replacement_level = FALSE` is the right setting for deep dynasty leagues:
+  the "best available waiver" mechanism otherwise invents startable free
+  agents (e.g. unrostered incoming rookies in the offseason). Set `TRUE` for
+  shallow redraft leagues.
+- `n_sims`: see `convergence.csv` from `dev/suite/convergence.R`. Playoff-odds
+  SE is ~1/sqrt(n): roughly ±3.5% at n=200, ±2.5% at 400, ±1.7% at 800.
+  400 is a good default; go 800+ for final published numbers.
+- `n_sims_war = 50` keeps the WAR run ~1h for a 300-player league. WAR values
+  have run-to-run SD of roughly 0.01 allplay at n=40 — fine for tiering,
+  don't read the third decimal.
+
+## Evaluating a specific trade
+
+```r
+devtools::load_all()
+sim <- readRDS("dev/league_sims/<league>/<date>/simulation.rds")
+
+# who's who
+unique(sim$franchises[, c("franchise_id", "franchise_name")])
+
+ffs_trade_eval(
+  sim,
+  franchise_a = "05", gives_a = c("4046"),        # you give (player_ids)
+  franchise_b = "02", gives_b = c("6786", "8112") # you get
+)
+```
+
+Both rows report that side's before/after mean wins and playoff odds. For
+the dynasty half of the ledger, look the players up in `dynasty_outlook.csv`
+(current value, expected post-season value, exit risk) — win-now delta and
+dynasty-value delta are reported side by side on purpose; how you weigh them
+is the actual trade decision.
+
+Other pieces:
+
+- `ffs_player_value(sim, player_id, franchise_id)` — what a player is worth
+  *to any specific roster* (this is not the same as his WAR on his current
+  team; that difference is where trades come from).
+- `ffs_trade_targets(sim, franchise_id)` — the scan behind trade_targets.csv.
+- `ffs_dynasty_outlook(sim)` — the dynasty projection behind the csv.
+
+## Standalone studies
+
+- `dev/suite/convergence.R` — replicate/bootstrap study of how many sims you
+  need. Re-run after major model changes.
+- `dev/suite/dynasty_backtest.R` — the honesty check for the dynasty
+  transition model: trains on 2018→2024, predicts 2025→2026 from actual 2025
+  seasons, scores against the real 2026 dynasty rankings. Current verdict:
+  exit risk well calibrated; season-quality dose-response ~exact; rank
+  intervals near-nominal for WR/QB, slightly narrow for TE and <=23yo.
+
+## Method caveats (short version)
+
+- Projections resample whole historical player-seasons (v3) — calibrated on
+  2019–2025 holdouts, but they know nothing about coaching changes, holdouts,
+  or September depth charts beyond what FantasyPros ECR encodes.
+- Trade values are marginal to the *current* rosters in the sim; after a big
+  trade, re-run the suite rather than chaining evaluations.
+- The dynasty transition model is trained on 2018+ FantasyPros dynasty ECR:
+  it prices age curves and season outcomes the way the dynasty market
+  historically has, including the market's biases.
