@@ -209,34 +209,64 @@ Backtest verdicts (startable tiers, v3):
 
 ## 11. 2025 positional-build study: expected vs actual (dev/build_analysis_2025.R)
 
-Six draft archetypes × 2 teams in a 12-team 1QB league, 15-round snake from
-2025 preseason ECR, build-to-slot randomized over 20 drafts. *Expected* =
-v3 + rank lineups trained only on 2012–2024 (no 2025 leakage). *Actual* =
-the identical rosters replayed with real 2025 weekly points, lineups set
-from real 2025 weekly FP ranks (manager knowledge, no hindsight).
+Six draft archetypes × 2 teams in a 12-team league, 15-round snake from 2025
+preseason ECR, build-to-slot randomized over 20 drafts. *Expected* = v3 +
+rank lineups trained only on 2012–2024 (no 2025 leakage). *Actual* = the
+identical rosters replayed with real 2025 weekly points, lineups set from
+real 2025 weekly FP ranks (manager knowledge, no hindsight).
 
-| build | exp allplay | exp top4 | act allplay (se) | act top4 |
+*(Correction: the first run of this study had a drafting bug — multi-position
+preference sets picked the first-listed position instead of the best player,
+so "bpa" was really QB-priority drafting. Fixed: within one position teams
+take the market's best by ECR; across positions they take the best
+model-expected-points player. Numbers below are from the corrected runs.)*
+
+**1QB** (Spearman expected↔actual = 0.83; all actuals inside expected 80% bands):
+
+| build | exp allplay | exp top4 | act allplay | act top4 |
 |---|---|---|---|---|
-| hero_rb (RB1, WR 2-4, RB 5-6) | 0.538 | 0.455 | **0.584** (.016) | 0.600 |
-| punt_onesie (RB/WR thru 8, QB/TE late) | **0.544** | 0.481 | 0.566 (.026) | 0.400 |
-| robust_rb (RB-RB-RB) | 0.527 | 0.429 | 0.514 (.023) | 0.425 |
-| zero_rb (WR×4, RB 5-7) | 0.511 | 0.348 | 0.469 (.017) | 0.200 |
-| early_onesie (TE rd1 + QB rd2) | 0.450 | 0.170 | 0.447 (.020) | 0.200 |
-| bpa (strict overall ECR) | 0.430 | 0.117 | 0.420 (.022) | 0.175 |
+| robust_rb (RB-RB-RB) | **0.544** | 0.495 | **0.549** | 0.525 |
+| punt_onesie (RB/WR thru 8, QB/TE late) | 0.500 | 0.331 | 0.548 | 0.475 |
+| hero_rb (RB1, WR 2-4, RB 5-6) | 0.525 | 0.414 | 0.533 | 0.450 |
+| zero_rb (WR×4, RB 5-7) | 0.503 | 0.328 | 0.472 | 0.250 |
+| early_onesie (TE rd1 + QB rd2) | 0.477 | 0.254 | 0.467 | 0.200 |
+| bpa (best expected points, any pos) | 0.451 | 0.179 | 0.430 | 0.100 |
 
-**Spearman(expected, actual) = 0.94** on allplay, 0.81 on top-4 rate. The
-preseason model called 2025 essentially correctly: early-RB + late-QB/TE
-builds were the play; Zero RB underperformed even its modest expectation
-(2025 was an elite-RB year — consistent with the WAR table); TE-rd1+QB-rd2
-and strict-ECR drafting were correctly forecast as losers. The BPA result is
-the classic positional-value lesson: overall ECR order embeds market ADP
-that overprices QB/TE relative to 1QB replacement value — the model priced
-that in before the season, and reality agreed.
+Early-RB structures were correctly forecast as the play (2025 was an elite-RB
+year), Zero RB and early onesie correctly forecast below average, and
+points-BPA correctly forecast last — drafting by raw expected points
+overpays QBs in 1QB, where replacement QB production is nearly free.
 
-Caveats: actual = one real season replayed across 20 roster configurations
-(shared player outcomes → build differences under ~±0.05 allplay are noise;
-the top-2 vs bottom-2 gap is far larger); archetype definitions are coarse;
-results are conditional on 12-team 1QB PPR with this roster shape.
+## 12. Superflex sweep: the model moves QB up; 2025 didn't cooperate
+
+Same design with a QB-eligible second slot (lineup max 2 QB; roster min 2,
+cap 3). Spearman expected↔actual = 0.37 — but all six actuals sit inside the
+model's expected 80% bands; the shuffle is within stated uncertainty.
+
+| build | exp allplay | exp top4 | act allplay | act top4 |
+|---|---|---|---|---|
+| robust_rb | **0.543** | 0.482 | **0.630** | 0.700 |
+| punt_onesie | 0.440 | 0.159 | 0.523 | 0.425 |
+| hero_rb | 0.537 | 0.466 | 0.489 | 0.250 |
+| zero_rb | 0.492 | 0.284 | 0.479 | 0.250 |
+| bpa | 0.508 | 0.340 | 0.449 | 0.300 |
+| early_onesie (TE rd1, QB rds 2-3) | 0.480 | 0.269 | 0.430 | 0.075 |
+
+The *expected* view shows textbook format logic: punt-QB collapses from
+coin-flip to 0.440 (worst), and points-BPA — which naturally drafts QBs
+early — jumps from last to third. That is the model pricing the superflex QB
+premium ex ante. The *actual* 2025 season paid the premium poorly: late-round
+QBs massively outperformed their preseason ranks (the QB market missed
+badly), so punt-QB landed second while QB-early builds underdelivered.
+Consistent with our own volatility finding (QBs are the highest-variance
+top-100 assets): one real season is one draw, and QB-heavy orderings will
+swing hardest between draws. Ex ante, the expected column remains the right
+decision guide; 2025 is a reminder that the superflex QB premium is a bet
+with wide error bars, not a lock.
+
+Shared caveats: actual = one real season replayed across 20 roster
+configurations (shared player outcomes across builds); archetypes are
+coarse; results conditional on 12-team PPR, 15 rounds, this roster shape.
 
 ## Recommendations for Phase 3 (priority order, revised)
 
