@@ -267,7 +267,7 @@ build_dynasty_rankings <- function(build_seasons = 2018:(nflreadr::most_recent_s
       player_name = nflreadr::clean_player_names(player_name),
       pos,
       team,
-      age,
+      age = as.numeric(age),
       rank,
       ecr,
       sd
