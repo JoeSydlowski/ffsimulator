@@ -207,6 +207,37 @@ Backtest verdicts (startable tiers, v3):
   Default **off**. The knob still matters for *dynasty* horizons (multi-year
   outlooks where no future ECR exists) — revisit there, not here.
 
+## 11. 2025 positional-build study: expected vs actual (dev/build_analysis_2025.R)
+
+Six draft archetypes × 2 teams in a 12-team 1QB league, 15-round snake from
+2025 preseason ECR, build-to-slot randomized over 20 drafts. *Expected* =
+v3 + rank lineups trained only on 2012–2024 (no 2025 leakage). *Actual* =
+the identical rosters replayed with real 2025 weekly points, lineups set
+from real 2025 weekly FP ranks (manager knowledge, no hindsight).
+
+| build | exp allplay | exp top4 | act allplay (se) | act top4 |
+|---|---|---|---|---|
+| hero_rb (RB1, WR 2-4, RB 5-6) | 0.538 | 0.455 | **0.584** (.016) | 0.600 |
+| punt_onesie (RB/WR thru 8, QB/TE late) | **0.544** | 0.481 | 0.566 (.026) | 0.400 |
+| robust_rb (RB-RB-RB) | 0.527 | 0.429 | 0.514 (.023) | 0.425 |
+| zero_rb (WR×4, RB 5-7) | 0.511 | 0.348 | 0.469 (.017) | 0.200 |
+| early_onesie (TE rd1 + QB rd2) | 0.450 | 0.170 | 0.447 (.020) | 0.200 |
+| bpa (strict overall ECR) | 0.430 | 0.117 | 0.420 (.022) | 0.175 |
+
+**Spearman(expected, actual) = 0.94** on allplay, 0.81 on top-4 rate. The
+preseason model called 2025 essentially correctly: early-RB + late-QB/TE
+builds were the play; Zero RB underperformed even its modest expectation
+(2025 was an elite-RB year — consistent with the WAR table); TE-rd1+QB-rd2
+and strict-ECR drafting were correctly forecast as losers. The BPA result is
+the classic positional-value lesson: overall ECR order embeds market ADP
+that overprices QB/TE relative to 1QB replacement value — the model priced
+that in before the season, and reality agreed.
+
+Caveats: actual = one real season replayed across 20 roster configurations
+(shared player outcomes → build differences under ~±0.05 allplay are noise;
+the top-2 vs bottom-2 gap is far larger); archetype definitions are coarse;
+results are conditional on 12-team 1QB PPR with this roster shape.
+
 ## Recommendations for Phase 3 (priority order, revised)
 
 1. **Within-season autocorrelation** (was #3) — biggest calibration win for

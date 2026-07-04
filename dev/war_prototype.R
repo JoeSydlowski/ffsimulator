@@ -118,19 +118,23 @@ roster_scores <- ffs_score_rosters(
                            player_id, fantasypros_id, pos)]
 )
 
-optimal <- ffs_optimise_lineups(
+# calibrated settings: rank-based start/sit (manager sees weekly rankings,
+# not realized points); v3 defaults carry the tuned trajectory kernel and
+# the team-week copula (rho 0.4)
+lineups <- ffs_optimise_lineups(
   roster_scores = roster_scores,
   lineup_constraints = lineup_constraints,
-  best_ball = TRUE,
+  lineup_method = "rank",
   pos_filter = pos_filter
 )
-optimal <- as.data.table(optimal)
+lineups <- as.data.table(lineups)
 
-team_totals <- optimal$optimal_score
+team_totals <- lineups$actual_score
 F_opp <- stats::ecdf(team_totals)
 base_score <- stats::median(team_totals)
-cat("team weekly totals: median", round(base_score, 1),
-    "IQR", paste(round(stats::quantile(team_totals, c(.25, .75)), 1), collapse = "-"), "\n")
+cat("team weekly totals (rank-managed): median", round(base_score, 1),
+    "IQR", paste(round(stats::quantile(team_totals, c(.25, .75)), 1), collapse = "-"),
+    "| emergent efficiency:", round(mean(lineups$lineup_efficiency), 3), "\n")
 
 ## ---- replacement level ------------------------------------------------------
 
