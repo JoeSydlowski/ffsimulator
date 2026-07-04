@@ -23,6 +23,9 @@ config <- list(
   lineup_method = "rank",
   # deep dynasty league: no usable waiver wire, value vs your own bench
   replacement_level = FALSE,
+  # TRUE = condition on your real (known) schedule; FALSE = average over
+  # random schedules (use when the schedule isn't released yet)
+  actual_schedule = as.logical(Sys.getenv("FFS_ACTUAL_SCHEDULE", "TRUE")),
   playoff_slots = 6L,
   run_war = TRUE,
   run_trades = TRUE,
@@ -49,8 +52,12 @@ sim <- ff_simulate(
   version = config$version,
   lineup_method = config$lineup_method,
   replacement_level = config$replacement_level,
+  actual_schedule = config$actual_schedule,
   return = "all"
 )
+if (is.null(sim$summary_season)) {
+  stop("actual_schedule=TRUE but no unplayed weeks found - set FFS_ACTUAL_SCHEDULE=FALSE")
+}
 saveRDS(sim, file.path(out, "simulation.rds"))
 fwrite(sim$summary_simulation, file.path(out, "summary_simulation.csv"))
 
