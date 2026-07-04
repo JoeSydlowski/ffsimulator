@@ -239,6 +239,53 @@ build_weekly_rankings <- function(build_seasons = 2012:nflreadr::most_recent_sea
   invisible(file.path(directory, "fp_rankings_history_week.rds"))
 }
 
+build_dynasty_rankings <- function(build_seasons = 2018:(nflreadr::most_recent_season() + 1),
+                                   directory = ffsimulator::.ffs_cache_dir()) {
+
+  checkmate::check_numeric(
+    build_seasons,
+    lower = 2018,
+    upper = nflreadr::most_recent_season() + 1,
+    any.missing = FALSE,
+    min.len = 1
+  )
+
+  dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+
+  cli::cli_alert_info("Building {length(build_seasons)} seasons of dynasty rankings into directory {directory}")
+
+  fp_dynasty_history <- tibble::tibble(seasons = build_seasons) %>%
+    dplyr::mutate(
+      rankings = furrr::future_map(seasons,
+                                   ~ ffpros::fp_rankings(page = "dynasty-overall", year = .x),
+                                   .progress = TRUE)
+    ) %>%
+    tidyr::unnest(rankings) %>%
+    dplyr::transmute(
+      season = seasons,
+      fantasypros_id = as.character(fantasypros_id),
+      player_name = nflreadr::clean_player_names(player_name),
+      pos,
+      team,
+      age,
+      rank,
+      ecr,
+      sd
+    ) %>%
+    dplyr::filter(pos %in% c("QB", "RB", "WR", "TE")) %>%
+    dplyr::group_by(season, pos) %>%
+    dplyr::mutate(pos_rank = rank(ecr, ties.method = "first")) %>%
+    dplyr::ungroup()
+
+  if (nrow(fp_dynasty_history) == 0) {
+    cli::cli_abort("No rows from dynasty scrape - something went wrong!")
+  }
+  saveRDS(fp_dynasty_history, file.path(directory, "fp_dynasty_history.rds"))
+
+  cli::cli_alert_success("Completed dynasty rankings history")
+  invisible(file.path(directory, "fp_dynasty_history.rds"))
+}
+
 build_injury_model <- function(base_seasons = seq(2012, nflreadr::most_recent_season()),
                                directory = ffsimulator::.ffs_cache_dir()) {
   checkmate::check_numeric(
@@ -303,4 +350,5 @@ build_injury_model <- function(base_seasons = seq(2012, nflreadr::most_recent_se
 
 build_draft_rankings(2012:nflreadr::most_recent_season())
 build_weekly_rankings(2012:nflreadr::most_recent_season())
+build_dynasty_rankings(2018:(nflreadr::most_recent_season() + 1))
 build_injury_model(2012:nflreadr::most_recent_season())

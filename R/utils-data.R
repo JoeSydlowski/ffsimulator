@@ -67,6 +67,31 @@ fp_rankings_history_week <- function() {
   return(.fp_rankings_history_week)
 }
 
+#' Historical dynasty ranks
+#'
+#' This dataframe has historical FantasyPros dynasty-overall rankings starting
+#' in 2018 for QB/RB/WR/TE, including player age at the time of ranking, as
+#' gathered by the ffpros package. Used to model year-over-year dynasty value
+#' transitions.
+#'
+#' By default, it returns bundled package data unless the `ffsimulator.cache_directory`
+#' option is configured, in which case it will look for a rds file named
+#' `fp_dynasty_history.rds` in that directory.
+#'
+#' To update, use `ffs_update_data_template()` to find the bundled update script
+#'
+#' @return dataframe of preseason dynasty rankings from ffpros
+#' @export
+fp_dynasty_history <- function() {
+  .fp_dynasty_history <- .ffs_read_data("fp_dynasty_history.rds")
+  assert_df(
+    .fp_dynasty_history,
+    c("season", "fantasypros_id", "player_name", "pos", "team",
+      "age", "rank", "pos_rank", "ecr", "sd")
+  )
+  return(.fp_dynasty_history)
+}
+
 #' Read data from cache or pkg data
 #'
 #' @param file_name filename to find
