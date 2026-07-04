@@ -22,6 +22,7 @@
 # @param parallel a logical: TRUE will run the optimization in parallel, requires the furrr and future packages as well as setting `future::plan()` in advance/externally. Default FALSE.
 #' @param pos_filter a character vector specifying which positions are eligible - defaults to `c("QB","RB","WR","TE)`
 #' @param lineup_method one of "efficiency" (default: hindsight-optimal lineups scaled by a random efficiency factor) or "rank" (lineups set from weekly rankings like a real manager, efficiency emerges)
+#' @param lineup_noise_sd manager evaluation error for `lineup_method = "rank"`, in points: sd of noise added to each player's expected points before the start/sit decision. 0 (default) = a manager who follows the rankings perfectly (emergent efficiency ~0.92); 5-9 models an attentive-but-imperfect manager (~0.87-0.90). Evaluation noise alone cannot reach the empirically observed ~0.775 - that gap is structural (set-and-forget lineups, missed waivers), see dev/validate_projections.md
 # @param verbose a logical: TRUE (default) will print stuff.
 #'
 #' @return a dataframe of what each team scored for each week
@@ -45,11 +46,13 @@ ffs_optimise_lineups <- function(roster_scores,
                                  best_ball = FALSE,
                                  pos_filter = c("QB", "RB", "WR", "TE"),
                                  lineup_method = c("efficiency", "rank"),
+                                 lineup_noise_sd = 0,
                                  version = c("v2", "v1")) {
   version <- rlang::arg_match0(version, c("v2","v1"))
   lineup_method <- rlang::arg_match0(lineup_method, c("efficiency", "rank"))
   checkmate::assert_number(lineup_efficiency_mean, lower = 0, upper = 1)
   checkmate::assert_number(lineup_efficiency_sd, lower = 0, upper = 0.25)
+  checkmate::assert_number(lineup_noise_sd, lower = 0)
   checkmate::assert_flag(best_ball)
 
   assert_df(roster_scores,
@@ -128,7 +131,7 @@ ffs_optimise_lineups <- function(roster_scores,
       optimal_scores[
         , c(
           .ff_optimise_one_lineup(.SD, lineup_constraints),
-          .ff_rank_one_lineup(.SD, lineup_constraints)
+          .ff_rank_one_lineup(.SD, lineup_constraints, noise_sd = lineup_noise_sd)
         )
         , by = c("league_id", "franchise_id", "franchise_name", "season", "week"),
         .SDcols = c("player_id", "pos", "projected_score", "avg_week")
@@ -188,11 +191,12 @@ ffs_optimize_lineups <- ffs_optimise_lineups
 #'
 #' @param franchise_scores a data frame of scores for one week and one franchise, incl. avg_week
 #' @param lineup_constraints a data frame as created by `ffscrapr::ff_starter_positions()`
+#' @param noise_sd sd (in points) of the manager's player-evaluation error
 #'
 #' @return a list including the realized actual_score and the started players
 #'
 #' @keywords internal
-.ff_rank_one_lineup <- function(franchise_scores, lineup_constraints) {
+.ff_rank_one_lineup <- function(franchise_scores, lineup_constraints, noise_sd = 0) {
   min_req <- sum(lineup_constraints$min)
 
   player_ids <- c(franchise_scores$player_id, rep_len(NA_character_, min_req))
@@ -200,6 +204,11 @@ ffs_optimize_lineups <- ffs_optimise_lineups
   realized[is.na(realized)] <- 0
   expected <- c(franchise_scores$avg_week, rep_len(0, min_req))
   expected[is.na(expected)] <- 0 # unranked player: manager expects nothing, benches him
+  if (noise_sd > 0) {
+    # manager evaluation error: only on real players, not the zero fillers
+    n_real <- nrow(franchise_scores)
+    expected[seq_len(n_real)] <- expected[seq_len(n_real)] + stats::rnorm(n_real, 0, noise_sd)
+  }
 
   selected <- .ff_solve_lineup(
     objective = expected,

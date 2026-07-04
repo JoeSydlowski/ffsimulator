@@ -24,6 +24,7 @@ ff_wins_added(conn, ...)
     \item{\code{verbose}}{a logical: print status messages? default is TRUE, configure with options(ffsimulator.verbose)}
     \item{\code{version}}{projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation}
     \item{\code{lineup_method}}{"efficiency" (default) scales hindsight-optimal lineups by a random efficiency factor; "rank" (experimental, requires version "v2"/"v3") sets lineups from simulated weekly rankings like a real manager, so efficiency emerges from the start/sit decision}
+    \item{\code{lineup_noise_sd}}{manager evaluation error (points sd) for lineup_method "rank"; see \code{ffs_optimise_lineups()}}
     \item{\code{return}}{one of c("default", "all") - what objects to return in the output list}
   }}
 }

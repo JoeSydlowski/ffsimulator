@@ -13,6 +13,7 @@ ffs_optimise_lineups(
   best_ball = FALSE,
   pos_filter = c("QB", "RB", "WR", "TE"),
   lineup_method = c("efficiency", "rank"),
+  lineup_noise_sd = 0,
   version = c("v2", "v1")
 )
 
@@ -24,6 +25,7 @@ ffs_optimize_lineups(
   best_ball = FALSE,
   pos_filter = c("QB", "RB", "WR", "TE"),
   lineup_method = c("efficiency", "rank"),
+  lineup_noise_sd = 0,
   version = c("v2", "v1")
 )
 }
@@ -41,6 +43,8 @@ ffs_optimize_lineups(
 \item{pos_filter}{a character vector specifying which positions are eligible - defaults to \verb{c("QB","RB","WR","TE)}}
 
 \item{lineup_method}{one of "efficiency" (default: hindsight-optimal lineups scaled by a random efficiency factor) or "rank" (lineups set from weekly rankings like a real manager, efficiency emerges)}
+
+\item{lineup_noise_sd}{manager evaluation error for \code{lineup_method = "rank"}, in points: sd of noise added to each player's expected points before the start/sit decision. 0 (default) = a manager who follows the rankings perfectly (emergent efficiency ~0.92); 5-9 models an attentive-but-imperfect manager (~0.87-0.90). Evaluation noise alone cannot reach the empirically observed ~0.775 - that gap is structural (set-and-forget lineups, missed waivers), see dev/validate_projections.md}
 }
 \value{
 a dataframe of what each team scored for each week

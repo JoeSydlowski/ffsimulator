@@ -153,6 +153,25 @@ test_that("ffs_optimize_lineups() returns a tibble and specific columns", {
   )
 })
 
+test_that("v3 sampling knobs (recency, age, team copula) run and keep structure", {
+  old <- options(
+    ffsimulator.v3_recency_halflife = 5,
+    ffsimulator.v3_age_bandwidth = 6,
+    ffsimulator.v3_team_rho = 0.4
+  )
+  on.exit(options(old), add = TRUE)
+  ps <- ffs_generate_projections(
+    adp_outcomes = cache$adp_outcomes,
+    latest_rankings = cache$latest_rankings,
+    n_seasons = 2,
+    weeks = 1:5,
+    version = "v3",
+    rosters = cache$mfl_rosters
+  )
+  checkmate::expect_data_frame(ps, min.rows = 3000)
+  expect_true(all(!is.na(ps$projection)))
+})
+
 test_that("ffs_optimise_lineups() lineup_method = 'rank' sets lineups without hindsight", {
   projected_scores <- ffs_generate_projections(
     adp_outcomes = cache$adp_outcomes,

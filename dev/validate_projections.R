@@ -86,6 +86,16 @@ if (nzchar(bw_env)) {
   options(ffsimulator.v3_bandwidth = bw)
   message("v3 trajectory kernel bandwidth: ", bw_env)
 }
+rec_env <- Sys.getenv("FFS_RECENCY", "")
+if (nzchar(rec_env)) {
+  options(ffsimulator.v3_recency_halflife = as.numeric(rec_env))
+  message("v3 recency halflife: ", rec_env)
+}
+age_env <- Sys.getenv("FFS_AGE", "")
+if (nzchar(age_env)) {
+  options(ffsimulator.v3_age_bandwidth = as.numeric(age_env))
+  message("v3 age bandwidth: ", age_env)
+}
 
 player_results <- list()
 weekly_results <- list()

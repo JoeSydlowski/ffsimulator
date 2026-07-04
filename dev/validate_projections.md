@@ -160,6 +160,53 @@ Why this matters for WAR: a player's usable value now depends on his
 bench points, which is precisely the start/sit reality v1 (points straight
 from preseason rank) could never represent.
 
+## 9. Behavioral knob calibration (dev/calibrate_knobs.R)
+
+**Manager noise (`lineup_noise_sd`):** adding evaluation error to the
+manager's expected points lowers emergent efficiency slowly — 0.923 (sd 0),
+0.897 (sd 5), 0.879 (sd 7), 0.845 (sd 12). Reaching the empirical 0.775 would
+take sd ≈ 20+ points, implausibly large as weekly evaluation error. Read:
+real-league inefficiency is mostly *structural* (set-and-forget lineups,
+missed waivers, injured starters left in, deeper benches) rather than ranking
+misjudgment. Suggested settings: 0 for a sharp manager, 5–9 for "attentive
+but imperfect" (eff 0.87–0.90); don't chase 0.775 with this knob alone.
+
+**Team-week copula (`ffsimulator.v3_team_rho`):** empirical same-team weekly
+score correlation among fantasy-relevant players (2012–2025, ≥8 games, ≥8
+ppg) is **0.076**. Simulated same-team correlation: 0.017 at rho 0 (shared
+bye structure alone), 0.048 at 0.3, 0.122 at 0.5 → **rho ≈ 0.4 matches**.
+Marginal player distributions are unchanged by construction (uniform copula
+draw per player); what changes is the joint — team totals get realistically
+wider, which matters for playoff odds and stacking. Default set to 0.4; set
+the option to 0 to disable.
+
+## 10. Recency and age conditioning of trajectory pools
+
+Trajectory sampling weights now multiply three kernels: rank-distance
+(section 7), recency (`ffsimulator.v3_recency_halflife`, weight
+0.5^(seasons_ago / halflife)), and age similarity
+(`ffsimulator.v3_age_bandwidth`, triangular on |age difference|, birthdates
+via `ffscrapr::dp_playerids()`; unknown ages get neutral weight). Pools also
+switched from integer replication to exact continuous weights.
+
+Backtest verdicts (startable tiers, v3):
+
+| config | cover50 | cover80 | PIT tail | MAE |
+|---|---|---|---|---|
+| continuous weights (new baseline) | 0.415 | **0.688** | **0.303** | 59.9 |
+| old integer replication | 0.408 | 0.683 | 0.304 | 59.9 |
+| + recency halflife 8 | 0.410 | 0.672 | 0.313 | 60.4 |
+| + recency halflife 5 | 0.411 | 0.678 | 0.315 | 60.1 |
+| + age bandwidth 6 | 0.410 | 0.672 | 0.314 | 59.8 |
+
+- **Continuous weights**: neutral-to-slightly-better than replication; kept.
+- **Recency**: no benefit, slight cost (WR worst hit). Discarding old seasons
+  mostly shrinks the effective pool. Default **off**; knob remains.
+- **Age**: no benefit for redraft holdouts — preseason ECR already prices age
+  into the rank, so double-conditioning shrinks pools without adding signal.
+  Default **off**. The knob still matters for *dynasty* horizons (multi-year
+  outlooks where no future ECR exists) — revisit there, not here.
+
 ## Recommendations for Phase 3 (priority order, revised)
 
 1. **Within-season autocorrelation** (was #3) — biggest calibration win for

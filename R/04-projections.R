@@ -185,7 +185,17 @@ ffs_generate_projections <- function(adp_outcomes,
 
   season <- fantasypros_id <- player <- pos <- team <- bye <- ecr <- draft_rank <- NULL
   week <- week_rank <- week_outcomes <- projection <- gp_model <- projected_score <- scrape_date <- NULL
-  trajectories <- NULL
+  trajectories <- birth_year <- player_age <- z_team <- u <- NULL
+
+  # recency and age conditioning are off by default: both slightly *hurt*
+  # held-out season calibration (preseason ECR already prices age/era into
+  # the rank; extra conditioning shrinks pools without adding signal) - see
+  # dev/validate_projections.md section 10. team_rho = 0.4 is calibrated to
+  # the empirical same-team weekly score correlation (0.076); it changes the
+  # joint distribution (team totals), never player marginals.
+  recency_halflife <- getOption("ffsimulator.v3_recency_halflife", NULL)
+  age_bandwidth <- getOption("ffsimulator.v3_age_bandwidth", NULL)
+  team_rho <- getOption("ffsimulator.v3_team_rho", 0.4)
 
   draft_rankings <- latest_rankings[
     latest_rankings$fantasypros_id %in% rosters$fantasypros_id
@@ -205,9 +215,28 @@ ffs_generate_projections <- function(adp_outcomes,
     by = "fantasypros_id"
   ]
 
+  # the sim player's age in the projected season, for age-conditioned sampling
+  if (!is.null(age_bandwidth)) {
+    dp_birth <- data.table::as.data.table(ffscrapr::dp_playerids())[
+      !is.na(fantasypros_id) & !is.na(birthdate),
+      list(fantasypros_id, birth_year = data.table::year(as.Date(birthdate)))
+    ]
+    dp_birth <- unique(dp_birth, by = "fantasypros_id")
+    draft_rankings <- merge(draft_rankings, dp_birth, by = "fantasypros_id", all.x = TRUE)
+    draft_rankings[, `:=`(
+      player_age = data.table::year(scrape_date) - birth_year,
+      birth_year = NULL
+    )]
+  } else {
+    draft_rankings[, player_age := NA_real_]
+  }
+
+  pools <- .ffs_draft_to_week_trajectories()
+  ref_season <- attr(pools, "ref_season")
+
   week_ranks <- merge(
     draft_rankings,
-    .ffs_draft_to_week_trajectories(),
+    pools,
     by = c("pos", "draft_rank"),
     all.x = TRUE
   )[
@@ -221,37 +250,76 @@ ffs_generate_projections <- function(adp_outcomes,
       week = weeks,
       # one whole historical player-season of weekly ranks: within-season
       # autocorrelation (busts/breakouts/injuries persist across weeks) and
-      # never-ranked weeks stay in the data as NA (= zero points)
+      # never-ranked weeks stay in the data as NA (= zero points).
+      # sampling weight = rank-distance kernel x recency decay x age kernel
       week_rank = {
         pool <- .SD$trajectories[[1]]
-        as.numeric(pool[[sample.int(length(pool), 1)]][weeks])
+        w <- .SD$kernel_w[[1]]
+        if (!is.null(recency_halflife)) {
+          w <- w * 0.5^((ref_season - .SD$traj_season[[1]]) / recency_halflife)
+        }
+        if (!is.null(age_bandwidth) && !is.na(.SD$player_age[[1]])) {
+          ta <- .SD$traj_age[[1]]
+          age_w <- 1 - abs(ta - .SD$player_age[[1]]) / age_bandwidth
+          # unknown ages get a neutral mid weight; floor keeps pools alive
+          age_w[is.na(age_w)] <- 0.5
+          w <- w * pmax(age_w, 0.1)
+        }
+        as.numeric(pool[[sample.int(length(pool), 1, prob = w)]][weeks])
       }
     ),
     by = c("season", "fantasypros_id", "player", "pos", "team", "bye", "ecr", "sd", "draft_rank", "scrape_date")
   ]
 
+  # pre-sort outcome pools once so a uniform draw u maps to a score via
+  # quantile indexing (enables the correlated team-week draws below)
+  outcome_pools <- adp_outcomes[
+    , list(pos, week_rank = rank, avg_week,
+           week_outcomes = lapply(week_outcomes, function(x) sort(x[!is.na(x)])))
+  ]
+
   projected_scores <- merge(
     week_ranks,
-    adp_outcomes[, list(pos, week_rank = rank, avg_week, week_outcomes)],
+    outcome_pools,
     by = c("pos", "week_rank"),
     all.x = TRUE
-  )[
+  )
+
+  # teammates share a latent team-week factor (gaussian copula): rho > 0
+  # makes same-team players boom and bust together within a week
+  if (team_rho > 0) {
+    team_weeks <- unique(projected_scores[, list(season, week, team)])
+    team_weeks[, z_team := stats::rnorm(.N)]
+    projected_scores <- merge(projected_scores, team_weeks, by = c("season", "week", "team"))
+    projected_scores[
+      , u := stats::pnorm(team_rho * z_team + sqrt(1 - team_rho^2) * stats::rnorm(.N))
+    ][
+      is.na(team) | team == "FA", u := stats::runif(sum(is.na(team) | team == "FA"))
+    ][
+      , z_team := NULL
+    ]
+  } else {
+    projected_scores[, u := stats::runif(.N)]
+  }
+
+  projected_scores[
     ,
     `:=`(
       # availability is encoded by the trajectory itself (unranked week = NA
       # = zero), so no separate games-played model is applied
       gp_model = as.integer(!is.na(week_rank)),
-      projection = sapply(week_outcomes, function(x) {
-        x <- x[!is.na(x)]
-        if (length(x) == 0) return(0)
-        sample(x = x, size = 1)
-      })
+      projection = mapply(function(x, u) {
+        n <- length(x)
+        if (n == 0) return(0)
+        x[pmax(1L, ceiling(u * n))]
+      }, week_outcomes, u)
     )
   ][
     ,
     `:=`(
       projected_score = projection * gp_model * (week != bye),
-      week_outcomes = NULL
+      week_outcomes = NULL,
+      u = NULL
     )
   ][
     order(season, week, pos, ecr)
@@ -333,39 +401,49 @@ ffs_generate_projections <- function(adp_outcomes,
     by = list(season, fantasypros_id, pos, draft_rank)
   ]
 
-  if (is.null(bandwidth)) {
-    # historical behavior: uniform hard +/-2 window
-    expanded <- trajectories[
-      , list(
-        pos = rep(pos, each = 5),
-        trajectory = rep(trajectory, each = 5),
-        draft_rank = unlist(lapply(draft_rank, .ff_rank_expand))
-      )
-    ]
-  } else {
-    # triangular kernel: copies = round(4 * (1 - |offset| / h)), per position
-    offset <- copies <- h <- NULL
-    bw <- unlist(bandwidth)
-    kernel <- data.table::rbindlist(lapply(
-      unique(trajectories$pos),
-      function(p) {
-        h <- if (is.null(names(bw))) bw[[1]] else if (p %in% names(bw)) bw[[p]] else 2
-        off <- seq.int(-ceiling(h) + 1L, ceiling(h) - 1L)
-        data.table::data.table(pos = p, offset = off,
-                               copies = pmax(1L, as.integer(round(4 * (1 - abs(off) / h)))))
+  # age of the historical player in that season (NA when unknown), for
+  # optional age-conditioned sampling in .ffs_projections_v3
+  birth_year <- NULL
+  dp_birth <- data.table::as.data.table(ffscrapr::dp_playerids())[
+    !is.na(fantasypros_id) & !is.na(birthdate),
+    list(fantasypros_id, birth_year = data.table::year(as.Date(birthdate)))
+  ]
+  dp_birth <- unique(dp_birth, by = "fantasypros_id")
+  trajectories <- merge(trajectories, dp_birth, by = "fantasypros_id", all.x = TRUE)
+  trajectories[, age := season - birth_year]
+
+  # kernel weights per (pos, rank offset): triangular with per-position
+  # bandwidth, or the legacy uniform +/-2 window when bandwidth is NULL
+  offset <- w <- NULL
+  kernel <- data.table::rbindlist(lapply(
+    unique(trajectories$pos),
+    function(p) {
+      if (is.null(bandwidth)) {
+        return(data.table::data.table(pos = p, offset = -2:2, w = 1))
       }
-    ))
-    expanded <- merge(trajectories, kernel, by = "pos", allow.cartesian = TRUE)
-    expanded <- expanded[rep(seq_len(.N), copies)]
-    expanded[, `:=`(draft_rank = pmax(1L, draft_rank + offset), offset = NULL, copies = NULL)]
-  }
+      bw <- unlist(bandwidth)
+      h <- if (is.null(names(bw))) bw[[1]] else if (p %in% names(bw)) bw[[p]] else 2
+      off <- seq.int(-ceiling(h) + 1L, ceiling(h) - 1L)
+      data.table::data.table(pos = p, offset = off, w = 1 - abs(off) / h)
+    }
+  ))
+
+  expanded <- merge(trajectories, kernel, by = "pos", allow.cartesian = TRUE)
+  expanded[, draft_rank := pmax(1L, draft_rank + offset)]
 
   pools <- expanded[
-    , list(trajectories = list(trajectory)),
+    , list(
+      trajectories = list(trajectory),
+      kernel_w = list(w),
+      traj_season = list(season),
+      traj_age = list(age)
+    ),
     by = list(pos, draft_rank)
   ][
     order(pos, draft_rank)
   ]
+
+  data.table::setattr(pools, "ref_season", max(trajectories$season))
 
   return(pools)
 }

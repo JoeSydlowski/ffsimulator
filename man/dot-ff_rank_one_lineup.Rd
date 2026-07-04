@@ -4,12 +4,14 @@
 \alias{.ff_rank_one_lineup}
 \title{Set one lineup from weekly rankings}
 \usage{
-.ff_rank_one_lineup(franchise_scores, lineup_constraints)
+.ff_rank_one_lineup(franchise_scores, lineup_constraints, noise_sd = 0)
 }
 \arguments{
 \item{franchise_scores}{a data frame of scores for one week and one franchise, incl. avg_week}
 
 \item{lineup_constraints}{a data frame as created by \code{ffscrapr::ff_starter_positions()}}
+
+\item{noise_sd}{sd (in points) of the manager's player-evaluation error}
 }
 \value{
 a list including the realized actual_score and the started players

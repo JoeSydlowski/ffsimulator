@@ -15,6 +15,7 @@
 #' @param verbose a logical: print status messages? default is TRUE, configure with options(ffsimulator.verbose)
 #' @param version projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation
 #' @param lineup_method "efficiency" (default) scales hindsight-optimal lineups by a random efficiency factor; "rank" (experimental, requires version "v2"/"v3") sets lineups from simulated weekly rankings like a real manager, so efficiency emerges from the start/sit decision
+#' @param lineup_noise_sd manager evaluation error (points sd) for lineup_method "rank"; see `ffs_optimise_lineups()`
 #' @param return one of c("default", "all") - what objects to return in the output list
 #'
 #' @examples
@@ -44,6 +45,7 @@ ff_simulate <- function(conn,
                         verbose = NULL,
                         version = c("v2", "v1", "v3"),
                         lineup_method = c("efficiency", "rank"),
+                        lineup_noise_sd = 0,
                         return = c("default", "all")) {
 
   #### TEST ####
@@ -194,7 +196,8 @@ ff_simulate <- function(conn,
     lineup_constraints = lineup_constraints,
     best_ball = best_ball,
     pos_filter = pos_filter,
-    lineup_method = lineup_method
+    lineup_method = lineup_method,
+    lineup_noise_sd = lineup_noise_sd
   )
 
   vcli_end(msg = "Optimizing Lineups...done! {Sys.time()}")
