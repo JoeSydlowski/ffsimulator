@@ -268,6 +268,29 @@ Shared caveats: actual = one real season replayed across 20 roster
 configurations (shared player outcomes across builds); archetypes are
 coarse; results conditional on 12-team PPR, 15 rounds, this roster shape.
 
+## 13. Frozen-schedule bug + how many sims you need (dev/suite/convergence.R)
+
+An 8-replicate convergence study exposed a package bug:
+`.ff_roundrobin_applytemplate()` mutated the shared schedule template by
+reference, so **every simulated season in a run used one frozen schedule**.
+Measured effect: ±5.8% run-level playoff-odds noise that no n could remove
+(h2h metrics only — allplay was immune, which is what localized it to
+schedule pairing). Fixed with `data.table::copy()` (commit e4e394d).
+
+Post-fix, true replicate SD (0.0327 at n=200) matches the bootstrap SE
+(0.0348): playoff-odds precision is pure 1/sqrt(n):
+
+| n sims | playoff-odds SE | mean-wins SE |
+|---|---|---|
+| 50 | ±7.0% | ±0.27 |
+| 200 | ±3.5% | ±0.14 |
+| 400 | ±2.4% | ±0.10 |
+| 800 | ±1.7% | ±0.07 |
+| 1600 | ±1.2% | ±0.05 |
+
+Guidance: 400 for working numbers, 800+ for final ones. Per-player WAR
+(leave-one-out) run-to-run SD ≈ 0.01 allplay at n=40 — fine for tiering.
+
 ## Recommendations for Phase 3 (priority order, revised)
 
 1. **Within-season autocorrelation** (was #3) — biggest calibration win for
