@@ -246,7 +246,9 @@ ff_simulate <- function(conn,
           gp_model = gp_model,
           actual_schedule = actual_schedule,
           base_seasons = list(base_seasons),
-          pos_filter = list(pos_filter)
+          pos_filter = list(pos_filter),
+          lineup_method = lineup_method,
+          lineup_noise_sd = lineup_noise_sd
         )
       ),
       class = "ff_simulation"
@@ -279,7 +281,9 @@ ff_simulate <- function(conn,
           gp_model = gp_model,
           actual_schedule = actual_schedule,
           base_seasons = list(base_seasons),
-          pos_filter = list(pos_filter)
+          pos_filter = list(pos_filter),
+          lineup_method = lineup_method,
+          lineup_noise_sd = lineup_noise_sd
         )
       ),
       class = "ff_simulation"

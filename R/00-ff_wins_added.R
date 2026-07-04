@@ -93,13 +93,20 @@ ff_wins_added <- function(conn, ...) {
   franchise_id <- NULL
   player_id <- NULL
 
-  wa_scores <- base_simulation$roster_scores[franchise_id == f_id][player_id == p_id, projected_score := NA]
+  # blank both the realized score and the manager-expected points (avg_week),
+  # otherwise rank-based lineups would keep "starting" the removed player
+  wa_scores <- base_simulation$roster_scores[franchise_id == f_id][
+    player_id == p_id, `:=`(projected_score = NA, avg_week = NA)
+  ]
 
   wa_optimal <- ffs_optimise_lineups(
     roster_scores = wa_scores,
     lineup_constraints = base_simulation$lineup_constraints,
     best_ball = base_simulation$simulation_params$best_ball,
-    pos_filter = base_simulation$simulation_params$pos_filter[[1]]
+    pos_filter = base_simulation$simulation_params$pos_filter[[1]],
+    # re-optimize under the same lineup policy the base simulation used
+    lineup_method = base_simulation$simulation_params$lineup_method %||% "efficiency",
+    lineup_noise_sd = base_simulation$simulation_params$lineup_noise_sd %||% 0
   )
 
   all_scores <- data.table::rbindlist(
