@@ -177,7 +177,10 @@ ffs_build_schedules <- function(n_teams = NULL,
   opponent <- NULL
   week <- NULL
 
-  x <- schedule_template[, `:=`(
+  # copy: `:=` would otherwise mutate the shared template by reference, and
+  # every season in the mapply would end up pointing at the same object -
+  # i.e. one frozen schedule replicated across all simulated seasons
+  x <- data.table::copy(schedule_template)[, `:=`(
     team = team_order[team],
     opponent = team_order[opponent],
     week = week_order[week])
