@@ -74,3 +74,33 @@ test_that("wins added works", {
   checkmate::expect_list(ssb_wa, len = 15)
   checkmate::expect_data_frame(ssb_wa$war, min.rows = 200)
 })
+
+test_that("trade functions work", {
+  skip_on_cran()
+  conn <- mfl_connect(2021, 22627)
+  sim <- ff_simulate(conn, n_seasons = 4, version = "v3",
+                     lineup_method = "rank", return = "all")
+  rs <- data.table::as.data.table(sim$roster_scores)
+  real <- rs[!grepl("^(QB|RB|WR|TE|K)_\\d+$", player_id)]
+  f_a <- real$franchise_id[[1]]
+  f_b <- setdiff(unique(real$franchise_id), f_a)[[1]]
+  p_a <- unique(real[franchise_id == f_a]$player_id)[[1]]
+  p_b <- unique(real[franchise_id == f_b]$player_id)[[1]]
+
+  pv <- ffs_player_value(sim, p_a, f_a) # removal (owner)
+  pv2 <- ffs_player_value(sim, p_a, f_b) # addition (other team)
+  checkmate::expect_data_frame(pv, nrows = 1)
+  checkmate::expect_data_frame(pv2, nrows = 1)
+  checkmate::expect_subset(
+    c("h2h_wins", "allplay_winpct", "playoff_pct", "owner_id"), names(pv)
+  )
+
+  te <- ffs_trade_eval(sim, f_a, p_a, f_b, p_b)
+  checkmate::expect_data_frame(te, nrows = 2)
+  # zero-sum-ish structure: both rows report their own before/after
+  expect_true(all(te$playoff_pct_after >= 0 & te$playoff_pct_after <= 1))
+
+  tt <- ffs_trade_targets(sim, f_a, top_n = 3)
+  checkmate::expect_data_frame(tt, nrows = 3)
+  checkmate::expect_subset(c("value_to_you", "value_to_owner", "surplus"), names(tt))
+})
