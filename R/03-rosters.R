@@ -25,6 +25,48 @@ ffs_rosters <- function(conn) {
   UseMethod("ffs_rosters")
 }
 
+#' Backfill missing fantasypros_ids by name + position
+#'
+#' `dp_playerids()` lags behind for new rookie classes, which silently drops
+#' every rostered rookie from the simulation (they exist in the FantasyPros
+#' rankings but their platform id cannot be crosswalked). Backfills
+#' `fantasypros_id` on rosters by unambiguous cleaned-name + position match
+#' against the scraped rankings.
+#'
+#' @param rosters a rosters dataframe (`ffs_rosters()`)
+#' @param latest_rankings a rankings dataframe (`ffs_latest_rankings()`)
+#'
+#' @return the rosters dataframe with fantasypros_id filled where matchable
+#'
+#' @export
+ffs_backfill_fp_ids <- function(rosters, latest_rankings) {
+  fantasypros_id <- player_name <- player <- pos <- clean_name <- NULL
+
+  rosters <- data.table::as.data.table(rosters)
+  missing <- is.na(rosters$fantasypros_id)
+  if (!any(missing)) return(rosters[])
+
+  lookup <- data.table::as.data.table(latest_rankings)[
+    , list(clean_name = nflreadr::clean_player_names(player), pos, fantasypros_id)
+  ]
+  # only unambiguous name+pos matches
+  lookup <- lookup[, if (.N == 1) .SD, by = c("clean_name", "pos")]
+
+  rosters[, clean_name := nflreadr::clean_player_names(player_name)]
+  rosters[
+    lookup,
+    on = c("clean_name", "pos"),
+    fantasypros_id := data.table::fifelse(is.na(fantasypros_id), i.fantasypros_id, fantasypros_id)
+  ]
+  n_fixed <- sum(missing) - sum(is.na(rosters$fantasypros_id))
+  if (n_fixed > 0) {
+    cli::cli_alert_info("Backfilled fantasypros_id for {n_fixed} rostered player{?s} not in dp_playerids (likely rookies)")
+  }
+  rosters[, clean_name := NULL]
+
+  return(rosters[])
+}
+
 #' @rdname ffs_rosters
 #' @export
 ffs_rosters.mfl_conn <- function(conn) {

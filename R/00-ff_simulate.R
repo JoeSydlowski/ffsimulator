@@ -105,6 +105,8 @@ ff_simulate <- function(conn,
 
   franchises <- ffs_franchises(conn)
   rosters <- ffs_rosters(conn)
+  # new rookie classes lag in dp_playerids - match them to rankings by name
+  rosters <- ffs_backfill_fp_ids(rosters, latest_rankings)
 
   lineup_constraints <- ffs_starter_positions(conn)
 
