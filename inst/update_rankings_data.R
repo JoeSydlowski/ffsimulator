@@ -254,6 +254,16 @@ build_dynasty_rankings <- function(build_seasons = 2018:(nflreadr::most_recent_s
 
   cli::cli_alert_info("Building {length(build_seasons)} seasons of dynasty rankings into directory {directory}")
 
+  # FantasyPros historical pages report the player's CURRENT age, not his age
+  # in the archived season - derive in-season age from birthdates instead,
+  # falling back to the FP age minus the years elapsed since that season
+  birthdates <- ffscrapr::dp_playerids() %>%
+    dplyr::filter(!is.na(fantasypros_id), !is.na(birthdate)) %>%
+    dplyr::transmute(fantasypros_id = as.character(fantasypros_id),
+                     birth_year = as.integer(substr(birthdate, 1, 4))) %>%
+    dplyr::distinct(fantasypros_id, .keep_all = TRUE)
+  scrape_year <- as.integer(format(Sys.Date(), "%Y"))
+
   fp_dynasty_history <- tibble::tibble(seasons = build_seasons) %>%
     dplyr::mutate(
       rankings = furrr::future_map(seasons,
@@ -267,12 +277,19 @@ build_dynasty_rankings <- function(build_seasons = 2018:(nflreadr::most_recent_s
       player_name = nflreadr::clean_player_names(player_name),
       pos,
       team,
-      age = as.numeric(age),
+      fp_current_age = as.numeric(age),
       rank,
       ecr,
       sd
     ) %>%
     dplyr::filter(pos %in% c("QB", "RB", "WR", "TE")) %>%
+    dplyr::left_join(birthdates, by = "fantasypros_id") %>%
+    dplyr::mutate(
+      age = dplyr::coalesce(season - birth_year,
+                            fp_current_age - (scrape_year - season)),
+      birth_year = NULL,
+      fp_current_age = NULL
+    ) %>%
     dplyr::group_by(season, pos) %>%
     dplyr::mutate(pos_rank = rank(ecr, ties.method = "first")) %>%
     dplyr::ungroup()

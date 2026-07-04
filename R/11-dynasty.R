@@ -79,7 +79,7 @@ ffs_dynasty_outlook <- function(base_simulation,
     pos = pos, age = age, dyn_pos_rank = dyn_pos_rank, q = q,
     transitions = pools$transitions
   )]
-  draws[!exited, next_rank := .ffs_pos_to_overall(pos, next_pos_rank, reference = current)]
+  draws[exited == FALSE, next_rank := .ffs_pos_to_overall(pos, next_pos_rank, reference = current)]
   draws[, `:=`(
     cur_value = value_curve(dyn_rank),
     next_value = data.table::fifelse(exited, 0, value_curve(next_rank))
