@@ -25,6 +25,24 @@ Edit the `config` block at the top (or set env vars `FFS_LEAGUE_ID`,
 | `trade_offers.csv` | your roster ranked as trade bait: win value to you vs dynasty market value; `sell_score` highlights high-market-value / low-use / at-risk pieces |
 | `dynasty_outlook.csv` | per player: current dynasty value and the simulated post-season value distribution (mean/p10/p90, P(rise), P(exit)) |
 | `dynasty_capital.csv` | team-level dynasty capital, now and post-season expected |
+| `pareto_targets.csv` | trade targets ranked by Pareto front over three goals at once — improve my team most (`value_to_you`), cost least (`dyn_value`), hold value best (`retention`). `front == 1` = the non-dominated shortlist (no target beats them on all three) |
+
+### Pareto targets
+
+The question "which players improve my team most, cost the least, and won't
+fall off in value" is a three-objective trade-off. A player is *Pareto-optimal*
+(front 1) when no other target is at least as good on all three and strictly
+better on one — i.e. there is no strictly-better alternative. Everyone on a
+later front is dominated by someone on front 1.
+
+`dev/suite/pareto_targets.R` produces `pareto_targets.csv` and `pareto.png`
+(the efficient frontier: cost on x, wins-added on y, point size = retention,
+front-1 players connected and labeled). The suite runs a lightweight version
+of it automatically; the standalone script also draws the plot and lets you
+widen the candidate pool with `FFS_TRADE_TOP_N`.
+
+`ffs_pareto_front(objectives, maximize)` is the general helper — pass any set
+of columns and a max/min direction per column to get front numbers back.
 
 ## Config notes
 

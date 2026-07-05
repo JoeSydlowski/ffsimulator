@@ -90,6 +90,21 @@ test_that("ffs_generate_projections() version v3 works", {
   expect_true(all(!is.na(projected_scores_v3$projection)))
 })
 
+test_that("ffs_pareto_front() ranks non-dominated rows first", {
+  d <- data.frame(gain = c(3, 2, 2, 1, 3), cost = c(3, 1, 2, 1, 1))
+  f <- ffs_pareto_front(d, maximize = c(TRUE, FALSE))
+  # (gain 3, cost 1) dominates everything -> sole front 1
+  expect_equal(f[5], 1L)
+  expect_true(all(f[c(1, 2)] == 2L))
+  # a strictly-dominated row is never on front 1
+  expect_gt(f[3], 1L)
+
+  # NA rows fall to the last front
+  d2 <- rbind(d, c(NA, 1))
+  f2 <- ffs_pareto_front(d2, maximize = c(TRUE, FALSE))
+  expect_equal(f2[6], max(f2))
+})
+
 test_that("ffs_add_replacement_level() works", {
 
   rosters_rl <- ffs_add_replacement_level(

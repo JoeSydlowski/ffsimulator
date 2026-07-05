@@ -11,9 +11,10 @@ library(ggplot2)
 devtools::load_all(here::here(), quiet = TRUE)
 
 ## ---- CONFIG -----------------------------------------------------------------
-
+# JML 1326464763936403456
+# Jon 1359546500786434048
 config <- list(
-  league_id = Sys.getenv("FFS_LEAGUE_ID", "1359546500786434048"),
+  league_id = Sys.getenv("FFS_LEAGUE_ID", "1326464763936403456"),
   platform = "sleeper",
   season = as.integer(Sys.getenv("FFS_SEASON", "2026")),
   my_team = Sys.getenv("FFS_MY_TEAM", "sox05syd"),
@@ -30,7 +31,7 @@ config <- list(
   run_war = TRUE,
   run_trades = TRUE,
   run_dynasty = TRUE,
-  trade_top_n = as.integer(Sys.getenv("FFS_TRADE_TOP_N", "20"))
+  trade_top_n = as.integer(Sys.getenv("FFS_TRADE_TOP_N", "50"))
 )
 
 out <- here::here("dev", "league_sims", config$league_id, format(Sys.Date()))
@@ -191,6 +192,23 @@ if (config$run_dynasty) {
       dyn_value * (1 - p_rise) - 1500 * value_to_me
     )]
     fwrite(oo[order(-sell_score)], file.path(out, "trade_offers.csv"))
+
+    ## ---- 6. Pareto-optimal targets --------------------------------------------
+    # improve my team (value_to_you up) / cost least (dyn_value down) / hold
+    # value (retention up). front 1 = no target beats them on all three.
+    cand <- merge(as.data.table(targets),
+                  dyn[, list(player_id, dyn_value = cur_value,
+                             dyn_next = next_value_mean)],
+                  by = "player_id", all.x = TRUE)
+    cand <- cand[value_to_you > 0 & !is.na(dyn_value) & dyn_value > 0]
+    if (nrow(cand) > 1) {
+      cand[, retention := dyn_next / dyn_value]
+      cand[, front := ffs_pareto_front(
+        cand[, list(value_to_you, dyn_value, retention)],
+        maximize = c(TRUE, FALSE, TRUE))]
+      setorder(cand, front, -value_to_you)
+      fwrite(cand, file.path(out, "pareto_targets.csv"))
+    }
   }
 }
 
