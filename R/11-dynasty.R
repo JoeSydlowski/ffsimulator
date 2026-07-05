@@ -184,10 +184,16 @@ ffs_dynasty_outlook <- function(base_simulation,
 #'
 #' @keywords internal
 .ffs_season_quality <- function(pos, redraft_rank, total, quality_pools) {
+  # split to plain vectors up front: subsetting a data.table with `pos[i]`
+  # inside `[` would resolve pos/redraft_rank to the pool's own columns
+  # (data.table NSE), not these arguments
+  qp <- as.data.frame(quality_pools)
+  by_pos <- split(qp[, c("redraft_rank", "total")], qp$pos)
   vapply(seq_along(pos), function(i) {
     if (is.na(redraft_rank[i])) return(NA_real_)
-    pool <- quality_pools[quality_pools$pos == pos[i] &
-                            abs(quality_pools$redraft_rank - redraft_rank[i]) <= 3]$total
+    d <- by_pos[[pos[i]]]
+    if (is.null(d)) return(NA_real_)
+    pool <- d$total[abs(d$redraft_rank - redraft_rank[i]) <= 3]
     if (length(pool) < 10) return(NA_real_)
     (sum(pool < total[i]) + 0.5 * sum(pool == total[i])) / length(pool)
   }, numeric(1))
@@ -251,16 +257,29 @@ ffs_dynasty_outlook <- function(base_simulation,
 #'
 #' @keywords internal
 .ffs_pos_to_overall <- function(pos, pos_rank, reference) {
-  ref <- data.table::as.data.table(reference)
-  vapply(seq_along(pos), function(i) {
-    r <- ref[ref$pos == pos[i]]
-    if (nrow(r) == 0) return(pos_rank[i] * 4)
-    r <- r[order(r$pos_rank)]
-    if (pos_rank[i] <= max(r$pos_rank)) {
-      stats::approx(r$pos_rank, r$rank, xout = pos_rank[i], rule = 2)$y
+  ref <- as.data.frame(reference)
+  # build one monotone pos_rank -> overall interpolator per position. doing
+  # this in base R avoids the data.table NSE trap where `ref[ref$pos ==
+  # pos[i]]` resolves `pos[i]` to the reference's own pos column (which made
+  # every position map through the WR curve)
+  fns <- lapply(split(ref[, c("pos_rank", "rank")], ref$pos), function(d) {
+    d <- d[order(d$pos_rank), ]
+    list(
+      f = stats::approxfun(d$pos_rank, d$rank, rule = 2),
+      max_pos_rank = max(d$pos_rank),
+      max_rank = max(d$rank)
+    )
+  })
+  out <- numeric(length(pos))
+  for (i in seq_along(pos)) {
+    fn <- fns[[pos[i]]]
+    if (is.null(fn)) { out[i] <- pos_rank[i] * 4; next }
+    out[i] <- if (pos_rank[i] <= fn$max_pos_rank) {
+      fn$f(pos_rank[i])
     } else {
       # beyond the deepest ranked player: extend at the tail slope
-      max(r$rank) + (pos_rank[i] - max(r$pos_rank)) * 4
+      fn$max_rank + (pos_rank[i] - fn$max_pos_rank) * 4
     }
-  }, numeric(1))
+  }
+  out
 }
