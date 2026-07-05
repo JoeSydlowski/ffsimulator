@@ -4,10 +4,15 @@
 \alias{ff_wins_added}
 \title{Wins Added}
 \usage{
-ff_wins_added(conn, ...)
+ff_wins_added(conn, players = NULL, ...)
 }
 \arguments{
 \item{conn}{an connection to a league made with \code{ff_connect()} and friends (required)}
+
+\item{players}{optional character vector of player_ids to compute wins-added
+for. Defaults to every rostered player (expensive); pass a subset (e.g.
+your own roster plus a few trade targets) to run far faster, since the
+leave-one-out cost scales with the number of players evaluated.}
 
 \item{...}{
   Arguments passed on to \code{\link[=ff_simulate]{ff_simulate}}

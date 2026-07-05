@@ -12,6 +12,10 @@
 #' Summarise wins added as the difference between the sim with the player and the sim without them
 #'
 #' @param conn an connection to a league made with `ff_connect()` and friends (required)
+#' @param players optional character vector of player_ids to compute wins-added
+#'   for. Defaults to every rostered player (expensive); pass a subset (e.g.
+#'   your own roster plus a few trade targets) to run far faster, since the
+#'   leave-one-out cost scales with the number of players evaluated.
 #' @param ... parameters passed to `ff_simulate()`
 #' @inheritDotParams ff_simulate
 #'
@@ -26,7 +30,7 @@
 #' @return a dataframe summarising the net effect of each player on their team's wins
 #'
 #' @export
-ff_wins_added <- function(conn, ...) {
+ff_wins_added <- function(conn, players = NULL, ...) {
 
   #### TEST STUFF ####
   # conn <- mfl_connect(2021,54040)
@@ -35,6 +39,7 @@ ff_wins_added <- function(conn, ...) {
   #### ASSERTIONS ####
 
   checkmate::assert_multi_class(conn, c("mfl_conn", "sleeper_conn", "flea_conn", "espn_conn"))
+  checkmate::assert_character(players, null.ok = TRUE)
 
   vcli_rule("BASE SIMULATION")
 
@@ -44,10 +49,16 @@ ff_wins_added <- function(conn, ...) {
   pos <- NULL
   allplay_winpct <- NULL
 
+  player_id <- NULL
   rosters <- data.table::as.data.table(base_simulation$rosters)[
     pos %in% base_simulation$simulation_params$pos_filter[[1]],
     c("player_id", "player_name", "league_id", "franchise_name", "franchise_id", "pos")
   ]
+
+  if (!is.null(players)) {
+    rosters <- rosters[player_id %in% players]
+    if (nrow(rosters) == 0) cli::cli_abort("None of {.arg players} are on a roster in this league")
+  }
 
   vcli_rule("Start WAR calcs {Sys.time()}")
 

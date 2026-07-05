@@ -112,21 +112,7 @@ drivers <- pl[, list(
 ), by = list(player_name, pos)][mean_weeks_started > 0.5][order(-swing)]
 fwrite(drivers, file.path(out, "roster_drivers.csv"))
 
-## ---- 3. WAR -------------------------------------------------------------------
-
-if (config$run_war) {
-  message("WAR (", config$n_sims_war, " sims/player) @ ", Sys.time())
-  wa <- ff_wins_added(
-    conn,
-    n_seasons = config$n_sims_war,
-    version = config$version,
-    lineup_method = config$lineup_method,
-    replacement_level = config$replacement_level
-  )
-  fwrite(as.data.table(wa$war), file.path(out, "war_players.csv"))
-}
-
-## ---- 4. trade intelligence -----------------------------------------------------
+## ---- 3. trade intelligence (before WAR so WAR can scope to relevant players) ---
 
 if (config$run_trades) {
   message("trade scan @ ", Sys.time())
@@ -144,6 +130,34 @@ if (config$run_trades) {
   }))
   offers <- merge(my_players, offers, by = "player_id")[order(value_to_me)]
   fwrite(offers, file.path(out, "trade_offers.csv"))
+}
+
+## ---- 4. WAR -------------------------------------------------------------------
+
+if (config$run_war) {
+  # scope: "mine" (my roster + trade targets - fast, the decision-relevant
+  # players) or "all" (every rostered player - slow). leave-one-out cost
+  # scales with the number of players, so "mine" is ~10x faster.
+  war_scope <- Sys.getenv("FFS_WAR_SCOPE", "mine")
+  war_players <- NULL
+  if (war_scope == "mine") {
+    mine <- unique(as.data.table(sim$roster_scores)[
+      franchise_id == me & !grepl("^(QB|RB|WR|TE|K)_\\d+$", player_id), player_id])
+    tgt <- if (config$run_trades) as.data.table(targets)$player_id else character(0)
+    war_players <- unique(c(mine, tgt))
+  }
+  message("WAR (", config$n_sims_war, " sims/player, scope=", war_scope,
+          if (!is.null(war_players)) paste0(", ", length(war_players), " players") else "",
+          ") @ ", Sys.time())
+  wa <- ff_wins_added(
+    conn,
+    players = war_players,
+    n_seasons = config$n_sims_war,
+    version = config$version,
+    lineup_method = config$lineup_method,
+    replacement_level = config$replacement_level
+  )
+  fwrite(as.data.table(wa$war), file.path(out, "war_players.csv"))
 }
 
 ## ---- 5. dynasty outlook ---------------------------------------------------------

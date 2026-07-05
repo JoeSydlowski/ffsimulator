@@ -35,9 +35,26 @@ Edit the `config` block at the top (or set env vars `FFS_LEAGUE_ID`,
 - `n_sims`: see `convergence.csv` from `dev/suite/convergence.R`. Playoff-odds
   SE is ~1/sqrt(n): roughly ±3.5% at n=200, ±2.5% at 400, ±1.7% at 800.
   400 is a good default; go 800+ for final published numbers.
-- `n_sims_war = 50` keeps the WAR run ~1h for a 300-player league. WAR values
-  have run-to-run SD of roughly 0.01 allplay at n=40 — fine for tiering,
-  don't read the third decimal.
+- `n_sims_war = 50` — WAR values have run-to-run SD of roughly 0.01 allplay at
+  n=40, fine for tiering; don't read the third decimal.
+- **WAR scope** (`FFS_WAR_SCOPE`, default `mine`): leave-one-out cost scales
+  with the number of players evaluated, so the suite defaults to computing WAR
+  only for your roster plus the trade-target shortlist (~1 min) instead of all
+  ~380 rostered players (~6 min). Set `FFS_WAR_SCOPE=all` for the whole league.
+  Subset results are identical to the full run for the players included.
+  Directly: `ff_wins_added(conn, players = c("id1","id2"), ...)`.
+
+### Speed notes
+
+The lineup optimizer (an exact LP per team-week) is the main cost; WAR re-runs
+it per player, which is why WAR dominates. Fastest path to answers:
+- keep `n_sims_war` low (WAR barely moves past n≈40) and standings `n_sims` at
+  400 (±2.4% playoff odds; 800 for final numbers — see `convergence.csv`);
+- scope WAR to the players you're actually deciding on (`FFS_WAR_SCOPE=mine`);
+- re-run individual pieces off a saved `simulation.rds` (trade eval, dynasty
+  outlook) rather than re-simulating.
+A vectorized greedy optimizer was prototyped but diverges from the LP on ~0.4%
+of team-weeks (bye ties / short rosters), so the exact LP is kept.
 
 ## Evaluating a specific trade
 
