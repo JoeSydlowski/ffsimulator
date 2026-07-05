@@ -239,12 +239,12 @@ build_weekly_rankings <- function(build_seasons = 2012:nflreadr::most_recent_sea
   invisible(file.path(directory, "fp_rankings_history_week.rds"))
 }
 
-build_dynasty_rankings <- function(build_seasons = 2018:(nflreadr::most_recent_season() + 1),
+build_dynasty_rankings <- function(build_seasons = 2015:(nflreadr::most_recent_season() + 1),
                                    directory = ffsimulator::.ffs_cache_dir()) {
 
   checkmate::check_numeric(
     build_seasons,
-    lower = 2018,
+    lower = 2015,
     upper = nflreadr::most_recent_season() + 1,
     any.missing = FALSE,
     min.len = 1
@@ -367,5 +367,5 @@ build_injury_model <- function(base_seasons = seq(2012, nflreadr::most_recent_se
 
 build_draft_rankings(2012:nflreadr::most_recent_season())
 build_weekly_rankings(2012:nflreadr::most_recent_season())
-build_dynasty_rankings(2018:(nflreadr::most_recent_season() + 1))
+build_dynasty_rankings(2015:(nflreadr::most_recent_season() + 1))
 build_injury_model(2012:nflreadr::most_recent_season())
