@@ -16,6 +16,10 @@
 #' projection method - no parametric model.
 #'
 #' @param base_simulation an `ff_simulation` from `ff_simulate(..., return = "all")`
+#' @param format QB scoring format for dynasty values: "auto" (default) reads
+#'   it from the league's lineup constraints (superflex if QB max > 1), or set
+#'   "1qb"/"superflex" explicitly. QBs are far more valuable in superflex, so
+#'   this materially changes QB dynasty values.
 #' @param max_transition_season trains only on transitions *into* seasons <=
 #'   this value (default: all available); used by the backtest to hold out a year
 #' @param value_curve function mapping overall dynasty rank to trade value;
@@ -28,19 +32,28 @@
 #'
 #' @export
 ffs_dynasty_outlook <- function(base_simulation,
+                                format = c("auto", "1qb", "superflex"),
                                 max_transition_season = NULL,
                                 value_curve = function(rank) 10000 * exp(-0.023 * rank)) {
   checkmate::assert_class(base_simulation, "ff_simulation")
+  format <- rlang::arg_match(format)
 
   season <- fantasypros_id <- pos <- ecr <- rank <- age <- player_name <- NULL
   projected_score <- redraft_rank <- total <- q <- player_id <- NULL
 
+  if (format == "auto") format <- .ffs_detect_qb_format(base_simulation$lineup_constraints)
+  # local name must differ from the "format" column, else data.table NSE
+  # resolves the bare symbol to the column and the filter is a no-op
+  qb_format <- format
+
   dynasty <- data.table::as.data.table(fp_dynasty_history())
+  dynasty <- dynasty[dynasty$format == qb_format]
   current_season <- max(dynasty$season)
   current <- dynasty[season == current_season]
 
   pools <- .ffs_dynasty_transition_pools(
     scoring_history = base_simulation$scoring_history,
+    format = qb_format,
     max_transition_season = max_transition_season
   )
 
@@ -114,17 +127,21 @@ ffs_dynasty_outlook <- function(base_simulation,
 #' scale.
 #'
 #' @param scoring_history scoring history covering the training seasons
+#' @param format QB format ("1qb" or "superflex") to train the transitions on
 #' @param max_transition_season train only transitions into seasons <= this
 #' @param weeks weeks that count toward a "season" (default 1:14, matching the sims)
 #'
 #' @keywords internal
 .ffs_dynasty_transition_pools <- function(scoring_history,
+                                          format = "1qb",
                                           max_transition_season = NULL,
                                           weeks = 1:14) {
   season <- fantasypros_id <- pos <- rank <- age <- gsis_id <- week <- points <- NULL
   next_rank <- redraft_rank <- total <- q <- NULL
 
+  qb_format <- format  # avoid data.table NSE collision with the format column
   dynasty <- data.table::as.data.table(fp_dynasty_history())
+  dynasty <- dynasty[dynasty$format == qb_format]
   if (!is.null(max_transition_season)) dynasty <- dynasty[season <= max_transition_season]
 
   # transitions are matched and drawn in POSITIONAL rank space: overall
@@ -173,6 +190,18 @@ ffs_dynasty_outlook <- function(base_simulation,
   transitions[, q := .ffs_season_quality(pos, redraft_rank, total, quality_pools)]
 
   list(transitions = transitions[], quality_pools = quality_pools[])
+}
+
+#' Detect QB scoring format from lineup constraints
+#'
+#' Superflex leagues allow more than one starting QB (QB max > 1) or carry an
+#' explicit superflex/OP slot; everything else is treated as 1qb.
+#'
+#' @keywords internal
+.ffs_detect_qb_format <- function(lineup_constraints) {
+  lc <- data.table::as.data.table(lineup_constraints)
+  qb_max <- lc[lc$pos == "QB"]$max
+  if (length(qb_max) && max(qb_max) > 1) "superflex" else "1qb"
 }
 
 #' Season-quality percentile

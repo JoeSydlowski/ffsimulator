@@ -6,12 +6,18 @@
 \usage{
 ffs_dynasty_outlook(
   base_simulation,
+  format = c("auto", "1qb", "superflex"),
   max_transition_season = NULL,
   value_curve = function(rank) 10000 * exp(-0.023 * rank)
 )
 }
 \arguments{
 \item{base_simulation}{an \code{ff_simulation} from \code{ff_simulate(..., return = "all")}}
+
+\item{format}{QB scoring format for dynasty values: "auto" (default) reads
+it from the league's lineup constraints (superflex if QB max > 1), or set
+"1qb"/"superflex" explicitly. QBs are far more valuable in superflex, so
+this materially changes QB dynasty values.}
 
 \item{max_transition_season}{trains only on transitions \emph{into} seasons <=
 this value (default: all available); used by the backtest to hold out a year}

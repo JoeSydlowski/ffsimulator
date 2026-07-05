@@ -15,14 +15,17 @@ set.seed(42)
 
 out_dir <- here::here("dev", "validate_outputs")
 K <- 300
+fmt <- Sys.getenv("FFS_DYN_FORMAT", "1qb")  # "1qb" or "superflex"
+cat("=== dynasty backtest, format =", fmt, "===\n")
 
 scoring_history <- readRDS(file.path(out_dir, "scoring_history_2012_2025.rds"))
 
-dynasty <- as.data.table(fp_dynasty_history())
+dynasty <- as.data.table(fp_dynasty_history())[format == fmt]
 
 # training pools: transitions through 2024->2025 only
 pools <- ffsimulator:::.ffs_dynasty_transition_pools(
   scoring_history = scoring_history,
+  format = fmt,
   max_transition_season = 2025
 )
 tr <- pools$transitions

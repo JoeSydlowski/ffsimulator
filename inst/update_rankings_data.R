@@ -264,35 +264,52 @@ build_dynasty_rankings <- function(build_seasons = 2015:(nflreadr::most_recent_s
     dplyr::distinct(fantasypros_id, .keep_all = TRUE)
   scrape_year <- as.integer(format(Sys.Date(), "%Y"))
 
-  fp_dynasty_history <- tibble::tibble(seasons = build_seasons) %>%
-    dplyr::mutate(
-      rankings = furrr::future_map(seasons,
-                                   ~ ffpros::fp_rankings(page = "dynasty-overall", year = .x),
-                                   .progress = TRUE)
-    ) %>%
-    tidyr::unnest(rankings) %>%
-    dplyr::transmute(
-      season = seasons,
-      fantasypros_id = as.character(fantasypros_id),
-      player_name = nflreadr::clean_player_names(player_name),
-      pos,
-      team,
-      fp_current_age = as.numeric(age),
-      rank,
-      ecr,
-      sd
-    ) %>%
-    dplyr::filter(pos %in% c("QB", "RB", "WR", "TE")) %>%
-    dplyr::left_join(birthdates, by = "fantasypros_id") %>%
-    dplyr::mutate(
-      age = dplyr::coalesce(season - birth_year,
-                            fp_current_age - (scrape_year - season)),
-      birth_year = NULL,
-      fp_current_age = NULL
-    ) %>%
-    dplyr::group_by(season, pos) %>%
-    dplyr::mutate(pos_rank = rank(ecr, ties.method = "first")) %>%
-    dplyr::ungroup()
+  # scrape both QB formats: 1qb (dynasty-overall) and superflex - QBs rank far
+  # higher in superflex, so the value curve must use the league's format
+  formats <- c("1qb" = "dynasty-overall", "superflex" = "dynasty-superflex")
+
+  # superflex dynasty pages only exist from 2020; guard each year and keep
+  # only those that return a usable table (with an ecr column)
+  scrape_one <- function(page, year) {
+    r <- tryCatch(ffpros::fp_rankings(page = page, year = year),
+                  error = function(e) NULL)
+    if (is.null(r) || nrow(r) == 0 || !"ecr" %in% names(r)) return(NULL)
+    r
+  }
+
+  scrape_format <- function(page, fmt) {
+    ranked <- tibble::tibble(seasons = build_seasons) %>%
+      dplyr::mutate(rankings = furrr::future_map(seasons, ~ scrape_one(page, .x))) %>%
+      dplyr::filter(!purrr::map_lgl(rankings, is.null))
+    if (nrow(ranked) == 0) return(tibble::tibble())
+    ranked %>%
+      tidyr::unnest(rankings) %>%
+      dplyr::transmute(
+        format = fmt,
+        season = seasons,
+        fantasypros_id = as.character(fantasypros_id),
+        player_name = nflreadr::clean_player_names(player_name),
+        pos,
+        team,
+        fp_current_age = as.numeric(age),
+        rank,
+        ecr,
+        sd
+      ) %>%
+      dplyr::filter(pos %in% c("QB", "RB", "WR", "TE")) %>%
+      dplyr::left_join(birthdates, by = "fantasypros_id") %>%
+      dplyr::mutate(
+        age = dplyr::coalesce(season - birth_year,
+                              fp_current_age - (scrape_year - season)),
+        birth_year = NULL,
+        fp_current_age = NULL
+      ) %>%
+      dplyr::group_by(season, pos) %>%
+      dplyr::mutate(pos_rank = rank(ecr, ties.method = "first")) %>%
+      dplyr::ungroup()
+  }
+
+  fp_dynasty_history <- purrr::imap_dfr(formats, ~ scrape_format(.x, .y))
 
   if (nrow(fp_dynasty_history) == 0) {
     cli::cli_abort("No rows from dynasty scrape - something went wrong!")

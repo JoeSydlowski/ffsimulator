@@ -30,7 +30,7 @@ config <- list(
   run_war = TRUE,
   run_trades = TRUE,
   run_dynasty = TRUE,
-  trade_top_n = 20L
+  trade_top_n = as.integer(Sys.getenv("FFS_TRADE_TOP_N", "20"))
 )
 
 out <- here::here("dev", "league_sims", config$league_id, format(Sys.Date()))

@@ -86,7 +86,7 @@ fp_dynasty_history <- function() {
   .fp_dynasty_history <- .ffs_read_data("fp_dynasty_history.rds")
   assert_df(
     .fp_dynasty_history,
-    c("season", "fantasypros_id", "player_name", "pos", "team",
+    c("format", "season", "fantasypros_id", "player_name", "pos", "team",
       "age", "rank", "pos_rank", "ecr", "sd")
   )
   return(.fp_dynasty_history)

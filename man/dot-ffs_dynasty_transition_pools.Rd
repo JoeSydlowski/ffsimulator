@@ -6,12 +6,15 @@
 \usage{
 .ffs_dynasty_transition_pools(
   scoring_history,
+  format = "1qb",
   max_transition_season = NULL,
   weeks = 1:14
 )
 }
 \arguments{
 \item{scoring_history}{scoring history covering the training seasons}
+
+\item{format}{QB format ("1qb" or "superflex") to train the transitions on}
 
 \item{max_transition_season}{train only transitions into seasons <= this}
 
