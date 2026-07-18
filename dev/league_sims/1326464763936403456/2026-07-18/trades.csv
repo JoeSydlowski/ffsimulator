@@ -1,0 +1,34 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy,1,Colston Loveland,Rashee Rice + Oronde Gadsden,4618,5310,692,0.27,0.046,-0.293,-0.057,FALSE,1208,1.187,12517,10229 + 12493,TRUE
+buy,7,Tyler Warren,Harold Fannin + Rachaad White,4243,4737,494,0.088,0.021,-0.151,-0.022,FALSE,1159,0.706,12518,12506 + 8136,TRUE
+buy,4,Drake London,Ladd McConkey + Bhayshul Tuten,5791,6477,686,0.091,0.031,-0.117,-0.019,FALSE,992,0.568,8112,11635 + 12490,TRUE
+buy,4,CeeDee Lamb,Dalton Schultz + De'Von Achane,6288,7225,937,0.146,0.027,-0.159,-0.036,FALSE,900,0.347,6786,5001 + 9226,TRUE
+buy,4,Tyler Warren,RJ Harvey + Bhayshul Tuten,4243,4617,374,0.248,0.056,-0.247,-0.061,FALSE,424,-0.01,12518,12489 + 12490,TRUE
+sell Tee Higgins,8,Tee Higgins + Khalil Shakir,Breece Hall,4708,4279,-429,0.091,0.026,0.142,0.026,TRUE,172,-0.425,6801 + 8134,8155,TRUE
+sell Patrick Mahomes,2,Patrick Mahomes + Courtland Sutton,Nico Collins,4599,4247,-352,0.104,0.015,0.015,0.009,TRUE,130,-0.673,4046 + 5045,7569,TRUE
+sell Patrick Mahomes,7,Patrick Mahomes,Jacory Croskey-Merritt + Rachaad White,3062,3432,370,0.039,0.003,-0.106,-0.015,FALSE,1,-1.591,4046,12533 + 8136,TRUE
+sell Tyler Shough,7,Tyler Shough,Rachaad White,1735,1798,63,-0.022,0.007,0.048,0.006,FALSE,-63,-1.629,12545,8136,TRUE
+sell Patrick Mahomes,5,Patrick Mahomes,Travis Etienne,3062,3218,156,0.183,0.025,-0.161,-0.009,FALSE,-332,-1.811,4046,7543,TRUE
+sell Tyler Shough,7,Emari Demercado + Tyler Shough,Rachaad White,1918,1798,-120,-0.047,0.002,0.088,0.013,FALSE,-174,-1.904,11199 + 12545,8136,TRUE
+sell Patrick Mahomes,5,Patrick Mahomes,Derrick Henry,3062,3101,39,0.28,0.044,-0.251,-0.01,FALSE,-563,-1.911,4046,3198,TRUE
+sell Patrick Mahomes,5,Patrick Mahomes,Mike Evans + Jordan Mason,3062,3501,439,0.042,0.008,-0.141,-0.006,FALSE,-274,-1.989,4046,2216 + 8408,TRUE
+sell Tyler Shough,7,Tyler Shough + Michael Trigg,Rachaad White,1924,1798,-126,-0.022,0.007,0.051,0.006,FALSE,-411,-2.233,12545 + 13401,8136,TRUE
+sell Tyler Shough,7,Tyler Shough + KeAndre Lambert-Smith,Jacory Croskey-Merritt,1865,1634,-231,-0.036,-0.007,0.079,0.013,FALSE,-371,-2.383,12545 + 12670,12533,TRUE
+buy,7,Nicholas Singleton + Khalil Shakir,Harold Fannin,3128,2939,-189,0.067,0.1,-0.233,-0.05,FALSE,915,1.533,13288 + 8134,12506,FALSE
+buy,7,Jonathon Brooks + Jauan Jennings,Harold Fannin,3117,2939,-178,0.017,0.067,-0.283,-0.017,FALSE,1217,1.523,11583 + 7049,12506,FALSE
+buy,7,Tre Tucker + Jauan Jennings,Rachaad White,2029,1798,-231,0.217,0.167,-0.167,-0.05,FALSE,276,1.492,10213 + 7049,8136,FALSE
+buy,10,CeeDee Lamb,Sam LaPorta + Chase Brown,6288,6988,700,0.317,0.117,-0.217,-0.05,FALSE,727,1.473,6786,10859 + 9224,FALSE
+buy,4,Jakobi Meyers + Khalil Shakir,Bhayshul Tuten,2896,2527,-369,0.25,0.133,0.033,-0.033,TRUE,277,1.462,5947 + 8134,12490,FALSE
+buy,4,Jauan Jennings + Zach Charbonnet,Bhayshul Tuten,2847,2527,-320,0.183,0.117,0.033,0.05,TRUE,429,1.46,7049 + 9753,12490,FALSE
+buy,7,Tyler Warren,Harold Fannin + Jacory Croskey-Merritt,4243,4573,330,-0.033,0.083,-0.35,-0.017,FALSE,1002,1.418,12518,12506 + 12533,FALSE
+buy,9,Tyler Warren,Woody Marks + Zay Flowers,4243,4865,622,0.283,0.133,-0.3,-0.05,FALSE,540,1.415,12518,12474 + 9997,FALSE
+buy,4,Nicholas Singleton + Jauan Jennings,Bhayshul Tuten,2791,2527,-264,0.283,0.15,-0.15,-0.017,FALSE,374,1.395,13288 + 7049,12490,FALSE
+buy,7,Omar Cooper + Jauan Jennings,Harold Fannin,3114,2939,-175,0.067,0.067,-0.283,-0.033,FALSE,1079,1.286,13276 + 7049,12506,FALSE
+buy,4,Dalton Kincaid + Jauan Jennings,Bhayshul Tuten,2733,2527,-206,0.233,0.1,0.05,0.05,TRUE,472,1.269,10236 + 7049,12490,FALSE
+buy,10,CeeDee Lamb,David Montgomery + Chase Brown,6288,6647,359,0.767,0.2,-0.5,-0.083,FALSE,-311,1.008,6786,5892 + 9224,FALSE
+buy,10,Drake London,Terry McLaurin + Chase Brown,5791,6473,682,0.6,0.183,-0.833,-0.2,FALSE,-231,0.882,8112,5927 + 9224,FALSE
+buy,5,Tyler Warren,Josh Jacobs + Isaiah Likely,4243,4857,614,0.417,0.167,-0.2,0,FALSE,-104,0.836,12518,5850 + 8131,FALSE
+buy,10,CeeDee Lamb,Christian McCaffrey + D'Andre Swift,6288,6970,682,0.667,0.2,-0.633,-0.133,FALSE,-478,0.721,6786,4034 + 6790,FALSE
+sell Tyler Shough,7,Tyler Shough,Jacory Croskey-Merritt,1735,1634,-101,0.1,0.067,0.117,0.033,TRUE,-220,-0.455,12545,12533,FALSE
+sell Tee Higgins,8,Tee Higgins + Jauan Jennings,Saquon Barkley,4371,4104,-267,0.2,0.083,-0.167,-0.067,FALSE,-286,-0.804,6801 + 7049,4866,FALSE
+sell Tee Higgins,8,Trey Benson + Tee Higgins,Saquon Barkley,4345,4104,-241,0.283,0.1,-0.35,-0.083,FALSE,-649,-1.164,11589 + 6801,4866,FALSE
