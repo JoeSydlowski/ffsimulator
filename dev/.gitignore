@@ -2,5 +2,8 @@
 # league_sims/*
 !league_sims/*.R
 
+# simulation.rds outputs exceed GitHub's 100MB file limit
+league_sims/**/simulation.rds
+
 # FantasyCalc value-snapshot parquet accumulates locally
 data/
