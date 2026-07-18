@@ -23,39 +23,194 @@
 #' @param max_transition_season trains only on transitions *into* seasons <=
 #'   this value (default: all available); used by the backtest to hold out a year
 #' @param value_curve function mapping overall dynasty rank to trade value;
-#'   default `10000 * exp(-0.023 * rank)` (DynastyProcess-like decay)
+#'   the synthetic fallback `10000 * exp(-0.023 * rank)` (DynastyProcess-like
+#'   decay), used only when no market values are available. Ignored for any
+#'   player covered by `dynasty_values`.
+#' @param dynasty_values source of *current* dynasty values, both for the
+#'   `cur_value` anchor and (via the re-estimated curve) the future projection.
+#'   Defaults to `"fantasycalc"`: live market values are scraped with
+#'   [fc_dynasty_values()] for this league's detected format. Pass
+#'   `"fantasypros"` (or `NULL`) to instead use the synthetic `value_curve` on
+#'   FantasyPros dynasty ranks, or pass a pre-scraped dataframe (needs
+#'   `fantasypros_id` + `value`, and `format` to match) to avoid re-scraping.
+#'   When real market values are used they become the ranking BASELINE: players
+#'   are re-ranked by market value so `dyn_rank`, the `value_curve`, and the
+#'   transition's starting positional rank are all consistent with the anchored
+#'   value (the FantasyPros dynasty rank, which disagrees with the market for
+#'   aging vets and rookies, is kept only as `fp_dyn_rank`). Ranked players the
+#'   market doesn't price get a market-scale value imputed from the
+#'   FP-rank -> market-value relationship so they rank on the same ladder. Rows
+#'   whose `fantasypros_id` crosswalk failed (rookies lag in `dp_playerids`) are
+#'   recovered by matching their `sleeper_id`/`mfl_id` against this simulation's
+#'   roster `player_id`. If the live scrape fails (e.g. offline), it warns and
+#'   falls back to the synthetic FantasyPros-rank curve.
+#' @param superflex_from_1qb for superflex leagues, train the year-over-year
+#'   *transition* dynamics on the deeper 1qb dynasty history (2015+) rather than
+#'   the thin native superflex pool (2020+). Positional-rank movement is
+#'   format-invariant (a player's `pos_rank` is the same in both formats), so
+#'   this borrows a better-sampled, wider-dispersed movement model while all
+#'   value/slotting (cross-section, curve, `pos_rank`->overall) stays superflex -
+#'   which is what re-slots QBs into their superflex value. Fixes superflex
+#'   interval under-dispersion; leaves 1qb unchanged. Default `TRUE` (option
+#'   `ffsimulator.dyn_sflx_from_1qb`); set `FALSE` to train on native superflex.
 #'
-#' @return a dataframe: one row per rostered player with a current dynasty
-#'   rank - current rank/value/age plus the post-season value distribution
-#'   (mean, p10, p90, P(value rises), P(exits rankings)) and franchise totals
-#'   are trivially `aggregate()`-able from it
+#' @return a dataframe: one row per rostered player with `dyn_rank` (market-value
+#'   ordering when real values are supplied, else FantasyPros dynasty rank),
+#'   `fp_dyn_rank` (FantasyPros dynasty rank for reference), current value/age
+#'   plus the post-season value distribution (mean, p10, p90, P(value rises),
+#'   P(exits rankings)); franchise totals are trivially `aggregate()`-able from it
 #'
 #' @export
 ffs_dynasty_outlook <- function(base_simulation,
                                 format = c("auto", "1qb", "superflex"),
                                 max_transition_season = NULL,
-                                value_curve = function(rank) 10000 * exp(-0.023 * rank)) {
+                                value_curve = function(rank) 10000 * exp(-0.023 * rank),
+                                dynasty_values = "fantasycalc",
+                                superflex_from_1qb = getOption("ffsimulator.dyn_sflx_from_1qb", TRUE)) {
   checkmate::assert_class(base_simulation, "ff_simulation")
   format <- rlang::arg_match(format)
 
   season <- fantasypros_id <- pos <- ecr <- rank <- age <- player_name <- NULL
-  projected_score <- redraft_rank <- total <- q <- player_id <- NULL
+  projected_score <- redraft_rank <- total <- q <- player_id <- fc_val <- NULL
+  cur_curve <- cur_value <- NULL
+  fp_rank <- pos_fp <- age_fp <- value <- pos_rank <- fp_dyn_rank <- NULL
 
   if (format == "auto") format <- .ffs_detect_qb_format(base_simulation$lineup_constraints)
   # local name must differ from the "format" column, else data.table NSE
   # resolves the bare symbol to the column and the filter is a no-op
   qb_format <- format
 
+  # positional-movement dynamics are format-invariant (a player's pos_rank is
+  # the same either way), so superflex borrows the deep 1qb transition history
+  # (2015+, 11 season-pairs) instead of its own thin 2020+ pool - this fixes
+  # superflex interval under-dispersion. Only value/slotting stays superflex
+  # (the cross-section, curve, and pos_rank -> overall reference below), which
+  # is what re-slots QBs into their superflex value. Set the arg/option FALSE
+  # to train on native superflex history.
+  movement_format <- if (isTRUE(superflex_from_1qb) && qb_format == "superflex") "1qb" else qb_format
+
+  # resolve where "current" dynasty values come from. Default "fantasycalc"
+  # scrapes live market values for this league's format; "fantasypros" (or
+  # NULL) falls back to the synthetic rank-decay `value_curve` on FP dynasty
+  # ranks; a data.frame is taken as pre-scraped values (see fc_dynasty_values()).
+  if (is.character(dynasty_values)) {
+    src <- rlang::arg_match0(dynasty_values, c("fantasycalc", "fantasypros"))
+    dynasty_values <- if (src == "fantasycalc") {
+      tryCatch(
+        fc_dynasty_values(num_qbs = if (qb_format == "superflex") 2L else 1L),
+        error = function(e) {
+          cli::cli_warn(c(
+            "!" = "Couldn't fetch live FantasyCalc values ({conditionMessage(e)}).",
+            "i" = "Falling back to the synthetic FantasyPros rank-decay curve."
+          ))
+          NULL
+        }
+      )
+    } else {
+      NULL
+    }
+  }
+
   dynasty <- data.table::as.data.table(fp_dynasty_history())
   dynasty <- dynasty[dynasty$format == qb_format]
   current_season <- max(dynasty$season)
-  current <- dynasty[season == current_season]
+  fp_current <- dynasty[season == current_season,
+                        list(fantasypros_id, fp_rank = rank, pos, age)]
+
+  # optional real market values (e.g. FantasyCalc). When present these become
+  # the BASELINE: players are re-ranked by market VALUE so the dynasty rank, the
+  # value curve the projection walks, and the transition's starting positional
+  # rank are all consistent with the anchored value. FantasyPros dynasty ranks
+  # disagree with the market for aging vets and rookies (DK Metcalf sits ~WR49
+  # on FantasyCalc but ~ovr-79 on FP), so mixing FP rank with FC value mis-scales
+  # the projection. FP ranks are retained only as `fp_dyn_rank` for reference.
+  fc <- NULL
+  if (!is.null(dynasty_values)) {
+    dv <- data.table::as.data.table(dynasty_values)
+    if ("format" %in% names(dv)) dv <- dv[dv$format == qb_format]
+    # recover fantasypros_id for rows the dp_playerids crosswalk missed -
+    # rookies/devy lag there, and they are exactly where market value diverges
+    # most from the rank curve (found via Jeremiyah Love: market 7356, curve
+    # 6056). The source platform ids (sleeper/mfl) match this simulation's
+    # roster player_id, whose fantasypros_id includes ffs_backfill_fp_ids fills.
+    id_cols <- intersect(c("sleeper_id", "mfl_id"), names(dv))
+    if (any(is.na(dv$fantasypros_id)) && length(id_cols)) {
+      ros <- data.table::as.data.table(base_simulation$rosters)
+      ros <- unique(ros[!is.na(ros$fantasypros_id),
+                        list(pid = as.character(player_id), fp_ros = fantasypros_id)])
+      for (col in id_cols) {
+        hit <- match(as.character(dv[[col]]), ros$pid)
+        fill <- is.na(dv$fantasypros_id) & !is.na(hit)
+        dv$fantasypros_id[fill] <- ros$fp_ros[hit[fill]]
+      }
+    }
+    dv <- dv[!is.na(dv$fantasypros_id) & !is.na(dv$value) & dv$value > 0]
+    dv <- unique(dv, by = "fantasypros_id")
+    if (nrow(dv) >= 20) {
+      fc <- dv
+    } else {
+      # loud fallback: a common cause is passing values for the wrong QB format
+      want_qbs <- if (qb_format == "superflex") "num_qbs = 2" else "num_qbs = 1"
+      n_dv <- nrow(dv)
+      cli::cli_warn(c(
+        "!" = "`dynasty_values` matched only {n_dv} {qb_format} players (need >= 20).",
+        "i" = "Falling back to the synthetic value curve - did you scrape the right format ({want_qbs})?"
+      ))
+    }
+  }
+
+  if (!is.null(fc)) {
+    # normalise: a pre-scraped df may carry only fantasypros_id + value, so pull
+    # pos/age from FP where the market source doesn't supply them
+    fc <- merge(fc, fp_current[, list(fantasypros_id, pos_fp = pos, age_fp = age)],
+                by = "fantasypros_id", all.x = TRUE)
+    if (!"pos" %in% names(fc)) fc[, pos := NA_character_]
+    if (!"age" %in% names(fc)) fc[, age := NA_real_]
+    fc[is.na(pos), pos := pos_fp]
+    fc[is.na(age), age := age_fp]
+
+    # one ladder for everyone: market-priced players keep their value; ranked
+    # players the market misses get a market-scale value imputed from the
+    # FP-rank -> market-value relationship, so all rank together on one scale
+    fp2fc <- merge(fp_current[, list(fantasypros_id, fp_rank)],
+                   fc[, list(fantasypros_id, value)], by = "fantasypros_id")
+    fp2fc <- fp2fc[, list(value = mean(value)), by = fp_rank][order(fp_rank)]
+    impute <- stats::approxfun(fp2fc$fp_rank, fp2fc$value, rule = 2)
+    fp_only <- fp_current[!fantasypros_id %in% fc$fantasypros_id]
+    fp_only[, value := impute(fp_rank)]
+
+    uni <- rbind(
+      fc[, list(fantasypros_id, pos, age, value)],
+      fp_only[, list(fantasypros_id, pos, age, value)]
+    )
+    uni <- uni[!is.na(value) & !is.na(pos)]
+    uni[, rank := data.table::frank(-value, ties.method = "first")]
+    uni[, pos_rank := data.table::frank(-value, ties.method = "first"), by = pos]
+
+    value_curve <- stats::approxfun(uni$rank, uni$value, rule = 2)
+    current <- uni                                   # reference for pos -> overall
+    fc_val <- uni[, list(fantasypros_id, fc_val = value)]
+  } else {
+    # synthetic path (unchanged): FP dynasty ranks + the caller's value_curve
+    current <- dynasty[season == current_season]
+    fc_val <- NULL
+  }
 
   pools <- .ffs_dynasty_transition_pools(
     scoring_history = base_simulation$scoring_history,
-    format = qb_format,
+    format = movement_format,
     max_transition_season = max_transition_season
   )
+  # superflex borrows 1qb movement dispersion but keeps its NATIVE exit rate:
+  # ranking depth is format-specific, and 1qb's higher skill-position exit rates
+  # otherwise over-predict superflex exits. Built only when the pools differ.
+  exit_pools <- if (movement_format != qb_format) {
+    .ffs_dynasty_transition_pools(
+      scoring_history = base_simulation$scoring_history,
+      format = qb_format,
+      max_transition_season = max_transition_season
+    )
+  } else NULL
 
   # rostered players with a current dynasty rank
   rosters <- data.table::as.data.table(base_simulation$rosters)
@@ -64,6 +219,10 @@ ffs_dynasty_outlook <- function(base_simulation,
     current[, list(fantasypros_id, dyn_rank = rank, dyn_pos_rank = pos_rank, age)],
     by = "fantasypros_id"
   )
+  # keep the FantasyPros dynasty rank alongside for reference (baseline dyn_rank
+  # is now the market-value ordering when real values are supplied)
+  players <- merge(players, fp_current[, list(fantasypros_id, fp_dyn_rank = fp_rank)],
+                   by = "fantasypros_id", all.x = TRUE)
 
   # current redraft positional rank from the sim's own rankings
   lr <- data.table::as.data.table(base_simulation$latest_rankings)
@@ -90,13 +249,21 @@ ffs_dynasty_outlook <- function(base_simulation,
   )
   draws[, c("next_pos_rank", "exited") := .ffs_draw_transition(
     pos = pos, age = age, dyn_pos_rank = dyn_pos_rank, q = q,
-    transitions = pools$transitions
+    transitions = pools$transitions,
+    exit_transitions = if (!is.null(exit_pools)) exit_pools$transitions else NULL
   )]
   draws[exited == FALSE, next_rank := .ffs_pos_to_overall(pos, next_pos_rank, reference = current)]
-  draws[, `:=`(
-    cur_value = value_curve(dyn_rank),
-    next_value = data.table::fifelse(exited, 0, value_curve(next_rank))
-  )]
+  # current value from the (possibly empirical) curve, overridden by the actual
+  # market value where we have one; next value scales the current value by the
+  # curve's predicted rank change, so anchoring to real values stays consistent
+  draws[, cur_curve := value_curve(dyn_rank)]
+  draws[, cur_value := cur_curve]
+  if (!is.null(fc_val)) {
+    draws <- merge(draws, fc_val, by = "fantasypros_id", all.x = TRUE)
+    draws[!is.na(fc_val), cur_value := fc_val]
+  }
+  draws[, next_value := data.table::fifelse(
+    exited, 0, cur_value * value_curve(next_rank) / cur_curve)]
 
   out <- draws[, list(
     n_sims = .N,
@@ -110,7 +277,7 @@ ffs_dynasty_outlook <- function(base_simulation,
 
   out <- merge(
     players[, list(fantasypros_id, player_id, player_name, pos,
-                   franchise_id, franchise_name, redraft_rank)],
+                   franchise_id, franchise_name, redraft_rank, fp_dyn_rank)],
     out, by = "fantasypros_id"
   )[order(-cur_value)]
 
@@ -138,6 +305,7 @@ ffs_dynasty_outlook <- function(base_simulation,
                                           weeks = 1:14) {
   season <- fantasypros_id <- pos <- rank <- age <- gsis_id <- week <- points <- NULL
   next_rank <- redraft_rank <- total <- q <- NULL
+  draft_year <- draft_round <- first_season <- years_exp <- prev_pos_rank <- prev_delta <- NULL
 
   qb_format <- format  # avoid data.table NSE collision with the format column
   dynasty <- data.table::as.data.table(fp_dynasty_history())
@@ -160,6 +328,30 @@ ffs_dynasty_outlook <- function(base_simulation,
     , list(season, fantasypros_id, redraft_rank = rank)
   ]
   transitions <- merge(transitions, redraft, by = c("season", "fantasypros_id"), all.x = TRUE)
+
+  # experience / draft-capital / momentum features for the optional kernel
+  # terms (see .ffs_draw_transition): years_exp prefers dp_playerids
+  # draft_year, falling back to seasons since first appearing in these
+  # rankings (rookie id-lag); drafted players with no recorded round are
+  # treated as UDFA (round 8); prev_delta is last year's positional-rank move
+  # (NA for new entrants)
+  ids <- data.table::as.data.table(ffscrapr::dp_playerids())
+  ids <- unique(ids[!is.na(ids$fantasypros_id),
+                    list(fantasypros_id = as.character(fantasypros_id),
+                         draft_year = suppressWarnings(as.integer(draft_year)),
+                         draft_round = suppressWarnings(as.integer(draft_round)))],
+                by = "fantasypros_id")
+  hit <- match(as.character(transitions$fantasypros_id), ids$fantasypros_id)
+  transitions[, `:=`(draft_year = ids$draft_year[hit], draft_round = ids$draft_round[hit])]
+  first_seen <- dynasty[, list(first_season = min(season)), by = fantasypros_id]
+  transitions <- merge(transitions, first_seen, by = "fantasypros_id", all.x = TRUE)
+  transitions[, years_exp := data.table::fifelse(
+    !is.na(draft_year), season - draft_year, season - first_season)]
+  transitions[years_exp < 0, years_exp := 0L]
+  transitions[!is.na(draft_year) & is.na(draft_round), draft_round := 8L]
+  prev <- dynasty[, list(season = season + 1L, fantasypros_id, prev_pos_rank = pos_rank)]
+  transitions <- merge(transitions, prev, by = c("season", "fantasypros_id"), all.x = TRUE)
+  transitions[, prev_delta := pos_rank - prev_pos_rank]
 
   # realized season points (same weeks as the simulator)
   sh <- data.table::as.data.table(scoring_history)[
@@ -237,10 +429,74 @@ ffs_dynasty_outlook <- function(base_simulation,
 #' neutral mid weight). The sampled *positional-rank delta* is applied to
 #' the target's own positional rank; sampled exits stay exits.
 #'
+#' Optional kernel terms (all off by default; enabled via `ffsimulator.dyn_*`
+#' options or the bandwidth arguments, and gated on the multi-year dynasty
+#' backtest before becoming defaults):
+#' - `years_exp` with `h_exp` - seasons since draft (rookie repricing differs
+#'   from same-age veterans); `dyn_rookie_strict` additionally restricts
+#'   rookie targets (years_exp 0) to rookie candidates when the pool allows
+#' - `draft_round` with `h_draft` - draft capital (UDFA = round 8)
+#' - `prev_delta` with `h_momentum` - last year's positional-rank move
+#' - `ecr_sd` with `h_sd` - expert disagreement (matches uncertain players to
+#'   historically uncertain candidates, whose transitions were wider)
+#' Candidates missing an enabled feature get the neutral weight 0.3, matching
+#' the age/Q convention; targets missing it skip the term.
+#'
+#' Exit shrinkage (`exit_shrink` / `ffsimulator.dyn_exit_shrink`, default
+#' kappa = 10): the raw exit probability is the kernel-weighted mean of the exit
+#' indicator over the candidate pool - a Nadaraya-Watson estimate that is
+#' high-variance for thin cells (e.g. mid-20s QBs at a fringe rank, whose
+#' effective pool is ~5 historical players once age x rank x Q are all matched).
+#' The local estimate is shrunk toward a broad (wide rank+age bandwidth)
+#' empirical rate by effective sample size,
+#' `p = (n_eff * local + kappa * broad) / (n_eff + kappa)`, and exit is then a
+#' Bernoulli draw with the rank move resampled among survivors. This tempers
+#' noisy per-cell exit spikes without flattening the genuine age/rank trend.
+#' Set `kappa = 0` to recover the un-shrunk single-draw behavior. Enabled by
+#' default after the multi-year dynasty backtest: at kappa = 10 the pooled exit
+#' calibration improves (e.g. the 1qb >50% bin, badly over-dispersed at
+#' 0.73 predicted / 0.52 actual, moves to 0.64 / 0.60) with survivor rank
+#' calibration held flat; gains plateau by kappa 10-15.
+#'
+#' `exit_transitions` (optional): a separate pool from which the EXIT
+#' probability is estimated, while the rank move is still resampled from
+#' `transitions`. Used by superflex, which borrows the deep 1qb pool for
+#' movement dispersion but keeps its native (format-specific, ranking-depth)
+#' exit rate - importing 1qb's higher skill-position exit rates otherwise
+#' over-predicts superflex exits. `NULL` (default) uses `transitions` for both,
+#' so 1qb leagues and every other caller are unchanged.
+#'
+#' `disp_factor` (optional named per-position vector, e.g.
+#' `c(QB = 1.7, TE = 1.4, WR = 1.2, RB = 1.1)`): widens each survivor's rank
+#' move around its weighted-mean move by the position's factor, correcting the
+#' interval under-dispersion of positions with compressed positional scales
+#' (QB/TE rankings are shallow but map through a steep value curve, so the
+#' conditional resample under-states their value volatility; effective sample
+#' size is ~flat across positions, so this is a per-position, not n_eff-driven,
+#' correction). The mean is preserved, so medians/`p_rise` are unchanged - only
+#' the interval widens. Enabled by default with backtest-calibrated factors
+#' `c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)`, which lift survivor
+#' `cover80` from ~0.60-0.73 to ~0.75-0.82 across both formats (shallower
+#' rankings need more widening). Pass `NULL`, or a vector with no matching
+#' positions, to disable.
+#'
 #' @return a list of two parallel vectors: next_pos_rank, exited
 #' @keywords internal
 .ffs_draw_transition <- function(pos, age, dyn_pos_rank, q, transitions,
-                                 h_rank = 8, h_age = 3, h_q = 0.25) {
+                                 h_rank = 8, h_age = 3, h_q = 0.25,
+                                 years_exp = NULL, draft_round = NULL,
+                                 prev_delta = NULL, ecr_sd = NULL,
+                                 h_exp = getOption("ffsimulator.dyn_h_exp", NA),
+                                 h_draft = getOption("ffsimulator.dyn_h_draft", NA),
+                                 h_momentum = getOption("ffsimulator.dyn_h_momentum", NA),
+                                 h_sd = getOption("ffsimulator.dyn_h_sd", NA),
+                                 rookie_strict = getOption("ffsimulator.dyn_rookie_strict", FALSE),
+                                 exit_shrink = getOption("ffsimulator.dyn_exit_shrink", 10),
+                                 exit_broad_rank = getOption("ffsimulator.dyn_exit_broad_rank", 3),
+                                 exit_broad_age = getOption("ffsimulator.dyn_exit_broad_age", 3),
+                                 exit_transitions = NULL,
+                                 disp_factor = getOption("ffsimulator.dyn_disp_factor",
+                                                         c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11))) {
   tr <- transitions
   n <- length(pos)
   next_pos_rank <- numeric(n)
@@ -248,10 +504,28 @@ ffs_dynasty_outlook <- function(base_simulation,
 
   # pre-split by position for speed
   by_pos <- split(seq_len(nrow(tr)), tr$pos)
+  # optional separate exit pool (superflex: native exit rate, 1qb movement)
+  by_pos_exit <- if (!is.null(exit_transitions)) {
+    split(seq_len(nrow(exit_transitions)), exit_transitions$pos)
+  } else NULL
+
+  kern <- function(w, cand_vals, target, h) {
+    if (is.na(h) || is.null(cand_vals) || is.na(target)) return(w)
+    wf <- pmax(0, 1 - abs(cand_vals - target) / h)
+    wf[is.na(wf)] <- 0.3
+    w * wf
+  }
 
   for (i in seq_len(n)) {
     idx <- by_pos[[pos[i]]]
     if (is.null(idx)) { next_pos_rank[i] <- dyn_pos_rank[i]; exited[i] <- FALSE; next }
+    # hard rookie stratification: rookie targets draw only from rookie
+    # transitions when the pool is deep enough (soft kernel otherwise)
+    if (isTRUE(rookie_strict) && !is.null(years_exp) && !is.na(years_exp[i]) &&
+        years_exp[i] == 0 && !is.null(tr$years_exp)) {
+      ridx <- idx[!is.na(tr$years_exp[idx]) & tr$years_exp[idx] == 0]
+      if (length(ridx) >= 30) idx <- ridx
+    }
     cand <- tr[idx]
     w <- pmax(0, 1 - abs(cand$pos_rank - dyn_pos_rank[i]) / h_rank)
     if (!is.na(age[i])) {
@@ -264,14 +538,86 @@ ffs_dynasty_outlook <- function(base_simulation,
       wq[is.na(wq)] <- 0.3
       w <- w * wq
     }
+    if (!is.null(years_exp))   w <- kern(w, cand$years_exp,   years_exp[i],   h_exp)
+    if (!is.null(draft_round)) w <- kern(w, cand$draft_round, draft_round[i], h_draft)
+    if (!is.null(prev_delta))  w <- kern(w, cand$prev_delta,  prev_delta[i],  h_momentum)
+    if (!is.null(ecr_sd))      w <- kern(w, cand$sd,          ecr_sd[i],      h_sd)
     if (sum(w) == 0) w <- pmax(0.001, 1 - abs(cand$pos_rank - dyn_pos_rank[i]) / (h_rank * 4))
-    pick <- cand[sample.int(nrow(cand), 1, prob = w)]
-    if (pick$exited) {
-      exited[i] <- TRUE
-      next_pos_rank[i] <- NA_real_
+    if (exit_shrink <= 0 && is.null(exit_transitions)) {
+      # default path (unchanged): one draw, inherit its exit flag - keep the
+      # exact RNG stream so backtest defaults are untouched
+      pick <- cand[sample.int(nrow(cand), 1, prob = w)]
+      if (pick$exited) {
+        exited[i] <- TRUE
+        next_pos_rank[i] <- NA_real_
+      } else {
+        exited[i] <- FALSE
+        next_pos_rank[i] <- max(1, dyn_pos_rank[i] + (pick$next_pos_rank - pick$pos_rank))
+      }
     } else {
-      exited[i] <- FALSE
-      next_pos_rank[i] <- max(1, dyn_pos_rank[i] + (pick$next_pos_rank - pick$pos_rank))
+      # exit-probability candidate pool: the native exit pool when supplied
+      # (superflex), else the movement pool itself (default - identical to the
+      # prior behavior). Weights mirror the movement kernel (rank+age+q).
+      if (is.null(by_pos_exit)) {
+        ecand <- cand; ew <- w
+      } else {
+        eidx <- by_pos_exit[[pos[i]]]
+        if (is.null(eidx)) {
+          ecand <- cand; ew <- w
+        } else {
+          ecand <- exit_transitions[eidx]
+          ew <- pmax(0, 1 - abs(ecand$pos_rank - dyn_pos_rank[i]) / h_rank)
+          if (!is.na(age[i])) {
+            ea <- pmax(0, 1 - abs(ecand$age - age[i]) / h_age); ea[is.na(ea)] <- 0.3; ew <- ew * ea
+          }
+          if (!is.na(q[i])) {
+            eq <- pmax(0, 1 - abs(ecand$q - q[i]) / h_q); eq[is.na(eq)] <- 0.3; ew <- ew * eq
+          }
+          if (sum(ew) == 0) ew <- pmax(0.001, 1 - abs(ecand$pos_rank - dyn_pos_rank[i]) / (h_rank * 4))
+        }
+      }
+      # empirical-Bayes exit shrinkage: pull the local kernel exit rate toward a
+      # broad (wide rank+age, no-q) empirical rate by effective sample size
+      sw <- sum(ew)
+      p_local <- sum(ew * ecand$exited) / sw
+      n_eff <- sw^2 / sum(ew^2)
+      wb <- pmax(0, 1 - abs(ecand$pos_rank - dyn_pos_rank[i]) / (h_rank * exit_broad_rank))
+      if (!is.na(age[i])) {
+        ab <- pmax(0, 1 - abs(ecand$age - age[i]) / (h_age * exit_broad_age))
+        ab[is.na(ab)] <- 0.3
+        wb <- wb * ab
+      }
+      if (sum(wb) == 0) wb <- rep(1, length(wb))
+      p_broad <- sum(wb * ecand$exited) / sum(wb)
+      p_exit_i <- (n_eff * p_local + exit_shrink * p_broad) / (n_eff + exit_shrink)
+      if (stats::runif(1) < p_exit_i) {
+        exited[i] <- TRUE
+        next_pos_rank[i] <- NA_real_
+      } else {
+        # rank move conditional on surviving: resample among non-exited candidates
+        exited[i] <- FALSE
+        surv <- !cand$exited
+        ws <- w * surv
+        if (sum(ws) == 0) {
+          ws <- pmax(0.001, 1 - abs(cand$pos_rank - dyn_pos_rank[i]) / (h_rank * 4))
+          ws[!surv] <- 0
+        }
+        pick <- cand[sample.int(nrow(cand), 1, prob = ws)]
+        delta <- pick$next_pos_rank - pick$pos_rank
+        # per-position interval widening: QB/TE positional scales are compressed
+        # (few ranked slots) but map through a steep value curve, so the
+        # conditional resample under-disperses their value outcomes. Scale the
+        # sampled move around the weighted-mean move by a position factor
+        # (backtest-calibrated to cover80 ~ 0.80); mean is preserved so medians
+        # don't shift. NULL/1 = no widening (default off until calibrated).
+        fp <- if (!is.null(disp_factor) && pos[i] %in% names(disp_factor)) disp_factor[[pos[i]]] else 1
+        if (fp != 1) {
+          sdelta <- cand$next_pos_rank - cand$pos_rank
+          dbar <- sum(ws * sdelta, na.rm = TRUE) / sum(ws)
+          delta <- dbar + fp * (delta - dbar)
+        }
+        next_pos_rank[i] <- max(1, dyn_pos_rank[i] + delta)
+      }
     }
   }
 

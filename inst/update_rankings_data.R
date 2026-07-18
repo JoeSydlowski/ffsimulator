@@ -16,13 +16,16 @@ library(magrittr)
 options(future.rng.onMisuse = "ignore", ffpros.cache = "filesystem")
 future::plan(future::multisession)
 
-build_draft_rankings <- function(build_seasons = 2012:nflreadr::most_recent_season(),
+build_draft_rankings <- function(build_seasons = 2012:(nflreadr::most_recent_season() + 1),
                                  directory = ffsimulator::.ffs_cache_dir()) {
 
+  # allow the upcoming preseason: most_recent_season() lags until September, but
+  # FantasyPros publishes next year's draft rankings months earlier (matches the
+  # dynasty builder's most_recent_season() + 1)
   checkmate::check_numeric(
     build_seasons,
     lower = 2012,
-    upper = nflreadr::most_recent_season(),
+    upper = nflreadr::most_recent_season() + 1,
     any.missing = FALSE,
     min.len = 1
   )
@@ -31,7 +34,7 @@ build_draft_rankings <- function(build_seasons = 2012:nflreadr::most_recent_seas
 
   cli::cli_alert_info("Building {length(build_seasons)} seasons of draft rankings into directory {directory}")
 
-  seasons <- intersect(2016:nflreadr::most_recent_season(), build_seasons)
+  seasons <- intersect(2016:(nflreadr::most_recent_season() + 1), build_seasons)
   fp_rankings_history <- tibble::tibble()
   if(length(seasons) > 0 ){
 
@@ -255,12 +258,14 @@ build_dynasty_rankings <- function(build_seasons = 2015:(nflreadr::most_recent_s
   cli::cli_alert_info("Building {length(build_seasons)} seasons of dynasty rankings into directory {directory}")
 
   # FantasyPros historical pages report the player's CURRENT age, not his age
-  # in the archived season - derive in-season age from birthdates instead,
+  # in the archived season - derive in-season age from birthdates instead
+  # (decimal, as of Sept 1 of the season: the transition kernel matches on age
+  # with bandwidth 3, and birth-year arithmetic scatters +-0.5y around truth),
   # falling back to the FP age minus the years elapsed since that season
   birthdates <- ffscrapr::dp_playerids() %>%
     dplyr::filter(!is.na(fantasypros_id), !is.na(birthdate)) %>%
     dplyr::transmute(fantasypros_id = as.character(fantasypros_id),
-                     birth_year = as.integer(substr(birthdate, 1, 4))) %>%
+                     birthdate = as.Date(birthdate)) %>%
     dplyr::distinct(fantasypros_id, .keep_all = TRUE)
   scrape_year <- as.integer(format(Sys.Date(), "%Y"))
 
@@ -299,9 +304,11 @@ build_dynasty_rankings <- function(build_seasons = 2015:(nflreadr::most_recent_s
       dplyr::filter(pos %in% c("QB", "RB", "WR", "TE")) %>%
       dplyr::left_join(birthdates, by = "fantasypros_id") %>%
       dplyr::mutate(
-        age = dplyr::coalesce(season - birth_year,
-                              fp_current_age - (scrape_year - season)),
-        birth_year = NULL,
+        age = dplyr::coalesce(
+          round(as.numeric(as.Date(sprintf("%d-09-01", season)) - birthdate) / 365.25, 1),
+          fp_current_age - (scrape_year - season)
+        ),
+        birthdate = NULL,
         fp_current_age = NULL
       ) %>%
       dplyr::group_by(season, pos) %>%
@@ -382,7 +389,7 @@ build_injury_model <- function(base_seasons = seq(2012, nflreadr::most_recent_se
   invisible(file.path(directory, "fp_injury_table.rds"))
 }
 
-build_draft_rankings(2012:nflreadr::most_recent_season())
+build_draft_rankings(2012:(nflreadr::most_recent_season() + 1))
 build_weekly_rankings(2012:nflreadr::most_recent_season())
 build_dynasty_rankings(2015:(nflreadr::most_recent_season() + 1))
 build_injury_model(2012:nflreadr::most_recent_season())

@@ -12,7 +12,22 @@
   transitions,
   h_rank = 8,
   h_age = 3,
-  h_q = 0.25
+  h_q = 0.25,
+  years_exp = NULL,
+  draft_round = NULL,
+  prev_delta = NULL,
+  ecr_sd = NULL,
+  h_exp = getOption("ffsimulator.dyn_h_exp", NA),
+  h_draft = getOption("ffsimulator.dyn_h_draft", NA),
+  h_momentum = getOption("ffsimulator.dyn_h_momentum", NA),
+  h_sd = getOption("ffsimulator.dyn_h_sd", NA),
+  rookie_strict = getOption("ffsimulator.dyn_rookie_strict", FALSE),
+  exit_shrink = getOption("ffsimulator.dyn_exit_shrink", 10),
+  exit_broad_rank = getOption("ffsimulator.dyn_exit_broad_rank", 3),
+  exit_broad_age = getOption("ffsimulator.dyn_exit_broad_age", 3),
+  exit_transitions = NULL,
+  disp_factor = getOption("ffsimulator.dyn_disp_factor", c(QB = 1.68, TE = 1.43, WR =
+    1.2, RB = 1.11))
 )
 }
 \value{
@@ -25,5 +40,59 @@ bandwidth 8), age distance (triangular, bandwidth 3), and Q distance
 (triangular, bandwidth 0.25; targets or candidates without Q use a
 neutral mid weight). The sampled \emph{positional-rank delta} is applied to
 the target's own positional rank; sampled exits stay exits.
+}
+\details{
+Optional kernel terms (all off by default; enabled via \verb{ffsimulator.dyn_*}
+options or the bandwidth arguments, and gated on the multi-year dynasty
+backtest before becoming defaults):
+\itemize{
+\item \code{years_exp} with \code{h_exp} - seasons since draft (rookie repricing differs
+from same-age veterans); \code{dyn_rookie_strict} additionally restricts
+rookie targets (years_exp 0) to rookie candidates when the pool allows
+\item \code{draft_round} with \code{h_draft} - draft capital (UDFA = round 8)
+\item \code{prev_delta} with \code{h_momentum} - last year's positional-rank move
+\item \code{ecr_sd} with \code{h_sd} - expert disagreement (matches uncertain players to
+historically uncertain candidates, whose transitions were wider)
+Candidates missing an enabled feature get the neutral weight 0.3, matching
+the age/Q convention; targets missing it skip the term.
+}
+
+Exit shrinkage (\code{exit_shrink} / \code{ffsimulator.dyn_exit_shrink}, default
+kappa = 10): the raw exit probability is the kernel-weighted mean of the exit
+indicator over the candidate pool - a Nadaraya-Watson estimate that is
+high-variance for thin cells (e.g. mid-20s QBs at a fringe rank, whose
+effective pool is ~5 historical players once age x rank x Q are all matched).
+The local estimate is shrunk toward a broad (wide rank+age bandwidth)
+empirical rate by effective sample size,
+\code{p = (n_eff * local + kappa * broad) / (n_eff + kappa)}, and exit is then a
+Bernoulli draw with the rank move resampled among survivors. This tempers
+noisy per-cell exit spikes without flattening the genuine age/rank trend.
+Set \code{kappa = 0} to recover the un-shrunk single-draw behavior. Enabled by
+default after the multi-year dynasty backtest: at kappa = 10 the pooled exit
+calibration improves (e.g. the 1qb >50\% bin, badly over-dispersed at
+0.73 predicted / 0.52 actual, moves to 0.64 / 0.60) with survivor rank
+calibration held flat; gains plateau by kappa 10-15.
+
+\code{exit_transitions} (optional): a separate pool from which the EXIT
+probability is estimated, while the rank move is still resampled from
+\code{transitions}. Used by superflex, which borrows the deep 1qb pool for
+movement dispersion but keeps its native (format-specific, ranking-depth)
+exit rate - importing 1qb's higher skill-position exit rates otherwise
+over-predicts superflex exits. \code{NULL} (default) uses \code{transitions} for both,
+so 1qb leagues and every other caller are unchanged.
+
+\code{disp_factor} (optional named per-position vector, e.g.
+\code{c(QB = 1.7, TE = 1.4, WR = 1.2, RB = 1.1)}): widens each survivor's rank
+move around its weighted-mean move by the position's factor, correcting the
+interval under-dispersion of positions with compressed positional scales
+(QB/TE rankings are shallow but map through a steep value curve, so the
+conditional resample under-states their value volatility; effective sample
+size is ~flat across positions, so this is a per-position, not n_eff-driven,
+correction). The mean is preserved, so medians/\code{p_rise} are unchanged - only
+the interval widens. Enabled by default with backtest-calibrated factors
+\code{c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)}, which lift survivor
+\code{cover80} from ~0.60-0.73 to ~0.75-0.82 across both formats (shallower
+rankings need more widening). Pass \code{NULL}, or a vector with no matching
+positions, to disable.
 }
 \keyword{internal}

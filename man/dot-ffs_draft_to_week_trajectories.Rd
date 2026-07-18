@@ -6,7 +6,10 @@
 \usage{
 .ffs_draft_to_week_trajectories(
   max_week = 16,
-  bandwidth = getOption("ffsimulator.v3_bandwidth", c(QB = 11, RB = 7, WR = 7, TE = 4))
+  bandwidth = getOption("ffsimulator.v3_bandwidth", c(QB = 11, RB = 7, WR = 7, TE = 4)),
+  bandwidth_slope = getOption("ffsimulator.v3_bandwidth_slope", NULL),
+  bandwidth_floor = getOption("ffsimulator.v3_bandwidth_floor", 2),
+  bandwidth_cap = getOption("ffsimulator.v3_bandwidth_cap", 15)
 )
 }
 \description{
@@ -27,5 +30,14 @@ defaults were tuned by held-out backtest (dev/validate_projections.md) -
 QB needs wide pools (elite QB seasons are scarce), TE narrow ones (steep
 quality cliff). Set the option to \code{NA} to use the legacy hard +/-2 uniform
 window (\code{.ff_rank_expand()}).
+
+Set \code{options(ffsimulator.v3_bandwidth_slope = c(QB = 0.35, ...))} to make the
+bandwidth grow with rank instead of being constant: \code{h(pos, rank) = clamp(slope * rank, floor, cap)} with \code{ffsimulator.v3_bandwidth_floor}
+(default 2) and \code{ffsimulator.v3_bandwidth_cap} (default 15). This gives
+narrow pools at the top of a position (where the value-over-rank curve is
+steep, so borrowing biases) and wide pools at the thin, flat bottom (where
+borrowing only cuts variance). \code{h} is a property of the target rank a pool
+serves. When \code{bandwidth_slope} is unset the bandwidth stays constant per
+position (the tuned defaults above).
 }
 \keyword{internal}

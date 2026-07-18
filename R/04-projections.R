@@ -351,11 +351,30 @@ ffs_generate_projections <- function(adp_outcomes,
 #' quality cliff). Set the option to `NA` to use the legacy hard +/-2 uniform
 #' window (`.ff_rank_expand()`).
 #'
+#' Set `options(ffsimulator.v3_bandwidth_slope = c(QB = 0.35, ...))` to make the
+#' bandwidth grow with rank instead of being constant: `h(pos, rank) =
+#' clamp(slope * rank, floor, cap)` with `ffsimulator.v3_bandwidth_floor`
+#' (default 2) and `ffsimulator.v3_bandwidth_cap` (default 15). This gives
+#' narrow pools at the top of a position (where the value-over-rank curve is
+#' steep, so borrowing biases) and wide pools at the thin, flat bottom (where
+#' borrowing only cuts variance). `h` is a property of the target rank a pool
+#' serves. When `bandwidth_slope` is unset the bandwidth stays constant per
+#' position (the tuned defaults above).
+#'
 #' @keywords internal
 .ffs_draft_to_week_trajectories <- function(max_week = 16,
                                             bandwidth = getOption(
                                               "ffsimulator.v3_bandwidth",
                                               c(QB = 11, RB = 7, WR = 7, TE = 4)
+                                            ),
+                                            bandwidth_slope = getOption(
+                                              "ffsimulator.v3_bandwidth_slope", NULL
+                                            ),
+                                            bandwidth_floor = getOption(
+                                              "ffsimulator.v3_bandwidth_floor", 2
+                                            ),
+                                            bandwidth_cap = getOption(
+                                              "ffsimulator.v3_bandwidth_cap", 15
                                             )){
   if (length(bandwidth) == 1 && is.na(bandwidth)) bandwidth <- NULL
 
@@ -412,24 +431,64 @@ ffs_generate_projections <- function(adp_outcomes,
   trajectories <- merge(trajectories, dp_birth, by = "fantasypros_id", all.x = TRUE)
   trajectories[, age := season - birth_year]
 
-  # kernel weights per (pos, rank offset): triangular with per-position
-  # bandwidth, or the legacy uniform +/-2 window when bandwidth is NULL
-  offset <- w <- NULL
-  kernel <- data.table::rbindlist(lapply(
-    unique(trajectories$pos),
-    function(p) {
-      if (is.null(bandwidth)) {
-        return(data.table::data.table(pos = p, offset = -2:2, w = 1))
-      }
-      bw <- unlist(bandwidth)
-      h <- if (is.null(names(bw))) bw[[1]] else if (p %in% names(bw)) bw[[p]] else 2
-      off <- seq.int(-ceiling(h) + 1L, ceiling(h) - 1L)
-      data.table::data.table(pos = p, offset = off, w = 1 - abs(off) / h)
-    }
-  ))
+  # kernel weights: triangular window in rank-distance. Three modes:
+  #  - bandwidth NULL       -> legacy uniform +/-2 window
+  #  - bandwidth_slope NULL -> constant per-position bandwidth h (default)
+  #  - bandwidth_slope set  -> rank-dependent h(pos, rank) = clamp(slope*rank,
+  #                            floor, cap): narrow at a position's steep top,
+  #                            wide at its thin flat bottom. h is a property of
+  #                            the TARGET rank the pool serves.
+  offset <- w <- h <- bw_slope <- bw_floor <- bw_cap <- .k <- NULL
+  slope_mode <- !is.null(bandwidth_slope) &&
+    !(length(bandwidth_slope) == 1 && is.na(bandwidth_slope[[1]]))
 
-  expanded <- merge(trajectories, kernel, by = "pos", allow.cartesian = TRUE)
-  expanded[, draft_rank := pmax(1L, draft_rank + offset)]
+  .bw_lookup <- function(x, p, default) {
+    if (is.null(x)) return(default)
+    x <- unlist(x)
+    if (is.null(names(x))) return(x[[1]])
+    if (p %in% names(x)) return(x[[p]])
+    default
+  }
+
+  if (!slope_mode) {
+    kernel <- data.table::rbindlist(lapply(
+      unique(trajectories$pos),
+      function(p) {
+        if (is.null(bandwidth)) {
+          return(data.table::data.table(pos = p, offset = -2:2, w = 1))
+        }
+        bw <- unlist(bandwidth)
+        h <- if (is.null(names(bw))) bw[[1]] else if (p %in% names(bw)) bw[[p]] else 2
+        off <- seq.int(-ceiling(h) + 1L, ceiling(h) - 1L)
+        data.table::data.table(pos = p, offset = off, w = 1 - abs(off) / h)
+      }
+    ))
+    expanded <- merge(trajectories, kernel, by = "pos", allow.cartesian = TRUE)
+    expanded[, draft_rank := pmax(1L, draft_rank + offset)]
+  } else {
+    par <- data.table::rbindlist(lapply(unique(trajectories$pos), function(p) {
+      data.table::data.table(
+        pos      = p,
+        bw_slope = .bw_lookup(bandwidth_slope, p, 0),
+        bw_floor = .bw_lookup(bandwidth_floor, p, 2),
+        bw_cap   = .bw_lookup(bandwidth_cap,   p, 15)
+      )
+    }))
+    cap_max <- max(par$bw_cap)
+    offs <- data.table::data.table(
+      offset = seq.int(-ceiling(cap_max) + 1L, ceiling(cap_max) - 1L), .k = 1L
+    )
+    expanded <- merge(
+      merge(trajectories, par, by = "pos")[, .k := 1L],
+      offs, by = ".k", allow.cartesian = TRUE
+    )[, .k := NULL]
+    # deposit into the target rank, then weight by that target's bandwidth
+    expanded[, draft_rank := pmax(1L, draft_rank + offset)]
+    expanded[, h := pmin(pmax(bw_slope * draft_rank, bw_floor), bw_cap)]
+    expanded[, w := 1 - abs(offset) / h]
+    expanded <- expanded[w > 0]
+    expanded[, c("bw_slope", "bw_floor", "bw_cap", "h") := NULL]
+  }
 
   pools <- expanded[
     , list(

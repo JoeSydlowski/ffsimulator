@@ -8,7 +8,9 @@ ffs_dynasty_outlook(
   base_simulation,
   format = c("auto", "1qb", "superflex"),
   max_transition_season = NULL,
-  value_curve = function(rank) 10000 * exp(-0.023 * rank)
+  value_curve = function(rank) 10000 * exp(-0.023 * rank),
+  dynasty_values = "fantasycalc",
+  superflex_from_1qb = getOption("ffsimulator.dyn_sflx_from_1qb", TRUE)
 )
 }
 \arguments{
@@ -23,13 +25,45 @@ this materially changes QB dynasty values.}
 this value (default: all available); used by the backtest to hold out a year}
 
 \item{value_curve}{function mapping overall dynasty rank to trade value;
-default \code{10000 * exp(-0.023 * rank)} (DynastyProcess-like decay)}
+the synthetic fallback \code{10000 * exp(-0.023 * rank)} (DynastyProcess-like
+decay), used only when no market values are available. Ignored for any
+player covered by \code{dynasty_values}.}
+
+\item{dynasty_values}{source of \emph{current} dynasty values, both for the
+\code{cur_value} anchor and (via the re-estimated curve) the future projection.
+Defaults to \code{"fantasycalc"}: live market values are scraped with
+\code{\link[=fc_dynasty_values]{fc_dynasty_values()}} for this league's detected format. Pass
+\code{"fantasypros"} (or \code{NULL}) to instead use the synthetic \code{value_curve} on
+FantasyPros dynasty ranks, or pass a pre-scraped dataframe (needs
+\code{fantasypros_id} + \code{value}, and \code{format} to match) to avoid re-scraping.
+When real market values are used they become the ranking BASELINE: players
+are re-ranked by market value so \code{dyn_rank}, the \code{value_curve}, and the
+transition's starting positional rank are all consistent with the anchored
+value (the FantasyPros dynasty rank, which disagrees with the market for
+aging vets and rookies, is kept only as \code{fp_dyn_rank}). Ranked players the
+market doesn't price get a market-scale value imputed from the
+FP-rank -> market-value relationship so they rank on the same ladder. Rows
+whose \code{fantasypros_id} crosswalk failed (rookies lag in \code{dp_playerids}) are
+recovered by matching their \code{sleeper_id}/\code{mfl_id} against this simulation's
+roster \code{player_id}. If the live scrape fails (e.g. offline), it warns and
+falls back to the synthetic FantasyPros-rank curve.}
+
+\item{superflex_from_1qb}{for superflex leagues, train the year-over-year
+\emph{transition} dynamics on the deeper 1qb dynasty history (2015+) rather than
+the thin native superflex pool (2020+). Positional-rank movement is
+format-invariant (a player's \code{pos_rank} is the same in both formats), so
+this borrows a better-sampled, wider-dispersed movement model while all
+value/slotting (cross-section, curve, \code{pos_rank}->overall) stays superflex -
+which is what re-slots QBs into their superflex value. Fixes superflex
+interval under-dispersion; leaves 1qb unchanged. Default \code{TRUE} (option
+\code{ffsimulator.dyn_sflx_from_1qb}); set \code{FALSE} to train on native superflex.}
 }
 \value{
-a dataframe: one row per rostered player with a current dynasty
-rank - current rank/value/age plus the post-season value distribution
-(mean, p10, p90, P(value rises), P(exits rankings)) and franchise totals
-are trivially \code{aggregate()}-able from it
+a dataframe: one row per rostered player with \code{dyn_rank} (market-value
+ordering when real values are supplied, else FantasyPros dynasty rank),
+\code{fp_dyn_rank} (FantasyPros dynasty rank for reference), current value/age
+plus the post-season value distribution (mean, p10, p90, P(value rises),
+P(exits rankings)); franchise totals are trivially \code{aggregate()}-able from it
 }
 \description{
 (EXPERIMENTAL) For every rostered player in a simulation, projects the

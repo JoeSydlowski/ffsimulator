@@ -25,8 +25,11 @@ devtools::load_all(here::here(), quiet = TRUE)
 out_dir <- here::here("dev", "validate_outputs")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-holdouts <- 2019:2025
-n_sim_seasons <- 200
+holdouts <- local({
+  h <- Sys.getenv("FFS_HOLDOUTS", "2019:2025")            # e.g. "2016:2025"
+  eval(parse(text = h))
+})
+n_sim_seasons <- as.integer(Sys.getenv("FFS_N_SIM", "200"))
 sim_weeks <- 1:14
 pos_filter <- c("QB", "RB", "WR", "TE")
 
@@ -78,13 +81,33 @@ pit_of <- function(sim, actual) {
 # FFS_BW="QB=8,RB=5" (v3 trajectory kernel bandwidth; unset = hard +/-2 window)
 run_versions <- strsplit(Sys.getenv("FFS_VERSIONS", "v1,v2,v3"), ",")[[1]]
 out_suffix <- Sys.getenv("FFS_OUT_SUFFIX", "")
+.parse_named <- function(s) {
+  pairs <- strsplit(strsplit(s, ",")[[1]], "=")
+  v <- as.numeric(vapply(pairs, `[`, "", 2))
+  names(v) <- vapply(pairs, `[`, "", 1)
+  v
+}
 bw_env <- Sys.getenv("FFS_BW", "")
 if (nzchar(bw_env)) {
-  bw_pairs <- strsplit(strsplit(bw_env, ",")[[1]], "=")
-  bw <- as.numeric(vapply(bw_pairs, `[`, "", 2))
-  names(bw) <- vapply(bw_pairs, `[`, "", 1)
-  options(ffsimulator.v3_bandwidth = bw)
+  options(ffsimulator.v3_bandwidth = .parse_named(bw_env))
   message("v3 trajectory kernel bandwidth: ", bw_env)
+}
+# rank-dependent bandwidth h(pos,rank) = clamp(slope*rank, floor, cap):
+# FFS_BW_SLOPE="QB=0.35,RB=0.2,WR=0.15,TE=0.2" FFS_BW_FLOOR="QB=4,..." FFS_BW_CAP="QB=12,..."
+slope_env <- Sys.getenv("FFS_BW_SLOPE", "")
+if (nzchar(slope_env)) {
+  options(ffsimulator.v3_bandwidth_slope = .parse_named(slope_env))
+  message("v3 bandwidth slope: ", slope_env)
+}
+floor_env <- Sys.getenv("FFS_BW_FLOOR", "")
+if (nzchar(floor_env)) {
+  options(ffsimulator.v3_bandwidth_floor = .parse_named(floor_env))
+  message("v3 bandwidth floor: ", floor_env)
+}
+cap_env <- Sys.getenv("FFS_BW_CAP", "")
+if (nzchar(cap_env)) {
+  options(ffsimulator.v3_bandwidth_cap = .parse_named(cap_env))
+  message("v3 bandwidth cap: ", cap_env)
 }
 rec_env <- Sys.getenv("FFS_RECENCY", "")
 if (nzchar(rec_env)) {
