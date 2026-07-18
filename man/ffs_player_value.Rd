@@ -4,7 +4,13 @@
 \alias{ffs_player_value}
 \title{Roster-contextual player value}
 \usage{
-ffs_player_value(base_simulation, player_id, franchise_id)
+ffs_player_value(
+  base_simulation,
+  player_id,
+  franchise_id,
+  base_summary = NULL,
+  fast = TRUE
+)
 }
 \arguments{
 \item{base_simulation}{an \code{ff_simulation} object from \code{ff_simulate(..., return = "all")}}
@@ -12,6 +18,15 @@ ffs_player_value(base_simulation, player_id, franchise_id)
 \item{player_id}{a player_id present in the simulation's rosters}
 
 \item{franchise_id}{the franchise to value the player for (any franchise, not just the current owner)}
+
+\item{base_summary}{optional precomputed base-sim summary for \code{franchise_id}
+(as returned by an internal call); pass it when valuing many players for the
+same franchise to avoid recomputing it each time}
+
+\item{fast}{use the exact partial-reoptimisation fast path when the simulation
+used \code{lineup_method = "rank"} (default \code{TRUE}); \code{FALSE} forces the full
+whole-franchise re-optimisation (identical result, slower) and is mainly for
+validation. The full path is always used for efficiency/best-ball sims.}
 }
 \value{
 a one-row dataframe: franchise_id, player_id, player_name, owner_id,

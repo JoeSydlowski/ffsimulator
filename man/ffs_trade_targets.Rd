@@ -14,8 +14,10 @@ ffs_trade_targets(base_simulation, franchise_id, top_n = 20)
 \item{top_n}{how many screened candidates to value exactly (default 20)}
 }
 \value{
-a dataframe of candidates: screen proxy, value_to_you,
-value_to_owner (h2h wins), and surplus = value_to_you - value_to_owner
+a dataframe of candidates: screen proxy, value_to_you +
+playoff_delta_you (impact on YOUR team), value_to_owner +
+playoff_delta_owner (impact on the OWNER's team), and
+surplus = value_to_you - value_to_owner
 }
 \description{
 (EXPERIMENTAL) Two-stage scan for a franchise: a cheap screen ranks every
