@@ -180,6 +180,37 @@ shrink_ratio <- function(raw, cur_value, pos) {
   out
 }
 
+# value decomposition. cur_value is a 1-D projection of a 2-D asset: win-now
+# production + future store. Split it:
+#   mkt_winnow = cur_value - next_value_mean  = what the market charges for THIS
+#     year's production. <=0 means a future/growth asset (a young riser the
+#     market pays you to hold) - win-now analysis does not apply to him.
+#   fit_residual = how much CHEAPER the market prices a win-now player than the
+#     PLAYOFF ODDS he adds to MY team warrant. ONE market line (the league's
+#     available players: mkt_winnow ~ playoff_delta over win-now targets) is fit,
+#     then BOTH the targets and my roster are scored against it, fit_residual =
+#     predicted - actual, so "priced-rich vs the market" means the same on both
+#     sheets. Positive =
+#     the market underprices his win-now relative to what he does for my playoff
+#     odds (acquire); strongly negative on my own roster = win-now I am paying
+#     for but cannot cash into playoff odds (surplus to sell). Playoff delta (not
+#     raw wins) is the true objective - it bakes in leverage (a win at a 70%
+#     bubble is worth more than at a 95% lock). It converges SLOWLY though, so
+#     this is only trustworthy on rows valued at the standings n (roster always;
+#     targets only where confirmed=TRUE - run FFS_TRADE_TARGET_CONFIRM_N=100).
+#     This isolates the ONE component the market can't see - win-now FIT to my
+#     team - from the future component it prices efficiently.
+# Future assets (mkt_winnow<=0) get NA: judge them on retention/exp_change.
+fit_residual_cols <- function(dt, valcol, coef) {
+  d <- data.table::as.data.table(data.table::copy(dt))
+  d[, mkt_winnow := cur_value - next_value_mean]
+  fr <- rep(NA_real_, nrow(d))
+  wn <- which(d$mkt_winnow > 0 & is.finite(d[[valcol]]))
+  if (length(wn) && all(is.finite(coef)))
+    fr[wn] <- (coef[[1]] + coef[[2]] * d[[valcol]][wn]) - d$mkt_winnow[wn]
+  list(mkt_winnow = d$mkt_winnow, fit_residual = fr)
+}
+
 ## ---- 1. roster.csv --------------------------------------------------------------
 rs_v <- data.table::as.data.table(vsim$roster_scores)
 my_ids <- unique(rs_v[franchise_id == me & !grepl("^(QB|RB|WR|TE|K)_\\d+$", player_id)][["player_id"]])
@@ -335,13 +366,10 @@ if (length(rm_mat) >= 2L) {
   roster[rm_mat, dominated_by := dom]
 }
 
-data.table::setorder(roster, -cur_value, na.last = TRUE)
-data.table::fwrite(round_sheet(roster[, list(
-  player_name, pos, age, cur_value, exp_change, rel_change, pos_drift,
-  trend_pct, p_rise, p_exit, value_to_me, playoff_delta_me, wins_per_1k, swing,
-  mean_weeks_started, pos_depth_rank, trajectory, verdict, bust_flag,
-  pareto_front, dominated_by, best_buyers, player_id)]),
-  file.path(out, "roster.csv"))
+# NOTE: roster.csv is written LATER (right after targets.csv) so its win-now
+# decomposition (mkt_winnow / fit_residual) scores against the SAME market
+# $/playoff-point line fit on the league's available players - see the targets
+# block. roster stays fully computed here (verdict, dominated_by, best_buyers).
 
 ## ---- 2. targets.csv --------------------------------------------------------------
 message("trade targets (top_n=", trade_top_n, ") @ ", Sys.time())
@@ -444,14 +472,83 @@ if (tconf_n > 0 && length(conf_rows) && exists("sim")) {
   tg[, wins_per_1k := shrink_ratio(value_to_you / (cur_value / 1000), cur_value, pos)]
 }
 
-# confirmed shortlist first, then the search-sim ranking
-data.table::setorder(tg, -confirmed, robust_rank, -value_to_you, na.last = TRUE)
+# win-now/future decomposition. Fit the market's $/playoff-point line ONCE on the
+# league's available players (targets, win-now assets, on the confirmed playoff
+# deltas), then score the targets here and my roster below against the SAME line.
+# mkt_winnow<=0 = future asset (NA fit_residual, judge on trajectory instead).
+tg[, mkt_winnow := cur_value - next_value_mean]
+mkt_wn <- tg[mkt_winnow > 0 & is.finite(playoff_delta_you)]
+mkt_coef <- if (nrow(mkt_wn) >= 8L)
+  stats::coef(stats::lm(mkt_winnow ~ playoff_delta_you, mkt_wn)) else c(NA_real_, NA_real_)
+tg[, fit_residual := fit_residual_cols(tg, "playoff_delta_you", mkt_coef)$fit_residual]
+
+# lead with confirmed win-now fit-bargains, then the search-sim ranking
+data.table::setorder(tg, -confirmed, -fit_residual, robust_rank, -value_to_you, na.last = TRUE)
 data.table::fwrite(round_sheet(tg[, list(
   player_name, pos, age, owner = franchise_name, cur_value, confirmed,
   value_to_you, playoff_delta_you, value_to_owner, playoff_delta_owner, surplus,
+  mkt_winnow, fit_residual,
   gettable, retention, growth_abs, p_rise, p_exit, exp_change, rel_change, trend_pct,
   redraft_ratio, wins_per_1k, edge_rk, pareto_front, robust_rank, sweet_spot,
   tilt, fade_flag, player_id, owner_id)]), file.path(out, "targets.csv"))
+
+# roster win-now decomposition vs the SAME market line, then write roster.csv
+roster[, `:=`(mkt_winnow = cur_value - next_value_mean,
+              fit_residual = fit_residual_cols(roster, "playoff_delta_me", mkt_coef)$fit_residual)]
+data.table::setorder(roster, -cur_value, na.last = TRUE)
+data.table::fwrite(round_sheet(roster[, list(
+  player_name, pos, age, cur_value, exp_change, rel_change, pos_drift,
+  trend_pct, p_rise, p_exit, value_to_me, playoff_delta_me, wins_per_1k,
+  mkt_winnow, fit_residual, swing,
+  mean_weeks_started, pos_depth_rank, trajectory, verdict, bust_flag,
+  pareto_front, dominated_by, best_buyers, player_id)]),
+  file.path(out, "roster.csv"))
+
+# win-now value map: market's win-now charge (x) vs playoff odds to my team (y),
+# BOTH price lines (my roster + league) on both panels, coloured by fit_residual
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  vm <- data.table::rbindlist(list(
+    roster[, list(player_name, pos, cur_value, mkt_winnow, fit_residual,
+                  pd = playoff_delta_me, confirmed = TRUE, panel = "My roster")],
+    tg[, list(player_name, pos, cur_value, mkt_winnow, fit_residual,
+              pd = playoff_delta_you, confirmed, panel = "Targets (acquire)")]))
+  vm[, cat := data.table::fifelse(mkt_winnow <= 0, "future (judge on trajectory)",
+        data.table::fifelse(fit_residual > 0, "win-now bargain (edge)", "win-now priced-rich"))]
+  rwn <- roster[mkt_winnow > 0 & is.finite(playoff_delta_me)]
+  rcoef <- if (nrow(rwn) >= 8L) stats::coef(stats::lm(mkt_winnow ~ playoff_delta_me, rwn)) else mkt_coef
+  yv <- seq(0, max(vm$pd, na.rm = TRUE), length.out = 60)
+  vmln <- data.table::rbindlist(list(
+    data.table::data.table(pd = yv, mkt_winnow = rcoef[[1]] + rcoef[[2]] * yv, line = "my roster"),
+    data.table::data.table(pd = yv, mkt_winnow = mkt_coef[[1]] + mkt_coef[[2]] * yv, line = "league (available)")))
+  vmln <- rbind(cbind(data.table::copy(vmln), panel = "My roster"),
+                cbind(data.table::copy(vmln), panel = "Targets (acquire)"))
+  vmlab <- rbind(vm[panel == "My roster"], vm[panel == "Targets (acquire)" & confirmed == TRUE])
+  vp <- ggplot2::ggplot(vm, ggplot2::aes(mkt_winnow, pd)) +
+    ggplot2::geom_vline(xintercept = 0, color = "#dddddd", linewidth = 0.4) +
+    ggplot2::geom_line(data = vmln, ggplot2::aes(linetype = line), color = "#333333", linewidth = 0.6) +
+    ggplot2::geom_point(ggplot2::aes(color = cat, shape = confirmed, size = cur_value), alpha = 0.85) +
+    ggplot2::facet_wrap(~panel, scales = "free") +
+    ggplot2::scale_color_manual(values = c("win-now bargain (edge)" = "#1b9e77",
+      "win-now priced-rich" = "#d95f02", "future (judge on trajectory)" = "#8c8c8c"), name = NULL) +
+    ggplot2::scale_linetype_manual(values = c("my roster" = "solid",
+      "league (available)" = "21"), name = "win-now price line") +
+    ggplot2::scale_shape_manual(values = c(`TRUE` = 16, `FALSE` = 1),
+      labels = c(`TRUE` = "confirmed", `FALSE` = "search n=60"), name = NULL) +
+    ggplot2::scale_size_continuous(range = c(1.4, 6), guide = "none") +
+    ggplot2::labs(
+      title = "Win-now value map: market's win-now charge vs playoff odds to your team",
+      subtitle = "Above/left of a line = bargain vs that market. Gap between the lines = your reallocation edge. Left of 0 = future asset.",
+      x = "mkt_winnow = market's charge for this-year production (cur - next; <0 = future)",
+      y = "playoff odds added to YOUR team") +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(legend.position = "top", panel.grid.minor = ggplot2::element_blank(),
+      plot.subtitle = ggplot2::element_text(color = "#555555", size = 9))
+  if (requireNamespace("ggrepel", quietly = TRUE))
+    vp <- vp + ggrepel::geom_text_repel(data = vmlab,
+      ggplot2::aes(label = player_name, color = cat), size = 2.6, min.segment.length = 0,
+      max.overlaps = 40, seed = 1, show.legend = FALSE, segment.color = "#bbbbbb", segment.size = 0.2)
+  ggplot2::ggsave(file.path(out, "value_map.png"), vp, width = 13, height = 6.6, dpi = 150)
+}
 
 # pareto plot, highlighting the robust sweet-spot picks
 if (requireNamespace("ggplot2", quietly = TRUE)) {
