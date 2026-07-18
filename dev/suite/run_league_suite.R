@@ -18,7 +18,7 @@ config <- list(
   platform = "sleeper",
   season = as.integer(Sys.getenv("FFS_SEASON", "2026")),
   my_team = Sys.getenv("FFS_MY_TEAM", "sox05syd"),
-  n_sims = as.integer(Sys.getenv("FFS_NSEASONS", "400")), # standings/odds; see convergence.csv
+  n_sims = as.integer(Sys.getenv("FFS_NSEASONS", "2000")), # standings/odds; value_convergence.csv: values stable to +-0.01-0.02 by n=2000 (playoff SD ~1%). n=400 was ~2x noisier; fast valuation path makes 2000 affordable. Higher n OOMs ~4000 on 32GB.
   n_sims_war = 50L, # per-player WAR (leave-one-out is expensive)
   version = "v3",
   lineup_method = "rank",
@@ -28,9 +28,13 @@ config <- list(
   # random schedules (use when the schedule isn't released yet)
   actual_schedule = as.logical(Sys.getenv("FFS_ACTUAL_SCHEDULE", "TRUE")),
   playoff_slots = 6L,
-  run_war = TRUE,
-  run_trades = TRUE,
   run_dynasty = TRUE,
+  run_trade_intel = TRUE,
+  # generic owner-context WAR for every rostered player (ff_wins_added).
+  # Trade intelligence no longer uses it - the same leave-one-out signal is
+  # computed per decision with ffs_player_value on the shared sim - so it is
+  # off by default; flip on for a leaguewide war_players.csv.
+  run_war = as.logical(Sys.getenv("FFS_RUN_WAR", "FALSE")),
   trade_top_n = as.integer(Sys.getenv("FFS_TRADE_TOP_N", "50"))
 )
 
@@ -43,6 +47,20 @@ conn <- switch(config$platform,
   sleeper = ffscrapr::sleeper_connect(season = config$season, league_id = config$league_id),
   mfl = ffscrapr::mfl_connect(season = config$season, league_id = config$league_id)
 )
+
+# round numeric columns for readable sheets: money-scale cols (>=100) to whole
+# numbers, everything else (wins, probabilities, ratios) to 3 decimals
+round_sheet <- function(dt) {
+  dt <- data.table::copy(data.table::as.data.table(dt))
+  for (col in names(dt)) {
+    v <- dt[[col]]
+    if (is.numeric(v)) {
+      digits <- if (max(abs(v), na.rm = TRUE) >= 100) 0L else 3L
+      data.table::set(dt, j = col, value = round(v, digits))
+    }
+  }
+  dt
+}
 
 ## ---- 1. season simulation ----------------------------------------------------
 
@@ -63,7 +81,8 @@ saveRDS(sim, file.path(out, "simulation.rds"))
 fwrite(sim$summary_simulation, file.path(out, "summary_simulation.csv"))
 
 ss <- as.data.table(sim$summary_season)
-ss[, lg_rank := frank(-h2h_wins, ties.method = "random"), by = season]
+# wins then points-for, deterministic (matches .ffs_franchise_summary)
+ss[, lg_rank := frank(list(-h2h_wins, -points_for), ties.method = "first"), by = season]
 odds <- ss[, list(
   mean_wins = mean(h2h_wins),
   p25_wins = quantile(h2h_wins, .25),
@@ -82,70 +101,61 @@ for (t in c("wins", "rank", "points")) {
   }
 }
 
-## ---- 2. roster drivers for my team -------------------------------------------
-
 fr <- as.data.table(sim$franchises)
 me <- fr[franchise_name == config$my_team, franchise_id][1]
 if (is.na(me)) stop("my_team '", config$my_team, "' not found in franchises")
 
-team <- ss[franchise_id == me, list(season, allplay_winpct, h2h_wins, lg_rank)]
-os <- as.data.table(sim$optimal_scores)[franchise_id == me]
-if ("starter_player_id" %in% names(os)) {
-  st <- os[, list(player_id = unlist(starter_player_id)), by = list(season, week)][!is.na(player_id)]
-} else {
-  st <- os[, list(player_id = unlist(optimal_player_id)), by = list(season, week)][!is.na(player_id)]
-}
-rs_me <- as.data.table(sim$roster_scores)[franchise_id == me,
-  list(season, week, player_id, player_name, pos, projected_score)]
-started <- merge(st, rs_me, by = c("season", "week", "player_id"))
-pl <- started[, list(pts = sum(projected_score), wk = .N), by = list(season, player_id, player_name, pos)]
-players_all <- unique(rs_me[, list(player_id, player_name, pos)])
-grid <- CJ(season = unique(team$season), player_id = players_all$player_id)
-grid <- merge(grid, players_all, by = "player_id")
-pl <- merge(grid, pl, by = c("season", "player_id", "player_name", "pos"), all.x = TRUE)
-pl[is.na(pts), pts := 0][is.na(wk), wk := 0]
-pl <- merge(pl, team, by = "season")
-qs <- quantile(team$allplay_winpct, c(.25, .75))
-drivers <- pl[, list(
-  mean_pts = mean(pts), mean_weeks_started = mean(wk),
-  corr_with_team = suppressWarnings(cor(pts, allplay_winpct)),
-  swing = mean(pts[allplay_winpct >= qs[2]]) - mean(pts[allplay_winpct <= qs[1]])
-), by = list(player_name, pos)][mean_weeks_started > 0.5][order(-swing)]
-fwrite(drivers, file.path(out, "roster_drivers.csv"))
+## ---- 2. dynasty outlook --------------------------------------------------------
 
-## ---- 3. trade intelligence (before WAR so WAR can scope to relevant players) ---
+if (config$run_dynasty) {
+  # real FantasyCalc market values anchor dynasty values (both formats scraped;
+  # ffs_dynasty_outlook filters to the league's). Set FFS_FANTASYCALC=0 to skip
+  # and fall back to the synthetic rank-decay curve.
+  dyn_vals <- NULL
+  if (Sys.getenv("FFS_FANTASYCALC", "1") != "0") {
+    dyn_vals <- tryCatch(
+      rbind(fc_dynasty_values(num_qbs = 1), fc_dynasty_values(num_qbs = 2)),
+      error = function(e) { message("FantasyCalc unavailable: ", conditionMessage(e)); NULL })
+    db_path <- here::here("dev", "data", "fantasycalc_values.parquet")
+    if (!is.null(dyn_vals) && requireNamespace("arrow", quietly = TRUE)) {
+      try(fc_snapshot_append(db_path, configs = list(list(num_qbs = 1), list(num_qbs = 2))), silent = TRUE)
+    }
+  }
+  message("dynasty outlook @ ", Sys.time())
+  dyn <- as.data.table(ffs_dynasty_outlook(sim, dynasty_values = dyn_vals))
+  fwrite(dyn, file.path(out, "dynasty_outlook.csv"))
 
-if (config$run_trades) {
-  message("trade scan @ ", Sys.time())
-  targets <- ffs_trade_targets(sim, me, top_n = config$trade_top_n)
-  fwrite(targets, file.path(out, "trade_targets.csv"))
-
-  # my offerable pieces: value of each of my players to my own roster
-  my_players <- unique(as.data.table(sim$roster_scores)[
-    franchise_id == me & !grepl("^(QB|RB|WR|TE|K)_\\d+$", player_id),
-    list(player_id, player_name, pos)
-  ])
-  offers <- rbindlist(lapply(my_players$player_id, function(p) {
-    v <- ffs_player_value(sim, p, me)
-    data.table(player_id = p, value_to_me = v$h2h_wins, playoff_delta = v$playoff_pct)
-  }))
-  offers <- merge(my_players, offers, by = "player_id")[order(value_to_me)]
-  fwrite(offers, file.path(out, "trade_offers.csv"))
+  team_dyn <- dyn[, list(
+    cur_capital = sum(cur_value),
+    next_capital_mean = sum(next_value_mean),
+    n_ranked = .N
+  ), by = franchise_name][order(-cur_capital)]
+  fwrite(team_dyn, file.path(out, "dynasty_capital.csv"))
 }
 
-## ---- 4. WAR -------------------------------------------------------------------
+## ---- 3. trade intelligence -----------------------------------------------------
+# roster verdicts + best buyers, buy targets (Pareto sweet spots), complete
+# buy/sell deal packages, and the portfolio view. Valuations run on a dedicated
+# fast sim with the real schedule (FFS_TRADE_NSIMS; see valuation_convergence.R).
+
+if (config$run_trade_intel && config$run_dynasty) {
+  message("trade intelligence @ ", Sys.time())
+  source(here::here("dev", "suite", "trade_intel.R"))
+}
+
+## ---- 4. optional: leaguewide generic WAR ----------------------------------------
 
 if (config$run_war) {
-  # scope: "mine" (my roster + trade targets - fast, the decision-relevant
-  # players) or "all" (every rostered player - slow). leave-one-out cost
-  # scales with the number of players, so "mine" is ~10x faster.
+  # scope: "mine" (my roster + trade targets - fast) or "all" (every rostered
+  # player - slow). This is owner-context leave-one-out (irreplaceability on
+  # the CURRENT owner's roster), not acquisition value - see README caveats.
   war_scope <- Sys.getenv("FFS_WAR_SCOPE", "mine")
   war_players <- NULL
   if (war_scope == "mine") {
-    mine <- unique(as.data.table(sim$roster_scores)[
+    mine_ids <- unique(as.data.table(sim$roster_scores)[
       franchise_id == me & !grepl("^(QB|RB|WR|TE|K)_\\d+$", player_id), player_id])
-    tgt <- if (config$run_trades) as.data.table(targets)$player_id else character(0)
-    war_players <- unique(c(mine, tgt))
+    tgt <- if (exists("targets")) as.character(as.data.table(targets)$player_id) else character(0)
+    war_players <- unique(c(mine_ids, tgt))
   }
   message("WAR (", config$n_sims_war, " sims/player, scope=", war_scope,
           if (!is.null(war_players)) paste0(", ", length(war_players), " players") else "",
@@ -159,57 +169,6 @@ if (config$run_war) {
     replacement_level = config$replacement_level
   )
   fwrite(as.data.table(wa$war), file.path(out, "war_players.csv"))
-}
-
-## ---- 5. dynasty outlook ---------------------------------------------------------
-
-if (config$run_dynasty) {
-  message("dynasty outlook @ ", Sys.time())
-  dyn <- as.data.table(ffs_dynasty_outlook(sim))
-  fwrite(dyn, file.path(out, "dynasty_outlook.csv"))
-
-  team_dyn <- dyn[, list(
-    cur_capital = sum(cur_value),
-    next_capital_mean = sum(next_value_mean),
-    n_ranked = .N
-  ), by = franchise_name][order(-cur_capital)]
-  fwrite(team_dyn, file.path(out, "dynasty_capital.csv"))
-
-  # dynasty-aware trade sheets
-  if (config$run_trades) {
-    tt <- merge(as.data.table(targets),
-                dyn[, list(player_id, dyn_value = cur_value,
-                           dyn_next_mean = next_value_mean, p_rise, p_exit)],
-                by = "player_id", all.x = TRUE)
-    fwrite(tt[order(-surplus)], file.path(out, "trade_targets.csv"))
-    oo <- merge(offers,
-                dyn[, list(player_id, dyn_value = cur_value,
-                           dyn_next_mean = next_value_mean, p_rise, p_exit)],
-                by = "player_id", all.x = TRUE)
-    # sell candidates: low win value to you, high market value, value at risk
-    oo[, sell_score := data.table::fifelse(
-      is.na(dyn_value), NA_real_,
-      dyn_value * (1 - p_rise) - 1500 * value_to_me
-    )]
-    fwrite(oo[order(-sell_score)], file.path(out, "trade_offers.csv"))
-
-    ## ---- 6. Pareto-optimal targets --------------------------------------------
-    # improve my team (value_to_you up) / cost least (dyn_value down) / hold
-    # value (retention up). front 1 = no target beats them on all three.
-    cand <- merge(as.data.table(targets),
-                  dyn[, list(player_id, dyn_value = cur_value,
-                             dyn_next = next_value_mean)],
-                  by = "player_id", all.x = TRUE)
-    cand <- cand[value_to_you > 0 & !is.na(dyn_value) & dyn_value > 0]
-    if (nrow(cand) > 1) {
-      cand[, retention := dyn_next / dyn_value]
-      cand[, front := ffs_pareto_front(
-        cand[, list(value_to_you, dyn_value, retention)],
-        maximize = c(TRUE, FALSE, TRUE))]
-      setorder(cand, front, -value_to_you)
-      fwrite(cand, file.path(out, "pareto_targets.csv"))
-    }
-  }
 }
 
 message("DONE - outputs in ", out)

@@ -39,7 +39,10 @@ seasons_all <- rbindlist(seasons_all)
 fwrite(seasons_all, file.path(out, "replicate_seasons.csv"))
 
 league_size <- length(unique(seasons_all$franchise_id))
-seasons_all[, lg_rank := frank(-h2h_wins, ties.method = "random"), by = list(rep, season)]
+# wins then points-for, deterministic (matches .ffs_franchise_summary; random
+# tie-breaks would inflate the measured noise floor)
+seasons_all[, lg_rank := frank(list(-h2h_wins, -points_for), ties.method = "first"),
+            by = list(rep, season)]
 seasons_all[, playoff := lg_rank <= 6]
 
 ## ---- true replicate SD at n=200 --------------------------------------------
