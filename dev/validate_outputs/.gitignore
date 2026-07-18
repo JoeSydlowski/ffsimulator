@@ -1,3 +1,17 @@
 # regenerable large artifacts
 backtest_player_results*.csv
 scoring_history_*.rds
+
+# ad-hoc run logs and backtest/sweep outputs (regenerable; the canonical
+# backtest CSVs stay tracked)
+*.log
+*.txt
+.backtest_done
+.widen_done
+*_v3base.csv
+*_v3slope.csv
+*_v3widen.csv
+dynasty_backtest_multi_*.csv
+dynasty_backtest_players_*.csv
+*convergence.csv
+rank_points_curve.csv

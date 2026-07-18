@@ -1,3 +1,6 @@
 # personal league sim outputs stay local; keep the runner scripts
 league_sims/*
 !league_sims/*.R
+
+# FantasyCalc value-snapshot parquet accumulates locally
+data/
