@@ -1,0 +1,21 @@
+player_name,pos,age,owner,cur_value,value_to_you,playoff_delta_you,value_to_owner,playoff_delta_owner,surplus,gettable,retention,growth_abs,p_rise,p_exit,exp_change,trend_pct,redraft_ratio,wins_per_1k,edge_rk,pareto_front,robust_rank,sweet_spot,tilt,fade_flag,player_id,owner_id
+Josh Jacobs,RB,28,Obvious 49ers Ripoff,2818,0.6,0.033,0.2,0,0.4,TRUE,0.587,-1163,0.128,0.14,-0.413,-0.002,1.448,0.18,4,1,2,TRUE,"",FALSE,5850,5
+Bhayshul Tuten,RB,23,Mumpfield and Sons,2431,0.433,0.067,0.5,0.067,-0.067,FALSE,0.888,-272,0.242,0,-0.112,-0.07,0.619,0.152,17,1,2,TRUE,"",FALSE,12490,4
+Jeremiyah Love,RB,21,Buy My Quarterbacks,6110,0.367,0,0.733,0.1,-0.367,FALSE,1.128,783,0.5,0,0.128,,,0.064,,1,3,TRUE,"",FALSE,13287,12
+Kenneth Walker,RB,26,TwoFrames,4534,0.533,0,0.7,0.133,-0.167,FALSE,0.858,-643,0.14,0,-0.142,0.056,1.366,0.112,2,1,4,TRUE,"",FALSE,8151,8
+Chase Brown,RB,26,JMLarkin,4283,0.533,0.067,0.733,0.3,-0.2,FALSE,0.773,-971,0.168,0,-0.227,0.047,1.375,0.117,2,1,6,TRUE,"",TRUE,9224,10
+Travis Etienne,RB,27,Obvious 49ers Ripoff,3158,0.433,-0.033,0.3,0,0.133,TRUE,0.678,-1018,0.138,0.043,-0.322,0.015,1.378,0.125,3,2,6,TRUE,"",TRUE,7543,5
+Christian McCaffrey,RB,30,JMLarkin,4500,0.667,0.033,1.167,0.367,-0.5,FALSE,0.54,-2070,0,0.085,-0.46,0.024,1.75,0.137,-1,1,8,FALSE,win-now pick,TRUE,4034,10
+De'Von Achane,RB,25,Mumpfield and Sons,6436,0.667,0.067,0.867,0.133,-0.2,FALSE,0.78,-1414,0.028,0,-0.22,-0.01,1.219,0.101,4,1,8,TRUE,win-now pick,FALSE,9226,4
+James Cook,RB,27,TwoFrames,5585,0.733,0.2,0.9,0.2,-0.167,FALSE,0.627,-2083,0.035,0.018,-0.373,0.047,1.418,0.125,1,1,9,FALSE,win-now pick,TRUE,8138,8
+Ashton Jeanty,RB,23,KingGabe,8025,0.7,0.033,0.9,0.133,-0.2,FALSE,0.853,-1179,0.21,0,-0.147,0.051,1.029,0.087,5,1,9,FALSE,win-now pick,FALSE,12527,2
+Kyren Williams,RB,26,ZPMiller97,3699,0.367,-0.067,0.633,0.067,-0.267,FALSE,0.7,-1110,0.202,0.022,-0.3,-0.011,1.278,0.097,2,3,11,FALSE,growth pick,FALSE,8150,9
+Breece Hall,RB,25,TwoFrames,4285,0.267,-0.033,0.633,0.2,-0.367,FALSE,0.887,-482,0.225,0,-0.113,0.014,1.278,0.067,-5,2,11,FALSE,growth pick,FALSE,8155,8
+Omarion Hampton,RB,23,KingGabe,6331,0.433,-0.033,0.867,0.033,-0.433,FALSE,0.845,-983,0.202,0,-0.155,0.011,1.127,0.071,-1,2,13,FALSE,growth pick,FALSE,12507,2
+TreVeyon Henderson,RB,24,KingGabe,4185,0.2,0.067,0.433,0.033,-0.233,FALSE,0.792,-869,0.308,0,-0.208,0.042,1.088,0.055,-5,2,14,FALSE,growth pick,TRUE,12529,2
+Jonathan Taylor,RB,27,TwoFrames,5934,0.5,0.167,1.033,0.267,-0.533,FALSE,0.659,-2024,0.025,0.005,-0.341,0.039,1.472,0.085,-7,2,15,FALSE,"",TRUE,6813,8
+Saquon Barkley,RB,29,TwoFrames,4126,0.3,-0.067,0.533,0.167,-0.233,FALSE,0.59,-1693,0.148,0.07,-0.41,0.013,1.741,0.076,-9,4,16,FALSE,"",TRUE,4866,8
+Derrick Henry,RB,32,Obvious 49ers Ripoff,2973,0.2,-0.033,0.067,-0.033,0.133,TRUE,0.496,-1499,0,0,-0.504,0.001,1.988,0.072,-12,2,16,FALSE,"",TRUE,3198,5
+Ja'Marr Chase,WR,26,KingGabe,9880,0.6,0.167,1,0,-0.4,FALSE,0.801,-1967,0,0,-0.199,0.014,1.004,0.061,-1,2,18,FALSE,"",FALSE,7564,2
+Bijan Robinson,RB,24,JMLarkin,10713,0.667,0.067,1.333,0.267,-0.667,FALSE,0.785,-2299,0,0,-0.215,-0.022,0.968,0.064,2,2,19,FALSE,"",FALSE,9509,10
+Jahmyr Gibbs,RB,24,ZPMiller97,10677,0.567,0.033,1,0.067,-0.433,FALSE,0.722,-2966,0.16,0,-0.278,0.011,0.969,0.056,-1,3,20,FALSE,"",TRUE,9221,9

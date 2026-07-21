@@ -1,0 +1,36 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy & sell CeeDee Lamb,2,Dalton Kincaid + CeeDee Lamb,Ashton Jeanty,8142,7920,-222,0.06,0.015,0.25,0.042,TRUE,1165,0.675,10236 + 6786,12527,TRUE
+buy,8,Tyler Warren,Kenneth Walker,4388,4656,268,0.38,0.075,-0.367,-0.057,FALSE,299,0.495,12518,8151,TRUE
+sell Tyler Warren,2,Tyler Warren,Quinshon Judkins,4388,4289,-99,0.175,0.045,-0.082,-0.037,FALSE,673,0.476,12518,12512,TRUE
+sell CeeDee Lamb,10,CeeDee Lamb,Christian McCaffrey + Terry McLaurin,6419,6649,230,0.61,0.117,-0.748,-0.198,FALSE,-272,0.446,6786,4034 + 5927,TRUE
+buy,7,Kimani Vidal + Tyler Shough,Harold Fannin,2849,2799,-50,-0.22,-0.028,0.185,0.032,FALSE,1583,0.445,11647 + 12545,12506,TRUE
+sell Tyler Warren,2,Tyler Warren + KeAndre Lambert-Smith,Quinshon Judkins,4478,4289,-189,0.17,0.042,-0.032,-0.03,FALSE,645,0.367,12518 + 12670,12512,TRUE
+sell Tee Higgins,2,Kimani Vidal + Tee Higgins,Nico Collins,4343,4154,-189,0.12,0.035,-0.053,-0.025,FALSE,688,0.271,11647 + 6801,7569,TRUE
+buy,7,Jakobi Meyers + Khalil Shakir,Harold Fannin,2982,2799,-183,-0.085,-0.008,0.027,0.018,FALSE,1219,0.248,5947 + 8134,12506,TRUE
+buy,8,Tyler Warren + DeMario Douglas,Kenneth Walker,4671,4656,-15,0.38,0.077,-0.335,-0.052,FALSE,118,0.223,12518 + 9501,8151,TRUE
+sell Tyler Warren,2,Tyler Warren + Sam Roush,Quinshon Judkins,4498,4289,-209,0.175,0.042,-0.07,-0.035,FALSE,550,0.193,12518 + 13322,12512,TRUE
+buy,7,Jauan Jennings + Zach Charbonnet,Harold Fannin,2854,2799,-55,-0.093,-0.023,-0.015,0.025,FALSE,1379,0.188,7049 + 9753,12506,TRUE
+buy,7,Tyler Shough + David Njoku,Harold Fannin,2840,2799,-41,-0.147,-0.01,0.065,0.032,FALSE,1206,0.164,12545 + 4033,12506,TRUE
+sell Patrick Mahomes,2,Patrick Mahomes + Khalil Shakir,Nico Collins,4492,4154,-338,0.25,0.068,-0.272,-0.102,FALSE,147,0.041,4046 + 8134,7569,TRUE
+sell Tyler Warren,10,Tyler Warren,David Montgomery + Terry McLaurin,4388,4533,145,0.403,0.09,-0.885,-0.205,FALSE,-211,-0.088,12518,5892 + 5927,TRUE
+sell Tyler Warren,7,Tyler Warren,Jayden Reed + Harold Fannin,4388,4526,138,-0.075,-0.028,-0.035,-0.01,FALSE,1275,-0.119,12518,10222 + 12506,TRUE
+buy,7,David Njoku + Zach Charbonnet,Harold Fannin,2808,2799,-9,0.033,0.017,-0.117,0,FALSE,983,0.382,4033 + 9753,12506,FALSE
+buy,7,Kimani Vidal + Zach Charbonnet,Harold Fannin,2817,2799,-18,-0.033,-0.017,-0.05,0,FALSE,1361,0.292,11647 + 9753,12506,FALSE
+buy,8,Dalton Kincaid + Patrick Mahomes,Kenneth Walker,4763,4656,-107,0.483,0.083,-0.783,-0.15,FALSE,78,0.287,10236 + 4046,8151,FALSE
+buy,8,Tyler Warren + Kevin Coleman,Kenneth Walker,4716,4656,-60,0.65,0.083,-0.7,-0.167,FALSE,69,0.269,12518 + 13338,8151,FALSE
+buy,4,Kimani Vidal + Khalil Shakir,Bhayshul Tuten,2511,2442,-69,0.217,0.017,-0.317,-0.017,FALSE,823,0.088,11647 + 8134,12490,FALSE
+buy,8,Kimani Vidal + Tyler Warren,James Cook,5447,5433,-14,0.6,0.083,-0.45,-0.167,FALSE,-70,0.015,11647 + 12518,8138,FALSE
+buy,11,Kimani Vidal + Jauan Jennings,Chuba Hubbard,2155,2049,-106,0.217,0.033,-0.067,-0.1,FALSE,546,-0.028,11647 + 7049,7594,FALSE
+sell Tee Higgins,2,David Njoku + Tee Higgins,Nico Collins,4334,4154,-180,0.1,0.05,0.133,0.05,TRUE,311,-0.068,4033 + 6801,7569,FALSE
+buy & sell CeeDee Lamb,2,Jakobi Meyers + CeeDee Lamb,Ashton Jeanty,7949,7920,-29,0.2,-0.033,0.133,0.083,TRUE,1371,-0.079,5947 + 6786,12527,FALSE
+buy,8,Tyler Warren + Michael Trigg,Kenneth Walker,4656,4656,0,0.65,0.083,-0.717,-0.167,FALSE,-155,-0.141,12518 + 13401,8151,FALSE
+sell Tee Higgins,2,Eli Raridon + Tee Higgins,Nico Collins,4189,4154,-35,0.117,0.05,0.133,0.033,TRUE,252,-0.177,13421 + 6801,7569,FALSE
+buy,8,Tyler Warren + Trevor Etienne,Kenneth Walker,4756,4656,-100,0.633,0.083,-0.683,-0.133,FALSE,-180,-0.187,12518 + 12531,8151,FALSE
+buy,4,Kimani Vidal + Jakobi Meyers,Bhayshul Tuten,2589,2442,-147,0.183,0.017,-0.15,0.05,FALSE,665,-0.2,11647 + 5947,12490,FALSE
+buy,12,Tyler Shough + Drake London,Jeremiyah Love,7668,7452,-216,-0.067,0,-0.083,-0.067,FALSE,843,-0.266,12545 + 8112,13287,FALSE
+buy,8,Tyler Warren + Jauan Jennings,James Cook,5484,5433,-51,0.583,0.067,-0.4,-0.167,FALSE,-52,-0.343,12518 + 7049,8138,FALSE
+sell CeeDee Lamb,2,Tyler Shough + CeeDee Lamb,Ashton Jeanty,8209,7920,-289,-0.033,-0.033,0.367,0.083,FALSE,1190,-0.41,12545 + 6786,12527,FALSE
+sell Tee Higgins,2,Tee Higgins + Jauan Jennings,Nico Collins,4380,4154,-226,0,0,0.217,0.05,FALSE,706,-0.516,6801 + 7049,7569,FALSE
+sell CeeDee Lamb,2,Nicholas Singleton + CeeDee Lamb,Ashton Jeanty,8209,7920,-289,0.183,-0.017,0.117,0.083,TRUE,857,-0.631,13288 + 6786,12527,FALSE
+sell Tee Higgins,10,Kimani Vidal + Tee Higgins,Chase Brown,4343,4235,-108,0.3,0.033,-0.217,-0.05,FALSE,200,-0.661,11647 + 6801,9224,FALSE
+sell Patrick Mahomes,2,Patrick Mahomes + Courtland Sutton,Nico Collins,4557,4154,-403,0.033,0,0.117,-0.017,TRUE,87,-1.65,4046 + 5045,7569,FALSE

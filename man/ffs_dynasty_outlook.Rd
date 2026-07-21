@@ -62,8 +62,15 @@ interval under-dispersion; leaves 1qb unchanged. Default \code{TRUE} (option
 a dataframe: one row per rostered player with \code{dyn_rank} (market-value
 ordering when real values are supplied, else FantasyPros dynasty rank),
 \code{fp_dyn_rank} (FantasyPros dynasty rank for reference), current value/age
-plus the post-season value distribution (mean, p10, p90, P(value rises),
-P(exits rankings)); franchise totals are trivially \code{aggregate()}-able from it
+plus the post-season value distribution (mean, median, p10, p90,
+P(value rises), P(exits rankings)); franchise totals are trivially
+\code{aggregate()}-able from it. Prefer \code{next_value_med} for per-player
+trajectory reads (exp_change): the rank->value curve is convex, so the
+MEAN is inflated by the draw spread (Jensen) - the 11-holdout backtest
+finds the mean overstates realized value change (QB worst, ~+50pts) while
+the value-draw distribution itself is calibrated, making the median
+~unbiased. The mean remains the right statistic for additive capital
+totals (portfolio sums, package comparisons).
 }
 \description{
 (EXPERIMENTAL) For every rostered player in a simulation, projects the

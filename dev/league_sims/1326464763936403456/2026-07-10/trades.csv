@@ -1,0 +1,41 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy,2,Kimani Vidal + Tee Higgins,Nico Collins,4312,4190,-122,0.12,0.035,-0.053,-0.025,FALSE,1098,1.21,11647 + 6801,7569,TRUE
+sell Tee Higgins,2,Kimani Vidal + Tee Higgins,Nico Collins,4312,4190,-122,0.12,0.035,-0.053,-0.025,FALSE,1098,1.21,11647 + 6801,7569,TRUE
+buy,8,Tyler Warren,Kenneth Walker,4315,4594,279,0.38,0.075,-0.367,-0.057,FALSE,249,0.918,12518,8151,TRUE
+buy,7,Nicholas Singleton + David Njoku,Harold Fannin,2779,2768,-11,0,0.012,-0.155,-0.02,FALSE,1250,0.81,13288 + 4033,12506,TRUE
+buy,7,Kimani Vidal + Tyler Shough,Harold Fannin,2863,2768,-95,-0.22,-0.028,0.185,0.032,FALSE,1879,0.721,11647 + 12545,12506,TRUE
+buy,8,Tyler Warren + DeMario Douglas,Kenneth Walker,4630,4594,-36,0.38,0.077,-0.335,-0.052,FALSE,17,0.59,12518 + 9501,8151,TRUE
+buy,7,Tyler Shough + David Njoku,Harold Fannin,2787,2768,-19,-0.147,-0.01,0.065,0.032,FALSE,1432,0.464,12545 + 4033,12506,TRUE
+sell Omar Cooper,2,Omar Cooper + Drake London,Ashton Jeanty,8004,7946,-58,0.135,0.068,0.025,-0.022,TRUE,97,0.435,13276 + 8112,12527,TRUE
+sell Tyler Shough,3,Tyler Shough,Ricky Pearsall,1796,1863,67,-0.037,0.01,0.045,0.018,FALSE,873,0.084,12545,11638,TRUE
+sell Tyler Shough,1,Tyler Shough,Oronde Gadsden,1796,1791,-5,-0.125,-0.018,-0.215,-0.03,FALSE,1186,-0.183,12545,12493,TRUE
+sell Tyler Shough,1,Tyler Shough + Phil Mafah,Oronde Gadsden,1822,1791,-31,-0.143,-0.02,-0.177,-0.022,FALSE,1145,-0.328,12545 + 12738,12493,TRUE
+sell Tyler Shough,1,Tyler Shough + KeAndre Lambert-Smith,Oronde Gadsden,1898,1791,-107,-0.143,-0.018,-0.215,-0.027,FALSE,1096,-0.339,12545 + 12670,12493,TRUE
+sell Tyler Shough,1,Emari Demercado + Tyler Shough,Oronde Gadsden,1926,1791,-135,-0.147,-0.025,-0.207,-0.03,FALSE,1105,-0.544,11199 + 12545,12493,TRUE
+sell Omar Cooper,8,Omar Cooper,Brock Purdy,2170,2369,199,0.075,0.012,-0.14,-0.027,FALSE,-5,-1.361,13276,8183,TRUE
+sell Emeka Egbuka,1,Emeka Egbuka,Oronde Gadsden + Jaxson Dart,4515,4606,91,-0.02,-0.023,-0.2,-0.027,FALSE,413,-1.668,12514,12493 + 12508,TRUE
+sell Tee Higgins,2,David Njoku + Tee Higgins,Nico Collins,4236,4190,-46,0.1,0.05,0.133,0.05,TRUE,652,0.88,4033 + 6801,7569,FALSE
+buy,8,Tyler Warren + Trevor Etienne,Kenneth Walker,4636,4594,-42,0.633,0.083,-0.683,-0.133,FALSE,60,0.836,12518 + 12531,8151,FALSE
+buy,2,Tre Tucker + Tee Higgins,Nico Collins,4364,4190,-174,0.017,0.017,0.133,0.067,TRUE,1067,0.616,10213 + 6801,7569,FALSE
+sell Tee Higgins,2,Tre Tucker + Tee Higgins,Nico Collins,4364,4190,-174,0.017,0.017,0.133,0.067,TRUE,1067,0.616,10213 + 6801,7569,FALSE
+buy,4,Drake London,De'Von Achane,5834,6294,460,0.067,0.067,-0.267,0.033,FALSE,203,0.593,8112,9226,FALSE
+sell Tee Higgins,10,Tre Tucker + Tee Higgins,Chase Brown,4364,4268,-96,0.25,0.05,-0.183,0,FALSE,456,0.54,10213 + 6801,9224,FALSE
+buy,12,Tyler Shough + Drake London,Jeremiyah Love,7630,7454,-176,-0.067,0,-0.083,-0.067,FALSE,1266,0.47,12545 + 8112,13287,FALSE
+buy,7,Tre Tucker + Zach Charbonnet,Harold Fannin,2919,2768,-151,0.017,0,0.1,0,TRUE,1160,0.287,10213 + 9753,12506,FALSE
+buy,5,Kimani Vidal + Nicholas Singleton,Josh Jacobs,2855,2830,-25,0.433,0.067,-0.2,0.017,FALSE,2,0.244,11647 + 13288,5850,FALSE
+buy,7,Kimani Vidal + Nicholas Singleton,Harold Fannin,2855,2768,-87,-0.017,-0.033,-0.083,0,FALSE,1696,0.233,11647 + 13288,12506,FALSE
+buy,2,Tyler Warren,Nico Collins,4315,4190,-125,0.367,0.033,-0.417,-0.1,FALSE,525,0.168,12518,7569,FALSE
+sell Tee Higgins,10,Kimani Vidal + Tee Higgins,Chase Brown,4312,4268,-44,0.3,0.033,-0.217,-0.05,FALSE,487,0.103,11647 + 6801,9224,FALSE
+buy,2,Tyler Warren + Phil Mafah,Nico Collins,4341,4190,-151,0.433,0.033,-0.35,-0.067,FALSE,483,0.096,12518 + 12738,7569,FALSE
+buy,5,Kimani Vidal + Tyler Shough,Josh Jacobs,2863,2830,-33,0.333,0.05,-0.15,0,FALSE,184,0.07,11647 + 12545,5850,FALSE
+buy,2,Emari Demercado + Tyler Warren,Nico Collins,4445,4190,-255,0.3,0.033,-0.35,-0.083,FALSE,444,0.028,11199 + 12518,7569,FALSE
+buy,5,Tre Tucker + Tyler Shough,Josh Jacobs,2915,2830,-85,0.267,0.05,-0.117,0.017,FALSE,153,0.015,10213 + 12545,5850,FALSE
+buy,2,Tyler Warren + KeAndre Lambert-Smith,Nico Collins,4417,4190,-227,0.383,0.033,-0.4,-0.1,FALSE,435,0.013,12518 + 12670,7569,FALSE
+buy,8,Tyler Warren + KeAndre Lambert-Smith,Breece Hall,4417,4354,-63,0.417,0.05,-0.517,-0.083,FALSE,147,0.006,12518 + 12670,8155,FALSE
+sell Omar Cooper,10,Omar Cooper,Terry McLaurin,2170,2157,-13,0.317,0.067,-0.717,-0.183,FALSE,-307,-0.289,13276,5927,FALSE
+sell Omar Cooper,10,Phil Mafah + Omar Cooper,Terry McLaurin,2196,2157,-39,0.333,0.067,-0.717,-0.167,FALSE,-348,-0.361,12738 + 13276,5927,FALSE
+sell Emeka Egbuka,8,Emeka Egbuka,Kenneth Walker,4515,4594,79,0.45,0.05,-0.483,-0.117,FALSE,-442,-1.014,12514,8151,FALSE
+sell Emeka Egbuka,1,Emeka Egbuka + Trevor Etienne,Carnell Tate,4836,4408,-428,0.05,0,0.117,-0.033,TRUE,163,-1.438,12514 + 12531,13279,FALSE
+sell Emeka Egbuka,1,Emeka Egbuka + DeMario Douglas,Carnell Tate,4830,4408,-422,0.117,0,0.033,0,TRUE,120,-1.513,12514 + 9501,13279,FALSE
+sell Emeka Egbuka,1,Emeka Egbuka,Carnell Tate,4515,4408,-107,0.083,-0.017,0.067,-0.017,TRUE,352,-1.603,12514,13279,FALSE
+sell Omar Cooper,2,Kyle Monangai + Omar Cooper,Nico Collins,4264,4190,-74,0.183,0,-0.15,-0.05,FALSE,59,-1.618,12534 + 13276,7569,FALSE

@@ -1,0 +1,34 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score
+buy,10,Colston Loveland,Christian McCaffrey,4596,4500,-96,0.733,0.167,-0.767,-0.333,FALSE,-1739,1.637
+buy,8,Colston Loveland + Nicholas Singleton,James Cook,5903,5585,-318,0.7,0.167,-0.467,-0.067,FALSE,-1846,1.637
+buy,5,Nicholas Singleton + Courtland Sutton,Josh Jacobs,2833,2818,-15,0.7,0.167,-0.3,-0.067,FALSE,-692,1.637
+buy,5,Dalton Kincaid + Nicholas Singleton,Josh Jacobs,3041,2818,-223,0.7,0.133,-0.333,-0.033,FALSE,-1176,0.893
+buy,5,Dalton Kincaid + Khalil Shakir,Josh Jacobs,3184,2818,-366,0.7,0.133,-0.3,0,FALSE,-1177,0.893
+buy,5,Nicholas Singleton + Zach Charbonnet,Josh Jacobs,3106,2818,-288,0.633,0.133,-0.333,-0.033,FALSE,-1201,0.893
+buy,5,Dalton Kincaid + Jauan Jennings,Josh Jacobs,2832,2818,-14,0.633,0.133,-0.4,0.033,FALSE,-819,0.893
+buy,8,Colston Loveland + Khalil Shakir,James Cook,6046,5585,-461,0.633,0.133,-0.3,-0.067,FALSE,-1847,0.893
+buy,5,Tre Tucker + Dalton Kincaid,Josh Jacobs,2860,2818,-42,0.633,0.133,-0.3,0,FALSE,-331,0.893
+buy,5,Jakobi Meyers + Khalil Shakir,Josh Jacobs,2959,2818,-141,0.6,0.133,-0.467,-0.067,FALSE,-722,0.893
+buy,8,Kimani Vidal + Colston Loveland,James Cook,5655,5585,-70,0.6,0.133,-0.4,-0.167,FALSE,-1061,0.893
+buy,4,Jauan Jennings + Khalil Shakir,Bhayshul Tuten,2548,2431,-117,0.467,0.133,-0.2,0,FALSE,157,0.893
+buy,5,Kimani Vidal + Zach Charbonnet,Josh Jacobs,2858,2818,-40,0.467,0.133,-0.433,-0.033,FALSE,-415,0.893
+buy,4,Dalton Kincaid + Eli Raridon,Bhayshul Tuten,2556,2431,-126,0.433,0.133,-0.467,0.067,FALSE,-577,0.893
+buy,10,Savion Williams + Colston Loveland,Christian McCaffrey,4773,4500,-273,0.733,0.1,-0.767,-0.2,FALSE,-1901,0.149
+buy,10,Colston Loveland + Phil Mafah,Christian McCaffrey,4653,4500,-153,0.733,0.1,-0.733,-0.233,FALSE,-1784,0.149
+buy,10,Colston Loveland + Michael Trigg,Christian McCaffrey,4970,4500,-470,0.733,0.1,-0.767,-0.2,FALSE,-2095,0.149
+buy,8,Colston Loveland + Zach Charbonnet,James Cook,6395,5585,-810,0.7,0.1,-0.467,-0.1,FALSE,-2344,0.149
+buy,10,Colston Loveland + Kevin Coleman,Christian McCaffrey,4918,4500,-418,0.7,0.1,-0.667,-0.233,FALSE,-2149,0.149
+buy,5,Omar Cooper + Nicholas Singleton,Josh Jacobs,3023,2818,-205,0.667,0.1,-0.233,-0.033,FALSE,-1778,0.149
+sell Zach Charbonnet,8,Tyler Warren + Zach Charbonnet,James Cook,6031,5585,-446,0.467,0.167,-0.433,0,FALSE,-1741,1.956
+sell Zach Charbonnet,8,Tyler Warren + Zach Charbonnet,Jonathan Taylor,6031,5934,-97,0.267,0.133,-0.5,-0.067,FALSE,-1333,1.521
+sell Zach Charbonnet,8,Patrick Mahomes + Zach Charbonnet,Kenneth Walker,4852,4534,-318,0.7,0.1,-0.7,-0.067,FALSE,-285,1.087
+sell Zach Charbonnet,1,Sam Roush + Zach Charbonnet,Michael Wilson,1993,1981,-12,0.067,0.1,0,0.1,FALSE,-450,1.087
+sell Zach Charbonnet,8,Jarquez Hunter + Zach Charbonnet,Davante Adams,1985,1921,-64,0.033,0.1,-0.533,-0.133,FALSE,-871,1.087
+sell Tyler Shough,4,Tyler Shough + Eli Raridon,Bhayshul Tuten,2570,2431,-140,0.233,0.1,-0.333,0,FALSE,99,1.155
+sell Tyler Shough,4,Tyler Shough + David Njoku,Bhayshul Tuten,2729,2431,-298,0.233,0.067,-0.133,0,FALSE,332,-0.577
+sell Tyler Shough,4,Trey Benson + Tyler Shough,Bhayshul Tuten,2643,2431,-212,0.233,0.067,-0.267,0,FALSE,495,-0.577
+sell Dalton Kincaid,8,Dalton Kincaid + Colston Loveland,James Cook,6330,5585,-745,0.667,0.133,-0.3,0,FALSE,-2320,1.889
+sell Dalton Kincaid,8,Dalton Kincaid,Davante Adams,1734,1921,187,0.233,0.133,-0.667,-0.033,FALSE,-427,1.889
+sell Dalton Kincaid,8,Dalton Kincaid + Patrick Mahomes,Kenneth Walker,4787,4534,-253,0.633,0.1,-0.567,-0.2,FALSE,-261,1.345
+sell Dalton Kincaid,8,Dalton Kincaid + Colston Loveland,Jonathan Taylor,6330,5934,-396,0.567,0.1,-0.533,-0.067,FALSE,-1912,1.345
+sell Dalton Kincaid,9,Dalton Kincaid,Blake Corum,1734,1855,121,0.3,0.1,-0.167,0,FALSE,-147,1.345

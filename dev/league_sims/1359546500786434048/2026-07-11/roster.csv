@@ -1,0 +1,28 @@
+player_name,pos,age,cur_value,exp_change,trend_pct,p_rise,p_exit,value_to_me,playoff_delta_me,war_per_1k,swing,mean_weeks_started,pos_depth_rank,trajectory,verdict,bust_flag,best_buyers,player_id
+Puka Nacua,WR,25.1,8547,-0.152,-0.028,0.105,0,0.963,0.213,0.109,34.962,11.505,1,holding,CORE (wins + value),FALSE,,9493
+Justin Jefferson,WR,27.1,6981,-0.193,-0.008,0.165,0,0.89,0.175,0.121,33.717,11.623,2,holding,CORE (wins + value),FALSE,,6794
+Tetairoa McMillan,WR,23.3,4983,0.024,0.03,0.382,0,0.633,0.123,0.119,26.714,11.518,3,holding,CORE (wins + value),FALSE,,12526
+Carnell Tate,WR,21.5,4538,-0.007,,0.49,0,0.375,0.09,0.082,20.72,9.727,4,holding,CORE (wins + value),FALSE,,13279
+Jordyn Tyson,WR,21.9,3600,-0.014,,0.332,0,0.27,0.06,0.075,17.099,8.658,5,holding,CORE (wins + value),FALSE,,13281
+Tyler Shough,QB,26.8,3319,-0.212,-0.001,0.235,0,0.627,0.123,0.185,21.094,9.325,1,declining,"RENTAL (win-now, fading)",FALSE,MacDaddyNation (+0.55w/+13%); Galletti (+0.47w/+15%); theKmbl (+0.45w/+7%),12545
+Harold Fannin,TE,22,3155,0.05,-0.077,0.29,0,0.268,0.06,0.083,3.486,8.51,1,holding,CORE (wins + value),FALSE,,12506
+Daniel Jones,QB,29.1,2501,-0.249,0,0.345,0,0.433,0.093,0.173,41.157,6.925,3,declining,"RENTAL (win-now, fading)",FALSE,MacDaddyNation (+0.52w/+8%); G baby ladies  (+0.38w/+5%); CrashOutChris'Kickoff (+0.28w/+7%),5870
+Malik Willis,QB,27.1,2456,-0.169,0.048,0.47,0,0.49,0.125,0.192,25.362,8.69,2,holding,CORE (wins + value),FALSE,,8161
+Ty Simpson,QB,23.6,2323,-0.295,,0.272,0,0.058,0.01,0.069,1.497,1.308,4,declining,SELL (fading),FALSE,mjmx3 (+0.10w/+3%); MacDaddyNation (+0.07w/-2%); G baby ladies  (+0.05w/+0%),13275
+George Kittle,TE,32.8,2119,-0.381,0.076,0.085,0.165,0.143,0.04,0.07,4.157,6.28,2,declining,"RENTAL (win-now, fading)",FALSE,Chase'n Purdy Strange (+0.23w/+3%); MacDaddyNation (+0.22w/+3%); mkbarz (+0.18w/+2%),4217
+Denzel Boston,WR,22.6,2068,0.068,,0.365,0.02,0.1,0.008,0.058,1.793,3.433,6,holding,TRADE CHIP (surplus),FALSE,,13346
+Tony Pollard,RB,29.2,1580,-0.411,0.017,0.158,0,0.385,0.085,0.2,22.879,8.3,1,declining,"RENTAL (win-now, fading)",FALSE,,5967
+Dallas Goedert,TE,31.5,1467,-0.292,0.018,0.155,0,0.135,0.023,0.086,-9.061,5.12,3,declining,"RENTAL (win-now, fading)",FALSE,,5022
+Aaron Jones,RB,31.6,1294,-0.553,-0.015,0.07,0,0.322,0.085,0.197,16.489,7.495,2,declining,"RENTAL (win-now, fading)",FALSE,,4199
+Chris Rodriguez,RB,26.8,1287,-0.244,0.028,0.29,0.045,0.167,0.035,0.13,6.145,4.7,3,declining,"RENTAL (win-now, fading)",FALSE,,10219
+Mike Washington,RB,23,1127,-0.289,,0.228,0,0.082,0.018,0.1,18.088,2.775,5,declining,SELL (fading),FALSE,,13305
+MarShawn Lloyd,RB,25.5,1097,-0.298,0.039,0.225,0.01,0.042,0.01,0.082,-1.806,1.327,7,declining,SELL (fading),FALSE,,11581
+Jack Bech,WR,23.6,1086,-0.282,-0.023,0.278,0.015,0.042,0.013,0.057,1.836,1.4,8,declining,SELL (fading),FALSE,,12483
+Eli Raridon,TE,22.4,1020,-0.114,,0.362,0,0,0,0.038,-0.3,0.458,4,holding,TRADE CHIP (surplus),FALSE,,13421
+Kaelon Black,RB,24.7,1008,-0.185,,0.345,0,0.03,0.003,0.08,0.252,1.072,8,holding,TRADE CHIP (surplus),FALSE,,13414
+Calvin Ridley,WR,31.6,716,-0.708,-0.236,0,0.007,0.055,0.013,0.077,-3.631,2.628,7,declining,SELL (fading),FALSE,,4981
+Isaiah Bond,WR,22.3,627,-0.276,0.105,0.265,0.04,0.032,0.015,0.067,3.657,1.035,9,declining,SELL (fading),FALSE,,12503
+Emanuel Wilson,RB,27.2,562,-0.473,-0.246,0.192,0.032,0.13,0.025,0.167,1.97,3.07,4,declining,"RENTAL (win-now, fading)",FALSE,,11435
+Taylen Green,QB,23.7,427,-0.321,,0.115,0.178,0.015,0.008,0.132,-0.399,0.422,5,declining,SELL (fading),FALSE,,13306
+Tahj Brooks,RB,24.2,328,-0.008,-0.357,0.295,0.098,0.013,-0.002,0.107,4.55,1.025,9,holding,hold,FALSE,,12543
+Najee Harris,RB,28.4,293,-0.63,-0.177,0.06,0.18,0.08,0.018,0.163,-1.437,1.61,6,declining,SELL (fading),FALSE,,7528

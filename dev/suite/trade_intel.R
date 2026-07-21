@@ -152,21 +152,27 @@ if (!is.null(dyn_vals)) {
 } else {
   d[, `:=`(redraft_value = NA_real_, trend_30day = NA_real_, tier = NA_integer_)]
 }
+# trajectory reads use the MEDIAN simulated next value: the rank->value curve
+# is convex, so the mean is Jensen-inflated by the draw spread (backtest: mean
+# exp_change overstates realized change, QB worst ~+50pts, while the value
+# distribution itself is calibrated -> median ~unbiased). The mean stays for
+# additive capital totals (portfolio sums, trade packages, mkt_winnow).
+if (!"next_value_med" %in% names(d)) d[, next_value_med := next_value_mean]
 d[, `:=`(
-  exp_change    = next_value_mean / cur_value - 1,  # model's expected value move
+  exp_change    = next_value_med / cur_value - 1,   # model's typical value move
   trend_pct     = trend_30day / cur_value,          # market's recent move
   redraft_ratio = redraft_value / cur_value         # market win-now $ per dynasty $
 )]
 # position-level incumbent drift (capital-weighted): the baseline every
-# trajectory statement is measured against
+# trajectory statement is measured against (median-based, matching exp_change)
 pos_drift_tbl <- d[!is.na(cur_value) & cur_value > 0,
-                   list(pos_drift = sum(next_value_mean) / sum(cur_value) - 1), by = pos]
+                   list(pos_drift = sum(next_value_med) / sum(cur_value) - 1), by = pos]
 d <- merge(d, pos_drift_tbl, by = "pos", all.x = TRUE)
-d[is.na(pos_drift), pos_drift := sum(d$next_value_mean, na.rm = TRUE) /
+d[is.na(pos_drift), pos_drift := sum(d$next_value_med, na.rm = TRUE) /
     sum(d$cur_value, na.rm = TRUE) - 1]
 d[, `:=`(
   rel_change = (1 + exp_change) / (1 + pos_drift) - 1,  # move vs position drift
-  growth_abs = next_value_mean - cur_value * (1 + pos_drift)  # $ added vs drift
+  growth_abs = next_value_med - cur_value * (1 + pos_drift)  # $ added vs drift
 )]
 
 # end-of-roster shrinkage: wins-per-1k$ explodes at small denominators, so pull
@@ -203,6 +209,9 @@ shrink_ratio <- function(raw, cur_value, pos) {
 # Future assets (mkt_winnow<=0) get NA: judge them on retention/exp_change.
 fit_residual_cols <- function(dt, valcol, coef) {
   d <- data.table::as.data.table(data.table::copy(dt))
+  # deliberately MEAN-based: mkt_winnow is a capital decomposition (cur minus
+  # expected future store), and the fit_residual regression absorbs any
+  # systematic level shift across players anyway
   d[, mkt_winnow := cur_value - next_value_mean]
   fr <- rep(NA_real_, nrow(d))
   wn <- which(d$mkt_winnow > 0 & is.finite(d[[valcol]]))
@@ -231,7 +240,8 @@ names_v <- unique(rs_v[, list(player_id = as.character(player_id), player_name, 
 roster <- merge(roster, names_v, by = "player_id", all.x = TRUE)
 roster <- merge(
   roster,
-  d[, list(player_id, age, cur_value, next_value_mean, next_value_p10, next_value_p90,
+  d[, list(player_id, age, cur_value, next_value_mean, next_value_med,
+           next_value_p10, next_value_p90,
            p_rise, p_exit, exp_change, rel_change, pos_drift, trend_pct,
            redraft_ratio, tier)],
   by = "player_id", all.x = TRUE
@@ -377,12 +387,13 @@ targets <- data.table::as.data.table(ffs_trade_targets(vsim, me, top_n = trade_t
 targets[, player_id := as.character(player_id)]
 tg <- merge(
   targets,
-  d[, list(player_id, age, franchise_name, cur_value, next_value_mean, p_rise, p_exit,
+  d[, list(player_id, age, franchise_name, cur_value, next_value_mean, next_value_med,
+           p_rise, p_exit,
            exp_change, rel_change, trend_pct, redraft_ratio, growth_abs, tier)],
   by = "player_id", all.x = TRUE
 )
 tg <- tg[!is.na(cur_value) & cur_value > 0]
-tg[, retention := next_value_mean / cur_value]
+tg[, retention := next_value_med / cur_value]
 tg[, wins_per_1k := shrink_ratio(value_to_you / (cur_value / 1000), cur_value, pos)]
 tg[, gettable := surplus > 0]
 tg[, fade_flag := !is.na(trend_pct) & le(rel_change, TH$fade) & trend_pct >= 0]

@@ -57,8 +57,15 @@
 #' @return a dataframe: one row per rostered player with `dyn_rank` (market-value
 #'   ordering when real values are supplied, else FantasyPros dynasty rank),
 #'   `fp_dyn_rank` (FantasyPros dynasty rank for reference), current value/age
-#'   plus the post-season value distribution (mean, p10, p90, P(value rises),
-#'   P(exits rankings)); franchise totals are trivially `aggregate()`-able from it
+#'   plus the post-season value distribution (mean, median, p10, p90,
+#'   P(value rises), P(exits rankings)); franchise totals are trivially
+#'   `aggregate()`-able from it. Prefer `next_value_med` for per-player
+#'   trajectory reads (exp_change): the rank->value curve is convex, so the
+#'   MEAN is inflated by the draw spread (Jensen) - the 11-holdout backtest
+#'   finds the mean overstates realized value change (QB worst, ~+50pts) while
+#'   the value-draw distribution itself is calibrated, making the median
+#'   ~unbiased. The mean remains the right statistic for additive capital
+#'   totals (portfolio sums, package comparisons).
 #'
 #' @export
 ffs_dynasty_outlook <- function(base_simulation,
@@ -269,6 +276,7 @@ ffs_dynasty_outlook <- function(base_simulation,
     n_sims = .N,
     cur_value = cur_value[[1]],
     next_value_mean = mean(next_value),
+    next_value_med = stats::median(next_value),
     next_value_p10 = stats::quantile(next_value, .10),
     next_value_p90 = stats::quantile(next_value, .90),
     p_rise = mean(next_value > cur_value),
@@ -466,6 +474,29 @@ ffs_dynasty_outlook <- function(base_simulation,
 #' over-predicts superflex exits. `NULL` (default) uses `transitions` for both,
 #' so 1qb leagues and every other caller are unchanged.
 #'
+#' `move_slope` / `move_bias` (optional named per-position vectors, e.g.
+#' `c(QB = 0.35, RB = 0.5)` / `c(RB = -1)`): point-prediction recalibration.
+#' The multi-holdout backtest finds the regression slope of actual on
+#' predicted rank move < 1 at every position (predicted move magnitudes too
+#' extreme - regression to the mean not fully captured by the kernel
+#' resample). The correction shifts each draw's CENTER: the kernel-weighted
+#' mean move `dbar` becomes `move_slope * dbar + move_bias` (delta space,
+#' positive = rank number grows = decline) while the dispersion around it is
+#' left to `disp_factor`. Enabled by default with constants fit on material
+#' players (value >= 150) across all 11 holdouts, leave-one-holdout-out
+#' stable: `move_slope = c(QB = .48, RB = .76, WR = .64, TE = .51)`,
+#' `move_bias = c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5)`. On the
+#' confirmation backtest this lifts the material actual~predicted move slope
+#' from 0.48-0.76 to 0.56-0.89, cuts the user-facing exp_change optimism
+#' (WR +22% -> +6% predicted vs -5% realized; TE +32% -> +8%), improves or
+#' holds MAE, and moves material cover80 from over-coverage (0.84-0.91)
+#' toward nominal (0.81-0.91) - see
+#' dev/validate_outputs/dynasty_point_calibration.txt. Stronger constants
+#' saturate (the summarized median stops responding under the rank-1
+#' truncation) and degrade value-space slope, so this is the calibrated
+#' dose, not a partial one. Pass `NULL` to disable; positions absent from
+#' the vector get slope 1 / bias 0.
+#'
 #' `disp_factor` (optional named per-position vector, e.g.
 #' `c(QB = 1.7, TE = 1.4, WR = 1.2, RB = 1.1)`): widens each survivor's rank
 #' move around its weighted-mean move by the position's factor, correcting the
@@ -496,7 +527,11 @@ ffs_dynasty_outlook <- function(base_simulation,
                                  exit_broad_age = getOption("ffsimulator.dyn_exit_broad_age", 3),
                                  exit_transitions = NULL,
                                  disp_factor = getOption("ffsimulator.dyn_disp_factor",
-                                                         c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11))) {
+                                                         c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)),
+                                 move_slope = getOption("ffsimulator.dyn_move_slope",
+                                                        c(QB = 0.48, RB = 0.76, WR = 0.64, TE = 0.51)),
+                                 move_bias = getOption("ffsimulator.dyn_move_bias",
+                                                       c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5))) {
   tr <- transitions
   n <- length(pos)
   next_pos_rank <- numeric(n)
@@ -543,7 +578,8 @@ ffs_dynasty_outlook <- function(base_simulation,
     if (!is.null(prev_delta))  w <- kern(w, cand$prev_delta,  prev_delta[i],  h_momentum)
     if (!is.null(ecr_sd))      w <- kern(w, cand$sd,          ecr_sd[i],      h_sd)
     if (sum(w) == 0) w <- pmax(0.001, 1 - abs(cand$pos_rank - dyn_pos_rank[i]) / (h_rank * 4))
-    if (exit_shrink <= 0 && is.null(exit_transitions)) {
+    if (exit_shrink <= 0 && is.null(exit_transitions) &&
+        is.null(move_slope) && is.null(move_bias)) {
       # default path (unchanged): one draw, inherit its exit flag - keep the
       # exact RNG stream so backtest defaults are untouched
       pick <- cand[sample.int(nrow(cand), 1, prob = w)]
@@ -611,10 +647,13 @@ ffs_dynasty_outlook <- function(base_simulation,
         # (backtest-calibrated to cover80 ~ 0.80); mean is preserved so medians
         # don't shift. NULL/1 = no widening (default off until calibrated).
         fp <- if (!is.null(disp_factor) && pos[i] %in% names(disp_factor)) disp_factor[[pos[i]]] else 1
-        if (fp != 1) {
+        ms <- if (!is.null(move_slope) && pos[i] %in% names(move_slope)) move_slope[[pos[i]]] else 1
+        mb <- if (!is.null(move_bias) && pos[i] %in% names(move_bias)) move_bias[[pos[i]]] else 0
+        if (fp != 1 || ms != 1 || mb != 0) {
           sdelta <- cand$next_pos_rank - cand$pos_rank
           dbar <- sum(ws * sdelta, na.rm = TRUE) / sum(ws)
-          delta <- dbar + fp * (delta - dbar)
+          # recalibrated center + widened dispersion around it
+          delta <- (ms * dbar + mb) + fp * (delta - dbar)
         }
         next_pos_rank[i] <- max(1, dyn_pos_rank[i] + delta)
       }

@@ -1,0 +1,31 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy,9,Tyler Warren,Woody Marks + Zay Flowers,4293,4794,501,0.202,0.032,-0.27,-0.047,FALSE,646,0.92,12518,12474 + 9997,TRUE
+buy,4,Tre Tucker + Jauan Jennings,RJ Harvey,2115,1994,-121,0.178,0.035,-0.237,-0.047,FALSE,607,0.903,10213 + 7049,12489,TRUE
+buy,4,Kimani Vidal + Jauan Jennings,RJ Harvey,2166,1994,-172,0.117,0.013,-0.197,-0.03,FALSE,826,0.731,11647 + 7049,12489,TRUE
+buy,4,Dalton Kincaid + Jauan Jennings,Bhayshul Tuten,2777,2540,-237,0.133,0.045,-0.133,-0.035,FALSE,402,0.73,10236 + 7049,12490,TRUE
+buy,4,Tre Tucker + Dalton Kincaid,Bhayshul Tuten,2746,2540,-206,0.2,0.062,-0.248,-0.037,FALSE,103,0.56,10213 + 10236,12490,TRUE
+buy,4,Dalton Kincaid + Kimani Vidal,Bhayshul Tuten,2797,2540,-257,0.172,0.042,-0.188,-0.032,FALSE,322,0.464,10236 + 11647,12490,TRUE
+buy,4,Tre Tucker + Kimani Vidal,RJ Harvey,2135,1994,-141,0.137,0.013,-0.21,-0.02,FALSE,526,0.029,10213 + 11647,12489,TRUE
+buy,4,Kimani Vidal + David Njoku,RJ Harvey,2099,1994,-105,0.15,0.013,-0.213,-0.027,FALSE,319,-0.455,11647 + 4033,12489,TRUE
+sell Tyler Warren,11,Tyler Warren,Garrett Wilson,4293,4065,-228,0.1,0.01,-0.1,-0.01,FALSE,70,-1.115,12518,8146,TRUE
+sell Tyler Warren,11,Tyler Warren + KeAndre Lambert-Smith,Garrett Wilson,4319,4065,-254,0.092,0.01,-0.098,-0.01,FALSE,1,-1.276,12518 + 12670,8146,TRUE
+sell Patrick Mahomes,2,Dalton Kincaid + Patrick Mahomes,Nico Collins,4741,4286,-455,0.24,0.035,-0.058,-0.005,FALSE,-353,-1.345,10236 + 4046,7569,TRUE
+sell Patrick Mahomes,7,Patrick Mahomes,Jacory Croskey-Merritt + Rachaad White,3037,3327,290,-0.038,0.01,0.008,-0.045,FALSE,-44,-1.383,4046,12533 + 8136,TRUE
+sell Tyler Warren,11,Emari Demercado + Tyler Warren,Garrett Wilson,4438,4065,-373,0.055,0.003,-0.055,0.01,FALSE,15,-1.471,11199 + 12518,8146,TRUE
+sell Tyler Warren,11,Tyler Warren + Phil Mafah,Garrett Wilson,4429,4065,-364,0.09,0.005,-0.058,-0.01,FALSE,-51,-1.551,12518 + 12738,8146,TRUE
+sell Patrick Mahomes,5,Patrick Mahomes,Derrick Henry,3037,2951,-86,0.34,0.025,-0.207,-0.017,FALSE,-684,-2.423,4046,3198,TRUE
+buy,7,Tyler Warren,Jacory Croskey-Merritt + Jadarian Price,4293,4924,631,-0.1,0.05,-0.367,0,FALSE,646,1.452,12518,12533 + 13286,FALSE
+buy,4,Kyle Monangai,RJ Harvey,1970,1994,24,0.267,0.1,-0.15,-0.067,FALSE,-77,1.282,12534,12489,FALSE
+buy,4,Dalton Kincaid + David Njoku,Bhayshul Tuten,2710,2540,-170,0.133,0.083,0.117,0.05,TRUE,-104,1.211,10236 + 4033,12490,FALSE
+buy,4,Colston Loveland,RJ Harvey + Justin Herbert,4614,5130,516,0.083,0.05,-0.533,-0.117,FALSE,538,1.199,12517,12489 + 6797,FALSE
+buy,4,Emari Demercado + Kyle Monangai,RJ Harvey,2115,1994,-121,0.267,0.1,-0.117,-0.067,FALSE,-131,1.155,11199 + 12534,12489,FALSE
+buy,7,Courtland Sutton,Jacory Croskey-Merritt,1515,1601,86,0.133,0.05,0.25,0.017,TRUE,240,1.002,5045,12533,FALSE
+buy,4,Tyler Warren,RJ Harvey + Bhayshul Tuten,4293,4534,241,0.25,0.05,-0.267,0,FALSE,426,0.937,12518,12489 + 12490,FALSE
+buy,4,Dalton Kincaid + Trevor Etienne,RJ Harvey,2124,1994,-130,0.267,0.1,-0.217,-0.117,FALSE,-253,0.869,10236 + 12531,12489,FALSE
+buy,4,Jarquez Hunter + Kyle Monangai,RJ Harvey,2151,1994,-157,0.283,0.1,-0.133,-0.05,FALSE,-277,0.813,11569 + 12534,12489,FALSE
+buy,4,Nicholas Singleton + Jauan Jennings,Bhayshul Tuten,2827,2540,-287,0.1,0.067,-0.133,0,FALSE,152,0.803,13288 + 7049,12490,FALSE
+buy,4,Tre Tucker + Jauan Jennings,Jaylen Warren,2115,1912,-203,0.233,0.05,-0.35,-0.1,FALSE,336,0.725,10213 + 7049,8228,FALSE
+buy,5,Dalton Kincaid + Courtland Sutton,Josh Jacobs,3219,2866,-353,0.433,0.117,0,0,FALSE,-698,0.335,10236 + 5045,5850,FALSE
+sell Tyler Warren,11,Tyler Warren + DeMario Douglas,Garrett Wilson,4517,4065,-452,0.2,0.033,-0.15,-0.05,FALSE,-80,-0.756,12518 + 9501,8146,FALSE
+sell Patrick Mahomes,5,Emari Demercado + Patrick Mahomes,Derrick Henry,3182,2951,-231,0.2,0.067,-0.05,-0.033,FALSE,-738,-1.282,11199 + 4046,3198,FALSE
+sell Patrick Mahomes,5,Emari Demercado + Patrick Mahomes,Josh Jacobs,3182,2866,-316,0.033,0.033,0.033,-0.017,TRUE,-639,-1.564,11199 + 4046,5850,FALSE

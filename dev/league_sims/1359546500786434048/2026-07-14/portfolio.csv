@@ -1,0 +1,22 @@
+metric,group,value
+posture,bubble,0.545
+capital_now,total,60549
+capital_next_mean,total,54306
+capital_next_p10,downside,22590
+capital_next_p90,upside,95739
+value_at_risk,sum(cur*p_exit),722
+top3_concentration,share,0.344
+age_weighted_capital,years,25.5
+capital_by_verdict,CORE (wins + value),39147
+capital_by_verdict,"RENTAL (win-now, fading)",8137
+capital_by_verdict,SELL (fading),6290
+capital_by_verdict,STASH (appreciating),5908
+capital_by_verdict,TRADE CHIP (surplus),1067
+pos_allocation,QB,0
+pos_allocation,RB,0
+pos_allocation,TE,0
+pos_allocation,WR,0
+pos_allocation_league_median,QB,0
+pos_allocation_league_median,RB,0
+pos_allocation_league_median,TE,0
+pos_allocation_league_median,WR,0

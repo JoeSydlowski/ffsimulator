@@ -1,0 +1,22 @@
+metric,group,value
+posture,contend,0.675
+capital_now,total,62186
+capital_next_mean,total,52516
+capital_next_p10,downside,26850
+capital_next_p90,upside,85382
+value_at_risk,sum(cur*p_exit),1522
+top3_concentration,share,0.272
+age_weighted_capital,years,25.6
+capital_by_verdict,hold,37468
+capital_by_verdict,SELL (redundant),17332
+capital_by_verdict,SELL (fade),6423
+capital_by_verdict,depth,538
+capital_by_verdict,HOLD (rising),425
+pos_allocation,WR,0.478
+pos_allocation,TE,0.209
+pos_allocation,RB,0.192
+pos_allocation,QB,0.121
+pos_allocation_league_median,WR,0.43
+pos_allocation_league_median,TE,0.118
+pos_allocation_league_median,RB,0.266
+pos_allocation_league_median,QB,0.113

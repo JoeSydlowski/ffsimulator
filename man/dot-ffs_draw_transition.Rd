@@ -27,7 +27,11 @@
   exit_broad_age = getOption("ffsimulator.dyn_exit_broad_age", 3),
   exit_transitions = NULL,
   disp_factor = getOption("ffsimulator.dyn_disp_factor", c(QB = 1.68, TE = 1.43, WR =
-    1.2, RB = 1.11))
+    1.2, RB = 1.11)),
+  move_slope = getOption("ffsimulator.dyn_move_slope", c(QB = 0.48, RB = 0.76, WR = 0.64,
+    TE = 0.51)),
+  move_bias = getOption("ffsimulator.dyn_move_bias", c(QB = 1.7, RB = 2.4, WR = 4.1, TE =
+    2.5))
 )
 }
 \value{
@@ -80,6 +84,29 @@ movement dispersion but keeps its native (format-specific, ranking-depth)
 exit rate - importing 1qb's higher skill-position exit rates otherwise
 over-predicts superflex exits. \code{NULL} (default) uses \code{transitions} for both,
 so 1qb leagues and every other caller are unchanged.
+
+\code{move_slope} / \code{move_bias} (optional named per-position vectors, e.g.
+\code{c(QB = 0.35, RB = 0.5)} / \code{c(RB = -1)}): point-prediction recalibration.
+The multi-holdout backtest finds the regression slope of actual on
+predicted rank move < 1 at every position (predicted move magnitudes too
+extreme - regression to the mean not fully captured by the kernel
+resample). The correction shifts each draw's CENTER: the kernel-weighted
+mean move \code{dbar} becomes \code{move_slope * dbar + move_bias} (delta space,
+positive = rank number grows = decline) while the dispersion around it is
+left to \code{disp_factor}. Enabled by default with constants fit on material
+players (value >= 150) across all 11 holdouts, leave-one-holdout-out
+stable: \code{move_slope = c(QB = .48, RB = .76, WR = .64, TE = .51)},
+\code{move_bias = c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5)}. On the
+confirmation backtest this lifts the material actual~predicted move slope
+from 0.48-0.76 to 0.56-0.89, cuts the user-facing exp_change optimism
+(WR +22\% -> +6\% predicted vs -5\% realized; TE +32\% -> +8\%), improves or
+holds MAE, and moves material cover80 from over-coverage (0.84-0.91)
+toward nominal (0.81-0.91) - see
+dev/validate_outputs/dynasty_point_calibration.txt. Stronger constants
+saturate (the summarized median stops responding under the rank-1
+truncation) and degrade value-space slope, so this is the calibrated
+dose, not a partial one. Pass \code{NULL} to disable; positions absent from
+the vector get slope 1 / bias 0.
 
 \code{disp_factor} (optional named per-position vector, e.g.
 \code{c(QB = 1.7, TE = 1.4, WR = 1.2, RB = 1.1)}): widens each survivor's rank

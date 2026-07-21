@@ -4,7 +4,14 @@
 \alias{ffs_trade_eval}
 \title{Evaluate a proposed trade}
 \usage{
-ffs_trade_eval(base_simulation, franchise_a, gives_a, franchise_b, gives_b)
+ffs_trade_eval(
+  base_simulation,
+  franchise_a,
+  gives_a,
+  franchise_b,
+  gives_b,
+  fast = TRUE
+)
 }
 \arguments{
 \item{base_simulation}{an \code{ff_simulation} object from \code{ff_simulate(..., return = "all")}}
@@ -14,6 +21,11 @@ ffs_trade_eval(base_simulation, franchise_a, gives_a, franchise_b, gives_b)
 \item{gives_a}{player_ids franchise_a sends to franchise_b (can be empty)}
 
 \item{gives_b}{player_ids franchise_b sends to franchise_a (can be empty)}
+
+\item{fast}{use the exact partial-reoptimisation fast path when the simulation
+used \code{lineup_method = "rank"} (default \code{TRUE}); \code{FALSE} forces the full
+re-optimisation (identical result, slower). The full path is always used for
+efficiency/best-ball sims.}
 }
 \value{
 a two-row dataframe (one per franchise) with before/after and delta

@@ -1,0 +1,33 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy,11,Puka Nacua,Ladd McConkey + Drake London,8583,9674,1091,0.385,0.062,-0.49,-0.095,FALSE,1755,2.54,9493,11635 + 8112,TRUE
+buy,1,Justin Jefferson,Kenneth Walker + Breece Hall,7244,8314,1070,0.205,0.045,-0.35,-0.042,FALSE,1222,1.006,6794,8151 + 8155,TRUE
+sell George Kittle,10,George Kittle,Christian Watson,2152,2227,75,0.242,0.062,-0.353,-0.075,FALSE,792,0.745,4217,8167,TRUE
+buy,11,Puka Nacua,Drake London + Kyren Williams,8583,9304,721,0.395,0.068,-0.493,-0.1,FALSE,594,0.531,9493,8112 + 8150,TRUE
+buy,11,Justin Jefferson,Drake London + Isaiah Likely,7244,7969,725,0.077,0.01,-0.19,-0.057,FALSE,1444,0.336,6794,8112 + 8131,TRUE
+buy,11,Puka Nacua,Ashton Jeanty + Isaiah Likely,8583,9302,719,0.072,0.002,-0.215,-0.032,FALSE,1493,0.193,9493,12527 + 8131,TRUE
+buy,2,Puka Nacua,Joe Burrow + Javonte Williams,8583,9708,1125,0.317,0.047,-0.962,-0.197,FALSE,545,-0.178,9493,6770 + 7588,TRUE
+buy,1,Puka Nacua,Cam Skattebo + CeeDee Lamb,8583,9578,995,0.39,0.06,-0.468,-0.072,FALSE,333,-0.186,9493,12481 + 6786,TRUE
+buy & sell George Kittle,2,MarShawn Lloyd + George Kittle,Javonte Williams,3269,3005,-264,0.423,0.075,-0.292,-0.09,FALSE,73,-0.206,11581 + 4217,7588,TRUE
+buy,7,Justin Jefferson,Justin Herbert + Chuba Hubbard,7244,7710,466,0.173,0.012,-0.303,-0.058,FALSE,1090,-0.247,6794,6797 + 7594,TRUE
+sell Daniel Jones,12,Mike Washington + Daniel Jones,Baker Mayfield,3521,3245,-276,0.19,0.047,-0.17,-0.03,FALSE,173,-0.871,13305 + 5870,4892,TRUE
+sell Dallas Goedert,3,MarShawn Lloyd + Dallas Goedert,Bhayshul Tuten,2539,2359,-180,0.237,0.032,-0.145,-0.003,FALSE,423,-0.871,11581 + 5022,12490,TRUE
+sell Tony Pollard,10,Calvin Ridley + Tony Pollard,Christian Watson,2372,2227,-145,0.03,-0.013,-0.07,-0.03,FALSE,1039,-1.116,4981 + 5967,8167,TRUE
+sell Daniel Jones,12,Kaelon Black + Daniel Jones,Baker Mayfield,3491,3245,-246,0.178,0.032,-0.185,-0.02,FALSE,152,-1.375,13414 + 5870,4892,TRUE
+sell Daniel Jones,12,MarShawn Lloyd + Daniel Jones,Baker Mayfield,3654,3245,-409,0.2,0.032,-0.23,-0.032,FALSE,134,-1.409,11581 + 5870,4892,TRUE
+buy,4,Puka Nacua,Lamar Jackson + Josh Jacobs,8583,9838,1255,0.617,0.1,-0.983,-0.183,FALSE,527,1.413,9493,4881 + 5850,FALSE
+buy,9,Puka Nacua,Jalen Hurts + Chase Brown,8583,9252,669,0.617,0.1,-0.683,-0.133,FALSE,500,1.363,9493,6904 + 9224,FALSE
+buy,7,Justin Jefferson,Bucky Irving + George Pickens,7244,7868,624,0.3,0.05,-0.1,0.033,FALSE,1329,1.36,6794,11584 + 8137,FALSE
+buy,8,MarShawn Lloyd + Calvin Ridley,Jaylen Warren,1880,1776,-104,0.45,0.083,-0.333,-0.033,FALSE,554,0.948,11581 + 4981,8228,FALSE
+buy,11,Denzel Boston + George Kittle,Ladd McConkey,4211,3774,-437,0.467,0.1,-0.017,-0.05,FALSE,186,0.778,13346 + 4217,11635,FALSE
+buy,11,Tyler Shough + Calvin Ridley,Ladd McConkey,4065,3774,-291,0.217,0.067,0.067,-0.133,TRUE,382,0.611,12545 + 4981,11635,FALSE
+sell George Kittle,10,George Kittle,David Montgomery,2152,2223,71,0.367,0.1,-0.283,-0.05,FALSE,71,0.564,4217,5892,FALSE
+buy,7,MarShawn Lloyd + Calvin Ridley,Chuba Hubbard,1880,1770,-110,0.4,0.083,-0.367,-0.033,FALSE,342,0.552,11581 + 4981,7594,FALSE
+buy,11,Tyler Shough + Kaelon Black,Ladd McConkey,4256,3774,-482,0.183,0.083,0.033,-0.133,TRUE,-62,0.3,12545 + 13414,11635,FALSE
+buy,11,Isaiah Bond + Tyler Shough,Ladd McConkey,3990,3774,-216,0.2,0.067,0.033,-0.133,TRUE,158,0.194,12503 + 12545,11635,FALSE
+sell George Kittle,3,MarShawn Lloyd + George Kittle,Jadarian Price,3269,3086,-183,0.25,0.033,0.017,0.033,TRUE,680,0.134,11581 + 4217,13286,FALSE
+buy,11,George Kittle + Calvin Ridley,Derrick Henry,2915,2740,-175,0.467,0.083,-0.15,-0.167,FALSE,48,0.004,4217 + 4981,3198,FALSE
+sell Tony Pollard,10,Calvin Ridley + Tony Pollard,David Montgomery,2372,2223,-149,0.233,0.067,-0.133,-0.033,FALSE,318,-0.007,4981 + 5967,5892,FALSE
+buy,1,Tyler Shough + Mike Washington,Breece Hall,4286,3954,-332,0.583,0.1,-0.117,-0.083,FALSE,-338,-0.198,12545 + 13305,8155,FALSE
+sell George Kittle,10,MarShawn Lloyd + George Kittle,Kyle Pitts,3269,3029,-240,0.05,0.017,-0.167,0.017,FALSE,967,-0.347,11581 + 4217,7553,FALSE
+sell Daniel Jones,12,Eli Raridon + Daniel Jones,Baker Mayfield,3591,3245,-346,0.25,0.05,-0.3,0.017,FALSE,-281,-1.641,13421 + 5870,4892,FALSE
+sell Daniel Jones,4,Daniel Jones,Josh Jacobs,2537,2662,125,0.117,0,-0.333,-0.083,FALSE,-137,-2.921,5870,5850,FALSE

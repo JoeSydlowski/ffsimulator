@@ -1,0 +1,36 @@
+player_name,pos,age,cur_value,exp_change,rel_change,pos_drift,trend_pct,p_rise,p_exit,value_to_me,playoff_delta_me,wins_per_1k,swing,mean_weeks_started,pos_depth_rank,trajectory,verdict,bust_flag,pareto_front,dominated_by,best_buyers,player_id
+CeeDee Lamb,WR,27.3,6291,-0.211,-0.058,-0.163,0.013,0.238,0.002,0.545,0.127,0.081,44.779,10.615,1,holding,CORE (wins + value),FALSE,4,Trevor Lawrence; Kyle Monangai; Tyler Shough,,6786
+Drake London,WR,25,5824,-0.124,0.047,-0.163,-0.005,0.3,0,0.54,0.117,0.086,36.805,10.57,2,holding,CORE (wins + value),FALSE,3,Trevor Lawrence; Kyle Monangai,,8112
+Colston Loveland,TE,22.3,4614,-0.129,-0.036,-0.096,-0.03,0.318,0.005,0.17,0.042,0.032,17.803,8.7,2,holding,CORE (wins + value),FALSE,5,Trevor Lawrence; Kyle Monangai; Drake London,,12517
+Emeka Egbuka,WR,23.8,4523,0.087,0.3,-0.163,-0.001,0.342,0,0.25,0.068,0.054,19.005,9.602,3,appreciating,CORE (wins + value),FALSE,3,Trevor Etienne; Jarquez Hunter,,12514
+Tyler Warren,TE,24.2,4293,-0.178,-0.09,-0.096,0.034,0.318,0.018,0.232,0.042,0.045,1.623,7.747,1,declining,"RENTAL (win-now, fading)",FALSE,5,Trevor Lawrence; Kyle Monangai; Tyler Shough,KingGabe (+0.55w/+7%); Prestige Worldwide (+0.53w/+7%); Permian Panthers (+0.43w/+13%),12518
+Tee Higgins,WR,27.5,3337,-0.296,-0.159,-0.163,-0.005,0.15,0.002,0.25,0.047,0.069,23.587,9.977,4,declining,"RENTAL (win-now, fading)",FALSE,5,Trevor Lawrence; Kyle Monangai; Tyler Shough,Flipadelphia05 (+0.73w/+12%); Prestige Worldwide (+0.73w/+7%); KingGabe (+0.65w/+8%),6801
+Patrick Mahomes,QB,30.8,3037,-0.234,-0.118,-0.132,0.008,0.18,0.028,0.243,0.06,0.084,13.757,4.942,2,declining,"RENTAL (win-now, fading)",FALSE,4,Trevor Lawrence; Kyle Monangai; Tyler Shough,KingGabe (+0.57w/+7%); Flipadelphia05 (+0.40w/+8%); Obvious 49ers Ripoff (+0.23w/-2%),4046
+Trevor Lawrence,QB,26.8,2663,-0.066,0.076,-0.132,0.023,0.388,0.02,0.355,0.052,0.124,31.368,6.803,1,appreciating,CORE (wins + value),FALSE,1,,,7523
+Omar Cooper,WR,22.6,2093,0.071,0.28,-0.163,,0.332,0.02,0.028,0.005,0.025,1.43,1.76,9,appreciating,STASH (appreciating),FALSE,4,Trevor Etienne; Jarquez Hunter; Emeka Egbuka,,13276
+Kyle Monangai,RB,24.1,1970,-0.1,0.191,-0.244,0.092,0.242,0.01,0.24,0.062,0.102,12.614,6.287,2,holding,CORE (wins + value),FALSE,2,Trevor Lawrence,,12534
+Jonathon Brooks,RB,23,1961,0.043,0.38,-0.244,0.132,0.35,0.01,0.125,0.03,0.064,9.978,4.577,4,appreciating,CORE (wins + value),FALSE,1,,,11583
+Zach Charbonnet,RB,25.5,1773,-0.076,0.223,-0.244,-0.063,0.275,0.013,0.15,0.045,0.077,6.284,4.213,3,appreciating,CORE (wins + value),FALSE,2,Trevor Lawrence,,9753
+Nicholas Singleton,RB,22.5,1754,-0.024,0.291,-0.244,,0.385,0.07,0.083,0.017,0.053,11.847,2.132,5,appreciating,STASH (appreciating),FALSE,4,Jonathon Brooks; Trevor Etienne; Jarquez Hunter,,13288
+Tyler Shough,QB,26.8,1744,-0.167,-0.04,-0.132,-0.061,0.275,0.085,0.17,0.052,0.097,1.562,2.16,3,holding,CORE (wins + value),FALSE,3,Trevor Lawrence; Kyle Monangai,,12545
+Rico Dowdle,RB,28.1,1737,-0.35,-0.139,-0.244,-0.079,0.115,0.028,0.268,0.05,0.121,19.473,7.14,1,declining,"RENTAL (win-now, fading)",FALSE,2,Trevor Lawrence,KingGabe (+0.48w/+7%); solarpool (+0.48w/+7%); Flipadelphia05 (+0.32w/+5%),7021
+Dalton Kincaid,TE,26.8,1704,-0.143,-0.051,-0.096,0.045,0.288,0.048,0.068,0.012,0.028,1.19,3.095,3,holding,TRADE CHIP (surplus),FALSE,6,Trevor Lawrence; Kyle Monangai; Drake London,,10236
+Jakobi Meyers,WR,29.7,1564,-0.289,-0.15,-0.163,0.031,0.205,0.045,0.065,0.007,0.044,-6.79,4.497,7,declining,SELL (fading),FALSE,6,Trevor Lawrence; Kyle Monangai; Tyler Shough,,5947
+Courtland Sutton,WR,30.8,1515,-0.355,-0.229,-0.163,-0.09,0.12,0.075,0.18,0.037,0.091,0.649,6.13,5,declining,"RENTAL (win-now, fading)",FALSE,4,Trevor Lawrence; Rico Dowdle; Kyle Monangai,,5045
+Khalil Shakir,WR,26.5,1417,-0.268,-0.125,-0.163,0.014,0.318,0.06,0.055,0.017,0.043,3.578,2.973,8,declining,SELL (fading),FALSE,6,Trevor Lawrence; Kyle Monangai; Tyler Shough,,8134
+Kimani Vidal,RB,24.9,1093,-0.564,-0.424,-0.244,0.002,0.182,0.168,0.025,0.012,0.042,-3.849,2.265,8,declining,SELL (fading),FALSE,8,Trevor Lawrence; Rico Dowdle; Kyle Monangai,,11647
+Jauan Jennings,WR,29,1073,-0.631,-0.559,-0.163,-0.052,0.068,0.132,0.07,0.005,0.057,-3.266,2.245,6,declining,SELL (fading),FALSE,6,Trevor Lawrence; Rico Dowdle; Kyle Monangai,,7049
+Tre Tucker,WR,25.4,1042,-0.333,-0.203,-0.163,-0.077,0.33,0.085,0.022,0.005,0.035,-0.737,1.29,10,declining,SELL (fading),FALSE,8,Trevor Lawrence; Kyle Monangai; Tyler Shough,,10213
+David Njoku,TE,30,1006,-0.103,-0.008,-0.096,-0.126,0.388,0.055,0.008,0.002,0.007,-5.643,0.723,4,holding,TRADE CHIP (surplus),FALSE,5,Trevor Lawrence; Kyle Monangai; Zach Charbonnet,,4033
+Eli Raridon,TE,22.4,952,-0.091,0.006,-0.096,,0.388,0.058,0,-0.003,0.004,0.718,0.198,7,holding,TRADE CHIP (surplus),FALSE,5,Trevor Lawrence; Zach Charbonnet; Jonathon Brooks,,13421
+Trey Benson,RB,24,898,-0.302,-0.077,-0.244,-0.069,0.31,0.095,0.033,0.005,0.051,-1.76,1.022,7,declining,SELL (fading),FALSE,6,Trevor Lawrence; Kyle Monangai; Tyler Shough,,11589
+Trevor Etienne,RB,22,420,0.165,0.542,-0.244,-0.243,0.42,0.108,0.025,0.007,0.062,5.549,1.038,9,appreciating,STASH (appreciating),FALSE,1,,,12531
+Kevin Coleman,WR,22.9,319,-0.193,-0.035,-0.163,,0.24,0.125,0.003,0.002,0.039,-1.773,0.252,14,holding,hold,FALSE,6,Trevor Lawrence; Kyle Monangai; Tyler Shough,,13338
+Michael Trigg,TE,24.1,229,1.407,1.664,-0.096,,0.418,0.182,0,0,0.006,0,0.075,6,appreciating,STASH (appreciating),FALSE,1,,,13401
+DeMario Douglas,WR,25.6,224,-0.33,-0.199,-0.163,0.027,0.23,0.232,0.005,0.002,0.044,-0.675,0.308,12,declining,SELL (fading),TRUE,7,Trevor Lawrence; Kyle Monangai; Tyler Shough,,9501
+Sam Roush,TE,22.9,195,1.372,1.625,-0.096,,0.288,0.165,0,0,0.006,-0.22,0.055,5,appreciating,STASH (appreciating),FALSE,1,,,13322
+Jarquez Hunter,RB,23.6,181,0.106,0.463,-0.244,-0.53,0.212,0.15,0.005,-0.005,0.058,2.283,0.72,11,holding,hold,FALSE,2,Trevor Etienne,,11569
+Emari Demercado,RB,27.5,145,-0.625,-0.503,-0.244,0.538,0.092,0.262,0.053,0.012,0.102,1.393,0.83,6,declining,depth,TRUE,,,,11199
+Phil Mafah,RB,23.7,136,-0.111,0.177,-0.244,0.125,0.108,0.222,0.022,0.01,0.076,2.562,0.662,10,holding,depth,TRUE,,,,12738
+Savion Williams,WR,24.7,109,-0.13,0.04,-0.163,-1.578,0.208,0.35,0.003,0,0.046,-1.287,0.16,13,holding,depth,TRUE,,,,12482
+KeAndre Lambert-Smith,WR,24.8,26,1.637,2.152,-0.163,-3.077,0.232,0.69,0.005,0,0.052,-2.086,0.14,11,holding,depth,TRUE,,,,12670

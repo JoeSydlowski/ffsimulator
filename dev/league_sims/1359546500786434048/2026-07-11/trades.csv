@@ -1,0 +1,30 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy,12,Ty Simpson + Tony Pollard,Chris Olave,3903,3834,-69,0.157,0.022,-0.442,-0.085,FALSE,1021,1.142,13275 + 5967,8144,TRUE
+buy & sell George Kittle,1,Jack Bech + George Kittle,Cam Skattebo,3205,3187,-18,0.275,0.057,-0.298,-0.057,FALSE,852,1.114,12483 + 4217,12481,TRUE
+buy & sell George Kittle,1,Ty Simpson + George Kittle,Kenneth Walker,4442,4329,-113,0.37,0.065,-0.373,-0.088,FALSE,807,1.076,13275 + 4217,8151,TRUE
+buy,8,Ty Simpson + George Kittle,Nico Collins,4442,4231,-211,0.623,0.12,-0.625,-0.105,FALSE,524,0.963,13275 + 4217,7569,TRUE
+buy & sell George Kittle,1,Mike Washington + George Kittle,Cam Skattebo,3246,3187,-59,0.275,0.05,-0.28,-0.057,FALSE,830,0.891,13305 + 4217,12481,TRUE
+sell George Kittle,1,George Kittle,Terry McLaurin,2119,2163,44,0.322,0.06,-0.53,-0.122,FALSE,604,0.181,4217,5927,TRUE
+buy,9,Ty Simpson + Calvin Ridley,Travis Etienne,3039,2905,-134,0.525,0.125,-0.46,-0.1,FALSE,269,0.05,13275 + 4981,7543,TRUE
+buy & sell Ty Simpson,11,Jack Bech + Ty Simpson,Kyren Williams,3409,3352,-57,0.412,0.085,-0.525,-0.125,FALSE,355,-0.344,12483 + 13275,8150,TRUE
+sell Ty Simpson,11,Ty Simpson + Taylen Green,Kyler Murray,2750,2742,-8,0.348,0.085,-0.497,-0.122,FALSE,125,-1.253,13275 + 13306,5849,TRUE
+sell Daniel Jones,5,Jack Bech + Daniel Jones,Zay Flowers,3587,3466,-121,-0.018,0.012,-0.055,-0.005,FALSE,405,-1.475,12483 + 5870,9997,TRUE
+sell Daniel Jones,2,MarShawn Lloyd + Daniel Jones,Luther Burden,3598,3354,-244,0.013,0,-0.263,-0.1,FALSE,434,-1.593,11581 + 5870,12519,TRUE
+sell Daniel Jones,5,Kaelon Black + Daniel Jones,Zay Flowers,3509,3466,-43,-0.013,0.01,-0.06,-0.015,FALSE,363,-1.687,13414 + 5870,9997,TRUE
+sell Daniel Jones,2,Kaelon Black + Daniel Jones,Luther Burden,3509,3354,-155,0.025,0.005,-0.27,-0.095,FALSE,382,-1.704,13414 + 5870,12519,TRUE
+sell Daniel Jones,5,Mike Washington + Daniel Jones,Zay Flowers,3628,3466,-162,-0.09,0,-0.045,-0.007,FALSE,384,-1.79,13305 + 5870,9997,TRUE
+buy,12,Harold Fannin + Calvin Ridley,Chris Olave,3871,3834,-37,0.34,0.057,-0.482,-0.085,FALSE,70,-1.974,12506 + 4981,8144,TRUE
+buy & sell George Kittle,1,MarShawn Lloyd + George Kittle,Cam Skattebo,3216,3187,-29,0.183,0.05,-0.2,-0.1,FALSE,861,1.013,11581 + 4217,12481,FALSE
+buy,4,George Kittle + Calvin Ridley,Josh Jacobs,2835,2611,-224,0.45,0.15,-0.683,-0.117,FALSE,339,0.783,4217 + 4981,5850,FALSE
+buy,3,Ty Simpson + Kaelon Black,Jadarian Price,3331,3182,-149,0.25,0.117,-0.533,-0.083,FALSE,480,0.728,13275 + 13414,13286,FALSE
+buy,1,Jack Bech + Ty Simpson,Cam Skattebo,3409,3187,-222,0.367,0.1,-0.25,-0.033,FALSE,525,0.6,12483 + 13275,12481,FALSE
+buy & sell Ty Simpson,11,MarShawn Lloyd + Ty Simpson,Kyren Williams,3420,3352,-68,0.35,0.133,-0.25,-0.083,FALSE,365,0.579,11581 + 13275,8150,FALSE
+buy,1,Ty Simpson + Mike Washington,Cam Skattebo,3450,3187,-263,0.4,0.1,-0.3,-0.05,FALSE,503,0.514,13275 + 13305,12481,FALSE
+buy,4,Ty Simpson + Najee Harris,Josh Jacobs,2616,2611,-5,0.583,0.183,-0.75,-0.117,FALSE,112,0.498,13275 + 7528,5850,FALSE
+buy,2,Ty Simpson + Calvin Ridley,Javonte Williams,3039,3028,-11,0.4,0.1,-0.583,-0.117,FALSE,497,0.49,13275 + 4981,7588,FALSE
+buy,1,MarShawn Lloyd + Ty Simpson,Cam Skattebo,3420,3187,-233,0.4,0.083,-0.317,-0.083,FALSE,534,0.331,11581 + 13275,12481,FALSE
+buy,11,George Kittle + Calvin Ridley,Derrick Henry,2835,2796,-39,0.433,0.167,-0.2,-0.083,FALSE,135,0.281,4217 + 4981,3198,FALSE
+sell Ty Simpson,11,Emanuel Wilson + Ty Simpson,Kyler Murray,2885,2742,-143,0.183,0.167,-0.55,-0.2,FALSE,119,0.219,11435 + 13275,5849,FALSE
+sell Ty Simpson,10,Ty Simpson,Christian Watson,2323,2254,-69,0.35,0.117,-0.517,-0.05,FALSE,343,0.187,13275,8167,FALSE
+buy,11,Ty Simpson + Mike Washington,Kyren Williams,3450,3352,-98,0.283,0.117,-0.267,-0.083,FALSE,334,0.151,13275 + 13305,8150,FALSE
+buy,12,Denzel Boston + George Kittle,Chris Olave,4187,3834,-353,0.667,0.167,-0.617,-0.283,FALSE,70,0.027,13346 + 4217,8144,FALSE

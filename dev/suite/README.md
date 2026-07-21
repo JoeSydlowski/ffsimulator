@@ -209,7 +209,14 @@ The dynasty engine works in rank space and anchors dollars to real
 `dynasty_values = "fantasycalc"`) sets each player's `cur_value` to his actual
 market value and re-estimates the rank→value curve empirically, so projected
 `next_value` scales the real current value by the model's predicted rank
-change. The suite scrapes both QB formats automatically (set
+change. Per-player trajectory columns (`exp_change`, `rel_change`,
+`growth_abs`, `retention`) are computed from the **median** simulated next
+value: the curve is convex, so the mean is Jensen-inflated by draw spread
+(the 11-holdout backtest found mean exp_change overstates realized change,
+QB worst, while the median is ~unbiased — see
+`dev/validate_outputs/dynasty_point_calibration.txt`). The mean
+(`next_value_mean`) still backs additive capital numbers (portfolio totals,
+trade-package future capital, `mkt_winnow`). The suite scrapes both QB formats automatically (set
 `FFS_FANTASYCALC=0` for the synthetic curve) and appends dated snapshots to
 `dev/data/fantasycalc_values.parquet` via `fc_snapshot_append()` — a growing
 value time-series that also carries `trend_30day`, `redraft_value`,

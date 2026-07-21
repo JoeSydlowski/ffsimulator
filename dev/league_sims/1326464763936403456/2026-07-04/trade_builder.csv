@@ -1,0 +1,21 @@
+opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score
+5,Courtland Sutton + CeeDee Lamb,Puka Nacua,9470,9333,-137,-0.017,0.033,0.183,0.017,FALSE,1220,2.304
+2,Colston Loveland + Tee Higgins,Ashton Jeanty,8447,8130,-317,0.233,0.067,-0.133,-0.017,FALSE,672,1.88
+12,Patrick Mahomes,Jalen Hurts + Rhamondre Stevenson,3315,3519,204,0.55,0.067,-0.6,-0.133,FALSE,448,1.358
+1,Dalton Kincaid + Courtland Sutton,Bucky Irving,2356,2295,-61,0.25,0.05,-0.05,0.117,FALSE,567,1.208
+12,Colston Loveland + Patrick Mahomes,Jeremiyah Love,7685,7588,-97,0.017,0.017,-0.317,-0.033,FALSE,931,1.202
+10,Savion Williams + Tee Higgins,Chase Brown,4084,3806,-278,0.5,0.05,-0.233,-0.033,FALSE,526,1.111
+10,Patrick Mahomes + Jakobi Meyers,Chase Brown,4131,3806,-325,0.567,0.05,-0.25,-0.017,FALSE,501,1.054
+10,Michael Trigg + Tee Higgins,Chase Brown,4082,3806,-276,0.5,0.05,-0.233,0,FALSE,494,1.038
+5,CeeDee Lamb,Justin Jefferson + J.K. Dobbins,8319,9084,765,0.233,0,-0.267,0,FALSE,988,0.907
+10,Tyler Shough + Patrick Mahomes,Chase Brown,3854,3806,-48,0.35,0.017,-0.633,-0.183,FALSE,727,0.727
+10,Tee Higgins + DeMario Douglas,Chase Brown,4100,3806,-294,0.567,0.033,-0.2,0.033,FALSE,517,0.663
+10,Kimani Vidal + Tee Higgins,Chase Brown,4133,3806,-327,0.383,0.033,-0.117,0.033,FALSE,493,0.608
+10,Trey Benson + Tee Higgins,Chase Brown,4131,3806,-325,0.567,0.033,-0.267,0,FALSE,480,0.577
+7,Courtland Sutton + Jakobi Meyers,Jadarian Price,1966,1866,-100,0.3,0.017,-0.15,-0.033,FALSE,657,0.563
+7,Tee Higgins,Harold Fannin + Jadarian Price,4078,4381,303,0.017,-0.067,-0.183,0.033,FALSE,1552,0.514
+10,Patrick Mahomes + Khalil Shakir,Chase Brown,3963,3806,-157,0.6,0.033,-0.533,-0.067,FALSE,440,0.484
+8,Patrick Mahomes + Courtland Sutton,Luther Burden,4466,4173,-294,0.133,-0.083,-0.183,0.033,FALSE,1688,0.404
+10,Trevor Etienne + Tee Higgins,Chase Brown,4081,3806,-275,0.5,0.017,-0.217,-0.017,FALSE,529,0.263
+12,Drake London,Jeremiyah Love + Rhamondre Stevenson,7765,8152,388,0.2,0.033,-0.767,-0.167,FALSE,337,0.244
+10,Kevin Coleman + Tee Higgins,Chase Brown,4094,3806,-288,0.483,0.017,-0.217,0,FALSE,502,0.202

@@ -1,0 +1,27 @@
+JML (1QB) dynasty outlook - FantasyCalc-anchored, n=150 leaguewide WAR
+Sorted by WAR (win contribution). Value = current FC dynasty value.
+ExpChg = model expected value change next year. Upside/Downside = p90/p10 of next-year value.
+WAR_1k = wins per 1000 dynasty $. Redraft = FC redraft value / dynasty value.
+
+          Player Pos Age Value NextYr ExpChg p_rise p_exit Upside Downside  WAR
+   Luther Burden  WR  23  3438   3313    -4%   0.43      0   +35%     +46% 0.71
+     Rashee Rice  WR  26  3580   2422   -32%   0.14      0    +6%     +57% 0.64
+  Garrett Wilson  WR  26  4032   3519   -13%   0.10      0    +6%     +33% 0.50
+     Rome Odunze  WR  24  3297   2590   -21%   0.26      0   +17%     +53% 0.47
+    Bucky Irving  RB  24  3502   2947   -16%   0.33      0   +28%     +58% 0.45
+ Marvin Harrison  WR  24  3475   2341   -33%   0.16      0    +9%     +60% 0.39
+      A.J. Brown  WR  29  3801   2858   -25%   0.20      0    +6%     +50% 0.35
+    Brian Thomas  WR  24  3253   2488   -24%   0.28      0   +16%     +56% 0.27
+    Tucker Kraft  TE  26  3215   2931    -9%   0.24      0   +43%     +52% 0.16
+   Harold Fannin  TE  22  2874   3174   +10%   0.34      0  +116%     +40% 0.12
+ WAR_1k Redraft
+   0.21    0.50
+   0.18    0.96
+   0.12    1.01
+   0.14    0.64
+   0.13    0.98
+   0.11    0.66
+   0.09    1.30
+   0.08    0.59
+   0.05    0.69
+   0.04    0.24

@@ -1,0 +1,45 @@
+Warning message:
+package 'data.table' was built under R version 4.3.2 
+Warning message:
+package 'testthat' was built under R version 4.3.2 
+simulating 2000 seasons @ 2026-07-19 16:51:22.760575
+── Starting simulation 2026-07-19 16:51:22 ─────────────────────────────────────
+ℹ Importing data✔ Importing data ... done
+ℹ Backfilled fantasypros_id for 62 rostered players not in dp_playerids (likely rookies)
+ℹ Simulating only unplayed weeks: 1-14
+ℹ Generating Projections✔ Generating Projections ... done
+ℹ Calculating Roster Scores✔ Calculating Roster Scores ... done
+ℹ Optimizing Lineups✔ Optimizing Lineups ... done
+ℹ Building Schedules✔ Building Schedules ... done
+ℹ Summarising Simulation Data✔ Summarising Simulation Data ... done
+── Simulation complete! 2026-07-19 17:17:38 ────────────────────────────────────
+Warning message:
+The `stat_type` argument of `load_player_stats()` is deprecated as of nflreadr
+1.5.0.
+ℹ Please use `load_player_stats()` instead.
+ℹ The deprecated feature was likely used in the ffscrapr package.
+  Please report the issue at <https://github.com/ffverse/ffscrapr/issues>. 
+Picking joint bandwidth of 2.99
+dynasty outlook @ 2026-07-19 17:19:24.225898
+trade intelligence @ 2026-07-19 17:43:05.151335
+valuation sim (n=60, actual_schedule=TRUE) @ 2026-07-19 17:43:05.162453
+── Starting simulation 2026-07-19 17:43:05 ─────────────────────────────────────
+ℹ Importing data✔ Importing data ... done
+ℹ Backfilled fantasypros_id for 62 rostered players not in dp_playerids (likely rookies)
+ℹ Simulating only unplayed weeks: 1-14
+ℹ Generating Projections✔ Generating Projections ... done
+ℹ Calculating Roster Scores✔ Calculating Roster Scores ... done
+ℹ Optimizing Lineups✔ Optimizing Lineups ... done
+ℹ Building Schedules✔ Building Schedules ... done
+ℹ Summarising Simulation Data✔ Summarising Simulation Data ... done
+── Simulation complete! 2026-07-19 17:44:45 ────────────────────────────────────
+valuing my roster (35 players, on the n=2000 standings sim) @ 2026-07-19 17:44:45.842171
+finding buyers for 4 movable players @ 2026-07-19 18:20:01.052988
+trade targets (top_n=100) @ 2026-07-19 18:23:07.288575
+confirming 99 top targets on the standings sim @ 2026-07-19 18:32:24.896881
+building buy-side trades @ 2026-07-20 13:05:34.699665
+sell matchmaker for CeeDee Lamb: valuing 29 pieces from 3 buyers @ 2026-07-20 13:20:01.244089
+sell matchmaker for Colston Loveland: valuing 28 pieces from 3 buyers @ 2026-07-20 13:27:01.390331
+sell matchmaker for Tyler Warren: valuing 26 pieces from 3 buyers @ 2026-07-20 13:32:56.5378
+sell matchmaker for Tee Higgins: valuing 25 pieces from 3 buyers @ 2026-07-20 13:40:11.098076
+confirming 15 deals on the standings sim @ 2026-07-20 13:42:32.283821

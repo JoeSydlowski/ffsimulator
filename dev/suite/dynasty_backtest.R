@@ -59,6 +59,21 @@ if (identical(disp_env, "off")) {
             stats::setNames(as.numeric(vapply(kv, `[`, "", 2)),
                             vapply(kv, `[`, "", 1)))
 }
+# per-position point-prediction recalibration (see .ffs_draw_transition
+# move_slope/move_bias): FFS_MOVE_SLOPE="QB=0.35;RB=0.5;WR=0.5;TE=0.5",
+# FFS_MOVE_BIAS="RB=-1" (delta space: positive = rank number grows = decline).
+# Empty = the shipped default (correction ON, matches production);
+# "off" = pre-correction baseline.
+parse_kv <- function(spec) {
+  kv <- strsplit(strsplit(spec, ";")[[1]], "=")
+  stats::setNames(as.numeric(vapply(kv, `[`, "", 2)), vapply(kv, `[`, "", 1))
+}
+for (nm in c("SLOPE", "BIAS")) {
+  spec <- Sys.getenv(paste0("FFS_MOVE_", nm), "")
+  opt <- paste0("ffsimulator.dyn_move_", tolower(nm))
+  if (identical(spec, "off")) do.call(options, stats::setNames(list(numeric(0)), opt))
+  else if (nzchar(spec)) do.call(options, stats::setNames(list(parse_kv(spec)), opt))
+}
 if (nzchar(feat)) cat("feature variant:", feat, "\n")
 
 scoring_history <- readRDS(file.path(out_dir, "scoring_history_2012_2025.rds"))
@@ -180,6 +195,51 @@ run_holdout <- function(fmt, Y) {
     }), by = row]
   pred_sum[pit_map, pit := i.pit, on = "row"]
 
+  # ---- value space: map ranks through the synthetic value curve on the
+  # season-Y ladder (10000*exp(-0.023*overall_rank), the live default when no
+  # FantasyCalc values exist - which is the case for historical seasons);
+  # exits are worth 0. exp_change (val_mean/cur_val - 1) is what the live
+  # tool reports, so calibration HERE is what users actually read.
+  fns <- lapply(split(hold[, list(pos_rank, rank)], hold$pos), function(d) {
+    d <- d[order(pos_rank)]
+    list(f = stats::approxfun(d$pos_rank, d$rank, rule = 2),
+         max_pos_rank = max(d$pos_rank), max_rank = max(d$rank))
+  })
+  p2o <- function(p, pr) {
+    out <- numeric(length(pr))
+    for (pp in unique(p)) {
+      j <- which(p == pp)
+      fn <- fns[[pp]]
+      if (is.null(fn)) { out[j] <- pr[j] * 4; next }
+      v <- fn$f(pmin(pr[j], fn$max_pos_rank))
+      ext <- pr[j] > fn$max_pos_rank
+      v[ext] <- fn$max_rank + (pr[j][ext] - fn$max_pos_rank) * 4
+      out[j] <- v
+    }
+    out
+  }
+  vcurve <- function(r) 10000 * exp(-0.023 * r)
+  hold[, cur_val := vcurve(rank)]
+  hold[, actual_val := 0]
+  hold[actual_exit == FALSE, actual_val := vcurve(p2o(pos, actual_rank))]
+  pred[, val := 0]
+  pred[!is.na(next_rank), val := vcurve(p2o(hold$pos[row], next_rank))]
+  val_sum <- pred[, list(
+    val_mean = mean(val),                        # incl exit zeros = live next_value_mean
+    val_mean_surv = mean(val[!is.na(next_rank)]),
+    val_q10 = stats::quantile(val, .10),
+    val_q90 = stats::quantile(val, .90)
+  ), by = row]
+  pred_sum[val_sum, `:=`(val_mean = i.val_mean, val_mean_surv = i.val_mean_surv,
+                         val_q10 = i.val_q10, val_q90 = i.val_q90), on = "row"]
+  pred_sum[, val_pit := NA_real_]
+  vpit_map <- pred[row %in% surv_rows][
+    , list(val_pit = {
+      a <- hold$actual_val[row[1]]
+      (sum(val < a) + 0.5 * sum(val == a)) / .N
+    }), by = row]
+  pred_sum[vpit_map, val_pit := i.val_pit, on = "row"]
+
   res <- cbind(hold, pred_sum[order(row), -"row"])
   res[, `:=`(format = fmt, holdout = Y)]
   res[]
@@ -200,6 +260,9 @@ for (fmt in fmts) {
 }
 players <- rbindlist(players_all)
 players[, `:=`(
+  exp_change_pred = val_mean / cur_val - 1,
+  exp_change_act = actual_val / cur_val - 1,
+  val_cover80 = actual_val >= val_q10 & actual_val <= val_q90,
   cover80 = actual_rank >= q10 & actual_rank <= q90,
   abs_err = abs(med_rank - actual_rank),
   age_band = cut(age, c(0, 23, 26, 29, 99), labels = c("<=23", "24-26", "27-29", "30+")),
@@ -230,6 +293,13 @@ by_pos <- surv[, list(n = .N, cover80 = round(mean(cover80), 3),
                       pit_tail = round(mean(pit < .1 | pit > .9), 3),
                       mae_rank = round(mean(abs_err), 1)), by = list(format, pos)]
 print(by_pos)
+cat("\n==== POOLED survivors: VALUE-space calibration by pos ====\n")
+print(surv[, list(n = .N, val_cover80 = round(mean(val_cover80), 3),
+                  val_pit_mean = round(mean(val_pit), 3),
+                  val_pit_tail = round(mean(val_pit < .1 | val_pit > .9), 3),
+                  med_exp_pred = round(stats::median(exp_change_pred), 3),
+                  med_exp_act = round(stats::median(exp_change_act), 3)),
+           by = list(format, pos)])
 cat("\n==== POOLED survivors: by age band ====\n")
 by_age <- surv[!is.na(age_band), list(n = .N, cover80 = round(mean(cover80), 3),
                       pit_mean = round(mean(pit), 3),

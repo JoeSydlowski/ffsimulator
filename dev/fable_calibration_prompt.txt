@@ -1,0 +1,68 @@
+INVESTIGATE DYNASTY-MODEL CALIBRATION BY POSITION AND DIRECTION
+(ffsimulator, branch war-methods)
+
+You're in C:\Github\ffsimulator - a fork of ffverse/ffsimulator (an R package),
+branch war-methods. FIRST read
+C:\Users\syd23\.claude\projects\C--Github-ffsimulator\memory\MEMORY.md and the
+linked ffsimulator-war-project.md for full context, especially the dynasty-model,
+backtest, and 2026-07-18/19 calibration sections.
+
+BACKGROUND
+The dynasty transition model (R/11-dynasty.R, ffs_dynasty_outlook) predicts each
+player's next-season value from age x positional rank x format via kernel-weighted
+resampling of historical rank->rank transitions, mapped to value through a
+(nonlinear, steep-at-top) curve and anchored to FantasyCalc market values. Its
+outputs - exp_change (= next_value/cur_value - 1), p_rise, p_exit, and p10/p90
+intervals - drive the trade tools. EVERY model change here is backtest-gated via
+dev/suite/dynasty_backtest.R (holdouts: 1qb 2019-2025, superflex 2022-2025; env
+knobs like FFS_DYN_HOLDOUTS). Many candidate features (experience, draft round,
+momentum, ECR-sd) were REJECTED by that gate - conditioning capacity is binding on
+thin pools. Calibration already applied: exit-rate shrinkage (kappa=10), superflex
+hybrid, per-position interval widening (disp_factor QB=1.68/TE=1.43/WR=1.20/RB=1.11),
+decimal ages.
+
+THE QUESTION
+Is the model's POINT prediction well-calibrated by position and by direction
+(appreciation vs decline)? A single-holdout look at
+dev/validate_outputs/dynasty_backtest_players.csv (421 survivors, RANK space:
+pos_rank now -> med_rank predicted -> actual_rank realized) found:
+- Regression slope of actual~predicted move < 1 at EVERY position (QB 0.35, RB 0.46,
+  TE 0.58, WR 0.46) -> predicted move MAGNITUDES look systematically too extreme
+  (regression-to-mean not fully baked in).
+- RB bias +8.8 (predicts -16 ranks, realized -7) -> the model is too BEARISH on RBs.
+- disp_ratio SD(pred)/SD(act): QB 1.33 (over-dispersed / over-extrapolates), RB 1.02,
+  TE 0.79 (under-dispersed), WR 0.96.
+- cor(pred, act) ~= 0.46 everywhere; predicted risers beat their cohort's baseline
+  decline by 7-11 ranks - so the model DOES carry relative-appreciation signal; it
+  just can't promise absolute gains (the universe deflates ~+2 to +17 ranks/yr) or
+  nail move SIZE.
+
+TASKS
+1. Validate vs one-holdout noise: rerun calibration across all holdouts, per position
+   x direction; report slope, bias, disp_ratio, cover80 by position, pooled. Flag
+   tiny per-cell n (direction splits are small).
+2. Redo it in VALUE / exp_change space, not just rank space - exp_change is the rank
+   move through a NONLINEAR value curve (and FC-anchored), so value-space slope/bias
+   can differ, and that's what users actually read.
+3. If slope<1 and/or the RB bias hold in value space, design + backtest-gate a
+   per-position correction (shrink predicted move toward the mean by ~slope;
+   per-position bias adjustment). It must improve calibration (slope->1, bias->0,
+   PIT/mae) AND NOT break cover80 (~0.80 - it interacts with the disp_factor interval
+   widening). Keep it behind an option; default it only if it wins across holdouts.
+4. Confirm the qualitative reads: is TE genuinely best-calibrated (extreme-tail
+   dominance = real volatility from the steep curve, not over-fit), and is QB the
+   over-extrapolator (thin pools)?
+
+DELIVERABLE
+A written analysis (numbers + plain English) with a clear recommendation - apply the
+correction (exact form + backtest evidence) or not (why). Save outputs to
+dev/validate_outputs/, update the project memory.
+
+GUARDRAILS
+(a) NEVER edit a script while a background Rscript is executing it - R streams
+    top-level expressions and the edit corrupts the parse (has crashed runs twice).
+(b) data.table NSE trap: DT[DT$col == x] where x shares a column name silently
+    no-ops - has bitten this repo repeatedly; use base-R vector compares for such
+    filters.
+(c) Joe (the owner, an R co-author) wants empirical evidence, backtest gates before
+    any default flips, and plain-English summaries - never quote unvalidated numbers.

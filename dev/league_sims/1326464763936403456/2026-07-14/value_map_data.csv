@@ -1,0 +1,135 @@
+panel,player_name,pos,cur_value,win_value,mkt_winnow,fit_residual,cat,confirmed
+My roster,Trevor Lawrence,QB,2663,0.355,176,735,win-now bargain (edge),TRUE
+My roster,Kyle Monangai,RB,1970,0.24,197,531,win-now bargain (edge),TRUE
+My roster,Drake London,WR,5824,0.54,722,483,win-now bargain (edge),TRUE
+My roster,Zach Charbonnet,RB,1773,0.15,135,451,win-now bargain (edge),TRUE
+My roster,Nicholas Singleton,RB,1754,0.083,42,437,win-now bargain (edge),TRUE
+My roster,Phil Mafah,RB,136,0.022,15,367,win-now bargain (edge),TRUE
+My roster,Emari Demercado,RB,145,0.053,91,341,win-now bargain (edge),TRUE
+My roster,Savion Williams,WR,109,0.003,14,338,win-now bargain (edge),TRUE
+My roster,Tyler Shough,QB,1744,0.17,291,326,win-now bargain (edge),TRUE
+My roster,Kevin Coleman,WR,319,0.003,62,291,win-now bargain (edge),TRUE
+My roster,DeMario Douglas,WR,224,0.005,74,282,win-now bargain (edge),TRUE
+My roster,Eli Raridon,TE,952,0,87,261,win-now bargain (edge),TRUE
+My roster,David Njoku,TE,1006,0.008,104,257,win-now bargain (edge),TRUE
+My roster,Dalton Kincaid,TE,1704,0.068,244,212,win-now bargain (edge),TRUE
+My roster,Rico Dowdle,RB,1737,0.268,608,165,win-now bargain (edge),TRUE
+My roster,Trey Benson,RB,898,0.033,271,129,win-now bargain (edge),TRUE
+My roster,Courtland Sutton,WR,1515,0.18,538,95,win-now bargain (edge),TRUE
+My roster,Khalil Shakir,WR,1417,0.055,380,55,win-now bargain (edge),TRUE
+My roster,Tre Tucker,WR,1042,0.022,347,35,win-now bargain (edge),TRUE
+My roster,Patrick Mahomes,QB,3037,0.243,711,23,win-now bargain (edge),TRUE
+My roster,Colston Loveland,TE,4614,0.17,595,22,win-now bargain (edge),TRUE
+My roster,Jakobi Meyers,WR,1564,0.065,452,-1,win-now priced-rich,TRUE
+My roster,Tyler Warren,TE,4293,0.232,764,-48,win-now priced-rich,TRUE
+My roster,CeeDee Lamb,WR,6291,0.545,1327,-115,win-now priced-rich,TRUE
+My roster,Jauan Jennings,WR,1073,0.07,677,-218,win-now priced-rich,TRUE
+My roster,Kimani Vidal,RB,1093,0.025,616,-229,win-now priced-rich,TRUE
+My roster,Tee Higgins,WR,3337,0.25,988,-243,win-now priced-rich,TRUE
+My roster,Emeka Egbuka,WR,4523,0.25,-394,,future (judge on trajectory),TRUE
+My roster,Omar Cooper,WR,2093,0.028,-149,,future (judge on trajectory),TRUE
+My roster,Jonathon Brooks,RB,1961,0.125,-84,,future (judge on trajectory),TRUE
+My roster,Trevor Etienne,RB,420,0.025,-69,,future (judge on trajectory),TRUE
+My roster,Michael Trigg,TE,229,0,-322,,future (judge on trajectory),TRUE
+My roster,Sam Roush,TE,195,0,-268,,future (judge on trajectory),TRUE
+My roster,Jarquez Hunter,RB,181,0.005,-19,,future (judge on trajectory),TRUE
+My roster,KeAndre Lambert-Smith,WR,26,0.005,-43,,future (judge on trajectory),TRUE
+Targets (acquire),Ashton Jeanty,RB,7788,0.77,265,1305,win-now bargain (edge),TRUE
+Targets (acquire),Omarion Hampton,RB,6252,0.5,350,791,win-now bargain (edge),FALSE
+Targets (acquire),Ladd McConkey,WR,3726,0.27,75,702,win-now bargain (edge),TRUE
+Targets (acquire),Jeremiyah Love,RB,7440,0.267,201,570,win-now bargain (edge),FALSE
+Targets (acquire),George Pickens,WR,4507,0.233,176,542,win-now bargain (edge),FALSE
+Targets (acquire),Garrett Wilson,WR,4065,0.4,463,519,win-now bargain (edge),FALSE
+Targets (acquire),Dylan Sampson,RB,1510,0.123,32,511,win-now bargain (edge),TRUE
+Targets (acquire),Bhayshul Tuten,RB,2540,0.235,282,439,win-now bargain (edge),TRUE
+Targets (acquire),Zay Flowers,WR,3465,0.283,398,398,win-now bargain (edge),FALSE
+Targets (acquire),Woody Marks,RB,1329,0.167,219,393,win-now bargain (edge),FALSE
+Targets (acquire),Terry McLaurin,WR,2215,0.167,224,389,win-now bargain (edge),FALSE
+Targets (acquire),Isaiah Likely,TE,1869,0.05,39,388,win-now bargain (edge),FALSE
+Targets (acquire),Jacory Croskey-Merritt,RB,1601,0.25,383,362,win-now bargain (edge),FALSE
+Targets (acquire),DJ Moore,WR,2158,0.15,224,361,win-now bargain (edge),FALSE
+Targets (acquire),Jayden Daniels,QB,3865,0.2,305,360,win-now bargain (edge),FALSE
+Targets (acquire),RJ Harvey,RB,1994,0.19,297,352,win-now bargain (edge),TRUE
+Targets (acquire),Rashee Rice,WR,3461,0.267,429,342,win-now bargain (edge),FALSE
+Targets (acquire),Nico Collins,WR,4286,0.517,853,315,win-now bargain (edge),FALSE
+Targets (acquire),Justin Herbert,QB,3136,0.15,276,310,win-now bargain (edge),FALSE
+Targets (acquire),Sam LaPorta,TE,2719,0.167,315,297,win-now bargain (edge),FALSE
+Targets (acquire),Blake Corum,RB,1853,0.133,317,242,win-now bargain (edge),FALSE
+Targets (acquire),TreVeyon Henderson,RB,4186,0.1,268,238,win-now bargain (edge),FALSE
+Targets (acquire),Jake Ferguson,TE,1835,0.05,193,234,win-now bargain (edge),FALSE
+Targets (acquire),Jaylen Warren,RB,1912,0.233,486,232,win-now bargain (edge),FALSE
+Targets (acquire),Cade Otton,TE,1041,0,120,228,win-now bargain (edge),FALSE
+Targets (acquire),Breece Hall,RB,4258,0.383,732,223,win-now bargain (edge),FALSE
+Targets (acquire),Luther Burden,WR,3351,0.083,268,211,win-now bargain (edge),FALSE
+Targets (acquire),Quinshon Judkins,RB,4151,0.183,436,202,win-now bargain (edge),FALSE
+Targets (acquire),Tyrone Tracy,RB,1380,0.15,391,195,win-now bargain (edge),FALSE
+Targets (acquire),Jadarian Price,RB,3323,0.133,366,193,win-now bargain (edge),FALSE
+Targets (acquire),Chris Rodriguez,RB,1335,0.133,372,186,win-now bargain (edge),FALSE
+Targets (acquire),Brenton Strange,TE,1645,-0.033,123,172,win-now bargain (edge),FALSE
+Targets (acquire),Tank Bigsby,RB,1363,0.033,245,155,win-now bargain (edge),FALSE
+Targets (acquire),Cam Skattebo,RB,3452,0.25,597,147,win-now bargain (edge),FALSE
+Targets (acquire),Bucky Irving,RB,3556,0.183,505,133,win-now bargain (edge),FALSE
+Targets (acquire),T.J. Hockenson,TE,1271,0.067,323,131,win-now bargain (edge),FALSE
+Targets (acquire),Amon-Ra St. Brown,WR,7269,0.433,909,126,win-now bargain (edge),FALSE
+Targets (acquire),Chig Okonkwo,TE,1482,-0.033,169,126,win-now bargain (edge),FALSE
+Targets (acquire),Tyler Allgeier,RB,1482,0.017,252,123,win-now bargain (edge),FALSE
+Targets (acquire),Rome Odunze,WR,3301,0.117,416,117,win-now bargain (edge),FALSE
+Targets (acquire),Kenneth Walker,RB,4695,0.317,742,109,win-now bargain (edge),FALSE
+Targets (acquire),Chris Olave,WR,3692,0.05,321,106,win-now bargain (edge),FALSE
+Targets (acquire),Jaxon Smith-Njigba,WR,8897,0.45,961,101,win-now bargain (edge),FALSE
+Targets (acquire),Kyle Pitts,TE,2735,-0.017,241,80,win-now bargain (edge),FALSE
+Targets (acquire),Keaton Mitchell,RB,1323,0.017,295,79,win-now bargain (edge),FALSE
+Targets (acquire),De'Von Achane,RB,6194,0.647,1307,68,win-now bargain (edge),TRUE
+Targets (acquire),Rachaad White,RB,1726,0.233,663,55,win-now bargain (edge),FALSE
+Targets (acquire),Caleb Williams,QB,3880,-0.033,248,47,win-now bargain (edge),FALSE
+Targets (acquire),Brian Robinson,RB,1317,0.15,554,31,win-now bargain (edge),FALSE
+Targets (acquire),Dalton Schultz,TE,1085,0,318,30,win-now bargain (edge),FALSE
+Targets (acquire),Christian Watson,WR,2199,-0.067,222,19,win-now bargain (edge),FALSE
+Targets (acquire),J.K. Dobbins,RB,1684,0.2,658,7,win-now bargain (edge),FALSE
+Targets (acquire),Chase Brown,RB,4141,0.62,1329,2,win-now bargain (edge),TRUE
+Targets (acquire),Puka Nacua,WR,8474,0.55,1220,0,win-now bargain (edge),FALSE
+Targets (acquire),D'Andre Swift,RB,2405,0.3,825,-1,win-now priced-rich,FALSE
+Targets (acquire),Chuba Hubbard,RB,1906,0.133,587,-28,win-now priced-rich,FALSE
+Targets (acquire),Tony Pollard,RB,1732,0.233,748,-31,win-now priced-rich,FALSE
+Targets (acquire),Josh Jacobs,RB,2866,0.467,1126,-38,win-now priced-rich,FALSE
+Targets (acquire),Malik Nabers,WR,6520,0.117,574,-41,win-now priced-rich,FALSE
+Targets (acquire),Javonte Williams,RB,3236,0.283,841,-45,win-now priced-rich,FALSE
+Targets (acquire),Travis Kelce,TE,1473,0.083,544,-64,win-now priced-rich,FALSE
+Targets (acquire),A.J. Brown,WR,3845,0.25,811,-67,win-now priced-rich,FALSE
+Targets (acquire),Kyren Williams,RB,3665,0.25,821,-77,win-now priced-rich,FALSE
+Targets (acquire),Jordan Mason,RB,1507,0.067,536,-83,win-now priced-rich,FALSE
+Targets (acquire),Dallas Goedert,TE,1284,0.017,473,-98,win-now priced-rich,FALSE
+Targets (acquire),Derrick Henry,RB,2951,0.54,1310,-106,win-now priced-rich,TRUE
+Targets (acquire),Tyjae Spears,RB,1244,0.05,544,-117,win-now priced-rich,FALSE
+Targets (acquire),Kenny Gainwell,RB,1598,0.117,668,-135,win-now priced-rich,FALSE
+Targets (acquire),David Montgomery,RB,2394,0.267,946,-174,win-now priced-rich,FALSE
+Targets (acquire),Aaron Jones,RB,1363,0.167,796,-183,win-now priced-rich,FALSE
+Targets (acquire),Travis Etienne,RB,3157,0.383,1143,-187,win-now priced-rich,FALSE
+Targets (acquire),Lamar Jackson,QB,3788,0.117,735,-202,win-now priced-rich,FALSE
+Targets (acquire),Rhamondre Stevenson,RB,1764,0.05,644,-217,win-now priced-rich,FALSE
+Targets (acquire),Christian McCaffrey,RB,4568,0.762,1782,-224,win-now priced-rich,TRUE
+Targets (acquire),DeVonta Smith,WR,3336,0.25,971,-226,win-now priced-rich,FALSE
+Targets (acquire),Mark Andrews,TE,1504,-0.017,566,-245,win-now priced-rich,FALSE
+Targets (acquire),Alvin Kamara,RB,1216,0.083,759,-279,win-now priced-rich,FALSE
+Targets (acquire),Davante Adams,WR,1986,0.017,657,-283,win-now priced-rich,FALSE
+Targets (acquire),George Kittle,TE,1944,-0.05,612,-344,win-now priced-rich,FALSE
+Targets (acquire),Jonathan Taylor,RB,5573,0.742,1873,-347,win-now priced-rich,TRUE
+Targets (acquire),Joe Burrow,QB,3539,-0.1,552,-363,win-now priced-rich,FALSE
+Targets (acquire),Drake Maye,QB,4604,0.017,741,-367,win-now priced-rich,FALSE
+Targets (acquire),Isiah Pacheco,RB,1268,-0.083,702,-487,win-now priced-rich,FALSE
+Targets (acquire),Saquon Barkley,RB,4156,0.643,1866,-498,win-now priced-rich,TRUE
+Targets (acquire),Jaylen Waddle,WR,3200,0.033,992,-592,win-now priced-rich,FALSE
+Targets (acquire),Justin Jefferson,WR,7151,0.3,1416,-592,win-now priced-rich,FALSE
+Targets (acquire),James Cook,RB,5474,0.517,1763,-594,win-now priced-rich,FALSE
+Targets (acquire),Ja'Marr Chase,WR,9799,0.6,2009,-709,win-now priced-rich,FALSE
+Targets (acquire),Trey McBride,TE,6042,0.133,1486,-928,win-now priced-rich,FALSE
+Targets (acquire),Josh Allen,QB,5320,-0.083,1234,-1018,win-now priced-rich,FALSE
+Targets (acquire),Bijan Robinson,RB,10901,0.583,2420,-1147,win-now priced-rich,FALSE
+Targets (acquire),Jahmyr Gibbs,RB,10772,0.907,3038,-1250,win-now priced-rich,TRUE
+Targets (acquire),Brock Bowers,TE,7025,-0.067,1848,-1606,win-now priced-rich,FALSE
+Targets (acquire),Harold Fannin,TE,2937,0.1,-614,,future (judge on trajectory),TRUE
+Targets (acquire),Tetairoa McMillan,WR,4917,0.287,-54,,future (judge on trajectory),TRUE
+Targets (acquire),AJ Barner,TE,1391,0.01,-19,,future (judge on trajectory),TRUE
+Targets (acquire),Oronde Gadsden,TE,1753,0.05,-223,,future (judge on trajectory),FALSE
+Targets (acquire),Jonah Coleman,RB,1892,-0.033,-49,,future (judge on trajectory),FALSE
+Targets (acquire),Tucker Kraft,TE,3154,-0.017,-38,,future (judge on trajectory),FALSE

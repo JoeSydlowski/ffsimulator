@@ -1,0 +1,236 @@
+================================================================================
+LEAGUE REPORTS - sox05syd - 2026-07-11
+framework: role taxonomy + two-stage valuation (search n=60 real schedule,
+all quoted numbers from the n=400 standings sim), FantasyCalc market baseline,
+decimal Sept-1 ages with Sleeper/MFL-completed birthdates
+================================================================================
+
+ROLES: two axes - does he help MY lineup win (leave-one-out >= 0.10 wins), and
+what is his value doing (appreciating / holding / declining).
+  CORE (wins + value)      winning AND value safe
+  RENTAL (win-now, fading) winning but value melting: keep while contending
+  STASH (appreciating)     not winning yet, value growing: do not sell early
+  TRADE CHIP (surplus)     parked portable capital: convert only for a lineup upgrade
+  SELL (fading)            not winning AND value leaving: urgent
+  bust_flag                P(exits rankings) >= 20%, rides alongside the role
+
+================================================================================
+JML (1qb dynasty) 
+================================================================================
+
+posture: contend (playoff odds 68%) | capital 62316 -> 51499 expected (p10 26350 / p90 84158)
+value-at-risk 1428 | top-3 concentration 27% | age-weighted capital 25.7
+
+-- standings (my row + top 3) --
+         franchise_name mean_wins playoff_pct
+1: Obvious 49ers Ripoff      10.1        0.96
+2:             JMLarkin       8.3        0.78
+3:           ZPMiller97       8.2        0.74
+4:             sox05syd       7.8        0.68
+
+-- capital by role --
+                    verdict capital  n
+1: RENTAL (win-now, fading)   22151  7
+2:      CORE (wins + value)   21702  6
+3:            SELL (fading)   10467 10
+4:     TRADE CHIP (surplus)    6624  4
+5:     STASH (appreciating)     809  3
+6:                    depth     401  4
+7:                     hold     161  1
+
+-- roster (value >= 800) --
+           player_name pos  age cur_value wins_to_me trajectory
+ 1:        CeeDee Lamb  WR 27.3      6419      0.605  declining
+ 2:       Drake London  WR 25.0      5878      0.545    holding
+ 3:   Colston Loveland  TE 22.3      4618      0.292    holding
+ 4:       Emeka Egbuka  WR 23.8      4515      0.220    holding
+ 5:       Tyler Warren  TE 24.1      4388      0.135  declining
+ 6:        Tee Higgins  WR 27.5      3284      0.375  declining
+ 7:    Patrick Mahomes  QB 30.8      3040      0.255  declining
+ 8:    Trevor Lawrence  QB 26.8      2650      0.428    holding
+ 9:        Omar Cooper  WR 22.6      2171      0.018    holding
+10:      Kyle Monangai  RB 24.1      2054      0.232    holding
+11:    Jonathon Brooks  RB 23.0      1987      0.130    holding
+12:       Tyler Shough  QB 26.8      1790      0.125  declining
+13: Nicholas Singleton  RB 22.5      1790      0.035    holding
+14:    Zach Charbonnet  RB 25.5      1758      0.085    holding
+15:     Dalton Kincaid  TE 26.7      1723      0.035  declining
+16:        Rico Dowdle  RB 28.1      1713      0.235  declining
+17:      Jakobi Meyers  WR 29.7      1530      0.072  declining
+18:   Courtland Sutton  WR 30.8      1517      0.157  declining
+19:      Khalil Shakir  WR 26.5      1452      0.040  declining
+20:         Tre Tucker  WR 25.4      1110      0.002  declining
+21:     Jauan Jennings  WR 29.0      1096      0.013  declining
+22:       Kimani Vidal  RB 24.9      1059      0.087  declining
+23:        David Njoku  TE 30.0      1050      0.015  declining
+24:        Eli Raridon  TE 22.4       905      0.013    holding
+25:        Trey Benson  RB 24.0       836      0.037  declining
+           player_name pos  age cur_value wins_to_me trajectory
+                     verdict bust
+ 1: RENTAL (win-now, fading)     
+ 2:      CORE (wins + value)     
+ 3:      CORE (wins + value)     
+ 4:      CORE (wins + value)     
+ 5: RENTAL (win-now, fading)     
+ 6: RENTAL (win-now, fading)     
+ 7: RENTAL (win-now, fading)     
+ 8:      CORE (wins + value)     
+ 9:     TRADE CHIP (surplus)     
+10:      CORE (wins + value)     
+11:      CORE (wins + value)     
+12: RENTAL (win-now, fading)     
+13:     TRADE CHIP (surplus)     
+14:     TRADE CHIP (surplus)     
+15:            SELL (fading)     
+16: RENTAL (win-now, fading)     
+17:            SELL (fading)     
+18: RENTAL (win-now, fading)     
+19:            SELL (fading)     
+20:            SELL (fading)     
+21:            SELL (fading)     
+22:            SELL (fading)     
+23:            SELL (fading)     
+24:     TRADE CHIP (surplus)     
+25:            SELL (fading)     
+                     verdict bust
+
+-- movable pieces: best buyers --
+CeeDee Lamb [RENTAL (win-now, fading)]: Flipadelphia05 (+1.02w/+18%); KingGabe (+0.93w/+20%); JMLarkin (+0.87w/+13%)
+Tyler Warren [RENTAL (win-now, fading)]: KingGabe (+0.50w/+18%); JMLarkin (+0.32w/+7%); Flipadelphia05 (+0.30w/+3%)
+Tee Higgins [RENTAL (win-now, fading)]: KingGabe (+0.80w/+20%); JMLarkin (+0.78w/+12%); Prestige Worldwide (+0.58w/+12%)
+Patrick Mahomes [RENTAL (win-now, fading)]: solarpool (+0.52w/-2%); KingGabe (+0.50w/+13%); Flipadelphia05 (+0.47w/+5%)
+
+-- top deals (confirmed on n=400; future-weighted; fut = next-year capital delta) --
+[buy & sell CeeDee Lamb] send Dalton Kincaid + CeeDee Lamb -> get Ashton Jeanty
+      me +0.06w +1.5%pl | opp +0.25w +4.2%pl | fut +1165 | WIN-WIN
+[buy] send Tyler Warren -> get Kenneth Walker
+      me +0.38w +7.5%pl | opp -0.37w -5.7%pl | fut +299
+[sell Tyler Warren] send Tyler Warren -> get Quinshon Judkins
+      me +0.17w +4.5%pl | opp -0.08w -3.7%pl | fut +673
+[sell CeeDee Lamb] send CeeDee Lamb -> get Christian McCaffrey + Terry McLaurin
+      me +0.61w +11.7%pl | opp -0.75w -19.8%pl | fut -272
+[buy] send Kimani Vidal + Tyler Shough -> get Harold Fannin
+      me -0.22w -2.8%pl | opp +0.18w +3.2%pl | fut +1583
+[sell Tyler Warren] send Tyler Warren + KeAndre Lambert-Smith -> get Quinshon Judkins
+      me +0.17w +4.2%pl | opp -0.03w -3.0%pl | fut +645
+[sell Tee Higgins] send Kimani Vidal + Tee Higgins -> get Nico Collins
+      me +0.12w +3.5%pl | opp -0.05w -2.5%pl | fut +688
+[buy] send Jakobi Meyers + Khalil Shakir -> get Harold Fannin
+      me -0.08w -0.8%pl | opp +0.03w +1.8%pl | fut +1219
+
+
+================================================================================
+Jon (superflex dynasty) 
+================================================================================
+
+posture: bubble (playoff odds 47%) | capital 60509 -> 50330 expected (p10 26055 / p90 77440)
+value-at-risk 685 | top-3 concentration 34% | age-weighted capital 25.4
+
+-- standings (my row + top 3) --
+          franchise_name mean_wins playoff_pct
+1:         NFC Nostalgia       7.7        0.66
+2:         G baby ladies       7.5        0.61
+3: CrashOutChris'Kickoff       7.4        0.61
+4:              sox05syd       6.9        0.47
+
+-- capital by role --
+                    verdict capital n
+1:      CORE (wins + value)   34260 7
+2: RENTAL (win-now, fading)   14129 8
+3:            SELL (fading)    7696 8
+4:     TRADE CHIP (surplus)    4096 3
+5:                     hold     328 1
+
+-- roster (value >= 800) --
+          player_name pos  age cur_value wins_to_me trajectory
+ 1:        Puka Nacua  WR 25.1      8547      0.963    holding
+ 2:  Justin Jefferson  WR 27.1      6981      0.890    holding
+ 3: Tetairoa McMillan  WR 23.3      4983      0.633    holding
+ 4:      Carnell Tate  WR 21.5      4538      0.375    holding
+ 5:      Jordyn Tyson  WR 21.9      3600      0.270    holding
+ 6:      Tyler Shough  QB 26.8      3319      0.627  declining
+ 7:     Harold Fannin  TE 22.0      3155      0.268    holding
+ 8:      Daniel Jones  QB 29.1      2501      0.433  declining
+ 9:      Malik Willis  QB 27.1      2456      0.490    holding
+10:        Ty Simpson  QB 23.6      2323      0.058  declining
+11:     George Kittle  TE 32.8      2119      0.143  declining
+12:     Denzel Boston  WR 22.6      2068      0.100    holding
+13:      Tony Pollard  RB 29.2      1580      0.385  declining
+14:    Dallas Goedert  TE 31.5      1467      0.135  declining
+15:       Aaron Jones  RB 31.6      1294      0.322  declining
+16:   Chris Rodriguez  RB 26.8      1287      0.167  declining
+17:   Mike Washington  RB 23.0      1127      0.082  declining
+18:    MarShawn Lloyd  RB 25.5      1097      0.042  declining
+19:         Jack Bech  WR 23.6      1086      0.042  declining
+20:       Eli Raridon  TE 22.4      1020      0.000    holding
+21:      Kaelon Black  RB 24.7      1008      0.030    holding
+          player_name pos  age cur_value wins_to_me trajectory
+                     verdict bust
+ 1:      CORE (wins + value)     
+ 2:      CORE (wins + value)     
+ 3:      CORE (wins + value)     
+ 4:      CORE (wins + value)     
+ 5:      CORE (wins + value)     
+ 6: RENTAL (win-now, fading)     
+ 7:      CORE (wins + value)     
+ 8: RENTAL (win-now, fading)     
+ 9:      CORE (wins + value)     
+10:            SELL (fading)     
+11: RENTAL (win-now, fading)     
+12:     TRADE CHIP (surplus)     
+13: RENTAL (win-now, fading)     
+14: RENTAL (win-now, fading)     
+15: RENTAL (win-now, fading)     
+16: RENTAL (win-now, fading)     
+17:            SELL (fading)     
+18:            SELL (fading)     
+19:            SELL (fading)     
+20:     TRADE CHIP (surplus)     
+21:     TRADE CHIP (surplus)     
+                     verdict bust
+
+-- movable pieces: best buyers --
+Tyler Shough [RENTAL (win-now, fading)]: MacDaddyNation (+0.55w/+13%); Galletti (+0.47w/+15%); theKmbl (+0.45w/+7%)
+Daniel Jones [RENTAL (win-now, fading)]: MacDaddyNation (+0.52w/+8%); G baby ladies  (+0.38w/+5%); CrashOutChris'Kickoff (+0.28w/+7%)
+Ty Simpson [SELL (fading)]: mjmx3 (+0.10w/+3%); MacDaddyNation (+0.07w/-2%); G baby ladies  (+0.05w/+0%)
+George Kittle [RENTAL (win-now, fading)]: Chase'n Purdy Strange (+0.23w/+3%); MacDaddyNation (+0.22w/+3%); mkbarz (+0.18w/+2%)
+
+-- top deals (confirmed on n=400; future-weighted; fut = next-year capital delta) --
+[buy] send Ty Simpson + Tony Pollard -> get Chris Olave
+      me +0.16w +2.2%pl | opp -0.44w -8.5%pl | fut +1021
+[buy & sell George Kittle] send Jack Bech + George Kittle -> get Cam Skattebo
+      me +0.28w +5.7%pl | opp -0.30w -5.7%pl | fut +852
+[buy & sell George Kittle] send Ty Simpson + George Kittle -> get Kenneth Walker
+      me +0.37w +6.5%pl | opp -0.37w -8.8%pl | fut +807
+[buy] send Ty Simpson + George Kittle -> get Nico Collins
+      me +0.62w +12.0%pl | opp -0.62w -10.5%pl | fut +524
+[buy & sell George Kittle] send Mike Washington + George Kittle -> get Cam Skattebo
+      me +0.28w +5.0%pl | opp -0.28w -5.7%pl | fut +830
+[sell George Kittle] send George Kittle -> get Terry McLaurin
+      me +0.32w +6.0%pl | opp -0.53w -12.2%pl | fut +604
+[buy] send Ty Simpson + Calvin Ridley -> get Travis Etienne
+      me +0.52w +12.5%pl | opp -0.46w -10.0%pl | fut +269
+[buy & sell Ty Simpson] send Jack Bech + Ty Simpson -> get Kyren Williams
+      me +0.41w +8.5%pl | opp -0.52w -12.5%pl | fut +355
+
+
+================================================================================
+THE READ
+================================================================================
+
+JML (contend, 68%): the engine is winning but melting - ~36% of capital is
+RENTAL (Lamb, Higgins and the fading win-now core) vs ~22k CORE (London,
+Egbuka). Play for this year's title with the rentals, and take the market's
+money where a deal is win-neutral-or-better AND future-positive: the
+Kincaid + Lamb -> Jeanty WIN-WIN is the template (helps both sides now,
++1165 future). Egbuka is CORE - the earlier SELL label was a threshold
+artifact, since fixed.
+
+Jon (bubble, 47%): the healthier portfolio (57% CORE, led by Nacua; tiny
+value-at-risk) stuck on the playoff bubble. The lever is converting the two
+clean surplus pieces - George Kittle (aging TE) and Ty Simpson (rookie QB,
+real age 23.7, surplus in a QB room that is core capital in superflex) -
+into win-now RB/WR: Simpson + Kittle -> Nico Collins (+12.0% playoff,
++524 future) or Simpson + Ridley -> Etienne (+12.5%, +269) move you off the
+bubble WITHOUT bleeding next year. Every top deal is future-positive; no
+fire sales required.

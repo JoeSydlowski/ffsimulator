@@ -1,0 +1,28 @@
+player_name,pos,age,cur_value,exp_change,rel_change,pos_drift,trend_pct,p_rise,p_exit,value_to_me,playoff_delta_me,wins_per_1k,swing,mean_weeks_started,pos_depth_rank,trajectory,verdict,bust_flag,pareto_front,dominated_by,best_buyers,player_id
+Puka Nacua,WR,25.1,8583,-0.162,-0.019,-0.146,-0.016,0.328,0,0.88,0.218,0.098,76.591,10.768,1,holding,CORE (wins + value),FALSE,3,Tyler Shough; Malik Willis; Taylen Green,,9493
+Justin Jefferson,WR,27.1,7244,-0.206,-0.07,-0.146,-0.034,0.248,0,0.8,0.188,0.104,62.562,10.512,2,holding,CORE (wins + value),FALSE,3,Tyler Shough; Malik Willis; Taylen Green,,6794
+Tetairoa McMillan,WR,23.3,4981,0.063,0.245,-0.146,0.011,0.392,0,0.518,0.15,0.096,38.946,10.598,3,appreciating,CORE (wins + value),FALSE,2,Taylen Green,,12526
+Carnell Tate,WR,21.5,4514,0.149,0.346,-0.146,,0.613,0,0.305,0.08,0.066,15.791,9.977,4,appreciating,CORE (wins + value),FALSE,3,Harold Fannin; Tahj Brooks; Ty Simpson,,13279
+Jordyn Tyson,WR,21.9,3566,0.155,0.353,-0.146,,0.505,0,0.205,0.063,0.057,23.152,8.213,5,appreciating,CORE (wins + value),FALSE,3,Harold Fannin; Tahj Brooks; Ty Simpson,,13281
+Tyler Shough,QB,26.8,3302,-0.05,0.041,-0.088,-0.055,0.312,0,0.683,0.16,0.191,53.757,8.96,1,holding,CORE (wins + value),FALSE,1,,,12545
+Harold Fannin,TE,22,3253,0.234,0.324,-0.068,0.002,0.418,0,0.303,0.063,0.086,13.288,8.278,1,appreciating,CORE (wins + value),FALSE,1,,,12506
+Daniel Jones,QB,29.1,2537,-0.275,-0.205,-0.088,0.002,0.302,0.013,0.357,0.095,0.141,0.145,6.513,3,declining,"RENTAL (win-now, fading)",FALSE,3,Tyler Shough; Malik Willis,Chase'n Purdy Strange (+0.62w/+18%); MacDaddyNation (+0.45w/+7%); Galletti (+0.40w/+12%),5870
+Malik Willis,QB,27.2,2464,-0.077,0.012,-0.088,-0.039,0.415,0.002,0.485,0.123,0.181,20.201,8.565,2,holding,CORE (wins + value),FALSE,2,Tyler Shough,,8161
+Ty Simpson,QB,23.6,2182,0.2,0.316,-0.088,,0.515,0.002,0.077,0.01,0.069,-4.485,1.468,4,appreciating,STASH (appreciating),FALSE,2,Harold Fannin; Tahj Brooks,,13275
+George Kittle,TE,32.8,2152,-0.357,-0.31,-0.068,0.141,0.078,0.082,0.162,0.025,0.072,-16.009,6.782,2,declining,"RENTAL (win-now, fading)",FALSE,6,Tyler Shough; Malik Willis; Daniel Jones,Chase'n Purdy Strange (+0.33w/+8%); theKmbl (+0.32w/+3%); mjmx3 (+0.28w/+3%),4217
+Denzel Boston,WR,22.6,2059,0.048,0.228,-0.146,,0.312,0.013,0.08,0.033,0.045,0.909,4.085,6,appreciating,STASH (appreciating),FALSE,4,Taylen Green; Tetairoa McMillan; Harold Fannin,,13346
+Tony Pollard,RB,29.2,1609,-0.425,-0.258,-0.225,0.062,0.085,0.005,0.305,0.075,0.147,36.264,8.108,1,declining,"RENTAL (win-now, fading)",FALSE,3,Tyler Shough; Malik Willis,mjmx3 (+0.48w/+12%); mkbarz (+0.42w/+8%); G baby ladies  (+0.33w/+10%),5967
+Dallas Goedert,TE,31.5,1422,-0.295,-0.244,-0.068,-0.044,0.232,0.028,0.077,0.015,0.059,-7.511,5.975,3,declining,SELL (fading),FALSE,5,Tyler Shough; Malik Willis; Daniel Jones,mjmx3 (+0.25w/+7%); mkbarz (+0.23w/+8%); NFC Nostalgia (+0.22w/-0%),5022
+Aaron Jones,RB,31.6,1266,-0.464,-0.308,-0.225,0.019,0.17,0.018,0.245,0.075,0.143,23.28,7.36,2,declining,"RENTAL (win-now, fading)",FALSE,4,Tyler Shough; Malik Willis; Tony Pollard,,4199
+Chris Rodriguez,RB,26.8,1240,-0.219,0.007,-0.225,0.027,0.35,0.04,0.152,0.048,0.104,4.973,5.135,4,holding,CORE (wins + value),FALSE,4,Tyler Shough; Malik Willis; Taylen Green,,10219
+MarShawn Lloyd,RB,25.5,1117,-0.397,-0.222,-0.225,0.073,0.275,0.015,0.015,0.013,0.045,-0.871,1.518,9,declining,SELL (fading),FALSE,8,Tyler Shough; Malik Willis; Daniel Jones,,11581
+Jack Bech,WR,23.6,1067,-0.107,0.046,-0.146,-0.038,0.478,0.025,0.002,-0.002,0.029,-4.771,2.035,9,holding,TRADE CHIP (surplus),FALSE,6,Tyler Shough; Malik Willis; Taylen Green,,12483
+Eli Raridon,TE,22.4,1054,0.034,0.109,-0.068,,0.438,0.002,0.013,-0.002,0.038,0.936,0.62,4,appreciating,STASH (appreciating),FALSE,5,Taylen Green; Tetairoa McMillan; Harold Fannin,,13421
+Mike Washington,RB,23,984,-0.355,-0.168,-0.225,,0.268,0.002,0.07,0.023,0.075,-4.45,2.973,5,declining,SELL (fading),FALSE,5,Tyler Shough; Malik Willis; Daniel Jones,,13305
+Kaelon Black,RB,24.8,954,-0.313,-0.113,-0.225,,0.332,0.002,0.035,0.003,0.059,0.818,1.322,6,declining,SELL (fading),FALSE,6,Tyler Shough; Malik Willis; Daniel Jones,,13414
+Calvin Ridley,WR,31.6,763,-0.723,-0.676,-0.146,-0.262,0.002,0.058,0.03,0.015,0.05,-15.98,2.87,7,declining,SELL (fading),FALSE,7,Tyler Shough; Malik Willis; Emanuel Wilson,,4981
+Isaiah Bond,WR,22.3,688,-0.367,-0.259,-0.146,0.029,0.245,0.048,0.022,0.005,0.047,-9.65,1.035,8,declining,SELL (fading),FALSE,7,Tyler Shough; Malik Willis; Daniel Jones,,12503
+Emanuel Wilson,RB,27.2,573,-0.538,-0.404,-0.225,-0.138,0.155,0.07,0.162,0.045,0.154,6.143,3.215,3,declining,"RENTAL (win-now, fading)",FALSE,3,Tyler Shough; Malik Willis,,11435
+Najee Harris,RB,28.4,362,-0.686,-0.594,-0.225,-0.459,0.038,0.152,0.02,0.01,0.073,0.922,1.57,8,declining,SELL (fading),FALSE,6,Tyler Shough; Malik Willis; Emanuel Wilson,,7528
+Tahj Brooks,RB,24.2,314,0.312,0.692,-0.225,0.022,0.432,0.122,0.025,0.013,0.08,4.439,0.91,7,appreciating,STASH (appreciating),FALSE,1,,,12543
+Taylen Green,QB,23.8,299,0.072,0.176,-0.088,,0.298,0.32,0.025,0.003,0.128,0.923,0.45,5,appreciating,STASH (appreciating),TRUE,1,,,13306
