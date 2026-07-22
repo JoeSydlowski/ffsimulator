@@ -32,10 +32,12 @@ Rscript R/01_field_study.R
 - [x] **Rich-year streaming ingest** (2023/2024/2025, ~5 GB each → ~45 s/yr; ~675k entries/yr).
 - [x] **Fix-the-anchor stack test + ceiling test** (`stack_lib.R`), replicated across
   **4 years** (2021 thin + 2023/24/25 rich) in `04_stack_replication.R`.
-- [ ] **Playoff-week ceiling test** — rerun the ceiling test on rd2–4 *single-week* scores
-  (the correct venue; season totals wash out weekly correlation via CLT).
+- [x] **Playoff-week (single-week) ceiling test** on rd2 (wk15), 4 years — `sd_ratio ≈ 1.0`,
+  no weekly ceiling from minimal stacks.
+- [ ] **Stack-size / game-stack gradient** — does concentration (QB + 2–3 receivers, bring-backs)
+  behave differently than the binary ≥1-catcher stack tested so far?
 - [ ] Add 2020 xlsx + 2022 split-parts for two more regular-season years.
-- [ ] Control *receiver* quality (not just QB) for a tighter stack estimate.
+- [ ] Sim engine (Test 2): toggle correlation with players held identical — the clean arbiter.
 
 ### Note: advancement in rich years
 Rich rd1 files leave `made_playoffs = 0`; advancement is derived as **top-2-of-pod by
@@ -80,10 +82,36 @@ De-confounded within-QB stacking effect on **regular-season advancement**, by ye
    is **negative every year**: stacking, where it shifts anything, shifts the *level*, never
    fattening the upper tail.
 
-**Critical caveat / reframe (why this isn't the whole story):** `roster_points` here is a
-**14-week sum**, which averages weekly correlation away (CLT) — so this correctly shows
-stacking doesn't help you make your pod's top-2, but it *cannot* test the mechanism that
-actually wins a top-heavy GPP: does stacking raise **single-week playoff ceiling** and thus
-deep-run/win rate? That lives in the **rd2–4 single-week scores** (which we have) and/or the
-sim engine (toggle correlation, players held identical). **That playoff-week ceiling test is
-the next build** — this regular-season result localizes where the real question must be asked.
+**Reframe that motivated the playoff-week test:** `roster_points` above is a **14-week sum**,
+which averages weekly correlation away (CLT). Correlation *redistributes* points into fewer,
+bigger weeks, so it can leave the season-total tail flat while still fattening the
+**single-week** tail — the mechanism that wins single-elimination playoff weeks. So we tested
+the single week directly.
+
+## Playoff-week (single-week) ceiling — `06_playoff_ceiling.R` (STRENGTHENS THE NULL)
+
+Within-QB single-week (rd2 = wk15) score distribution, stacked vs not, 4 years:
+
+| Year | single-week tail_extra | **sd_ratio** (stacked/unstacked wk variance) |
+|---|---|---|
+| 2021 | −1.2 | 0.98 |
+| 2023 | +0.7 | 1.02 |
+| 2024 | −1.0 | 0.99 |
+| 2025 | −0.4 | 0.98 |
+
+**`sd_ratio ≈ 1.00` every year is the result:** holding the QB fixed, stacked rosters have
+essentially the **same single-week variance** as unstacked ones — no fatter weekly tail, no
+extra ceiling. The correlation-ceiling mechanism is **not visible even at the single week**,
+across 4 years, at neither horizon.
+
+**Why plausibly:** best ball already auto-optimises the weekly lineup, so ceiling comes from
+*whichever* players boom — an unstacked roster spreading pass-catchers across many games has
+*more independent* shots at a boom, offsetting a stack's *correlated* boom. Stacking's
+theoretical edge is largely neutralised by best ball's own mechanic (a known best-ball
+counter-argument, now with field evidence).
+
+**Main remaining caveat:** "stacked" here = **≥1** same-team pass-catcher (a minimal 2-man
+stack). Elite players run **concentrated** stacks (QB + 2–3 receivers, plus opponent
+bring-backs / game stacks). The null on *marginal* stacks doesn't rule out an effect for
+*concentrated* ones — a **stack-size / game-stack gradient** test is the next refinement, and
+the sim engine (toggle correlation, players held identical) remains the fully-clean arbiter.

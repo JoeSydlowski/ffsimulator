@@ -49,6 +49,28 @@ prep_thin <- function(parquet, season) {
   list(fact = d, match_rate = d[, mean(!is.na(nfl_team))])
 }
 
+# thin playoff dumps (2021/2022): fread a raw CSV directly (name-keyed)
+prep_thin_raw <- function(csv, season) {
+  d <- fread(csv, showProgress = FALSE)
+  d <- d[, .(entry_id = tournament_entry_id, draft_id,
+             pkey = player_name, pos = position_name, roster_points)]
+  d[, key := .clean(pkey)]
+  d <- merge(d, nfl_teammap(season), by = c("key", "pos"), all.x = TRUE)
+  d[, key := NULL]
+  list(fact = d, match_rate = d[, mean(!is.na(nfl_team))])
+}
+
+# entry x QB stack flag: TRUE if the entry rosters a WR/TE on that QB's team
+.qb_stack <- function(fact) {
+  catch <- unique(fact[pos %in% c("WR","TE") & !is.na(nfl_team), .(entry_id, team = nfl_team)])
+  catch[, has_catcher := TRUE]
+  qbs <- fact[pos == "QB" & !is.na(nfl_team), .(entry_id, qb = pkey, qb_team = nfl_team)]
+  qbs <- merge(qbs, catch, by.x = c("entry_id","qb_team"),
+               by.y = c("entry_id","team"), all.x = TRUE)
+  qbs[, stacked := !is.na(has_catcher)]
+  qbs[, .(entry_id, qb, stacked)]
+}
+
 # run both tests; returns list(summary = 1 row, per_qb = detail)
 stack_tests <- function(prep, season, min_side = 150L) {
   fact <- prep$fact
@@ -56,12 +78,8 @@ stack_tests <- function(prep, season, min_side = 150L) {
   em[, pod_rank := frank(-roster_points, ties.method = "first"), by = draft_id]
   em[, advanced := as.integer(pod_rank <= 2L)]
 
-  catch <- unique(fact[pos %in% c("WR","TE") & !is.na(nfl_team), .(entry_id, team = nfl_team)])
-  catch[, has_catcher := TRUE]
-  qbs <- fact[pos == "QB" & !is.na(nfl_team), .(entry_id, qb = pkey, qb_team = nfl_team)]
-  qbs <- merge(qbs, catch, by.x = c("entry_id","qb_team"), by.y = c("entry_id","team"), all.x = TRUE)
-  qbs[, stacked := !is.na(has_catcher)]
-  qbs <- merge(qbs, em[, .(entry_id, roster_points, advanced)], by = "entry_id", all.x = TRUE)
+  qbs <- merge(.qb_stack(fact), em[, .(entry_id, roster_points, advanced)],
+               by = "entry_id", all.x = TRUE)
 
   # naive (confounded), for contrast
   es <- qbs[, .(has_stack = any(stacked)), by = entry_id]
@@ -98,4 +116,41 @@ stack_tests <- function(prep, season, min_side = 150L) {
     tail_extra_w = round(weighted.mean(w$tail_extra, w$wt), 1) # ceiling beyond level
   )
   list(summary = summary, per_qb = w[order(-adv_lift)])
+}
+
+# SINGLE-WEEK ceiling test (playoff rounds). fact$roster_points is the entry's
+# single-week score. Correlation theory: stacking redistributes points into
+# fewer, bigger weeks -> should fatten the SINGLE-WEEK upper tail even though it
+# left the 14-week season total's tail flat. We test that here, within QB.
+#   tail_extra > 0  and  sd_ratio > 1  => stacking fattens the weekly ceiling.
+# Caveat: playoff entries are advancers (selected on weeks 1-14); the scored week
+# (15/16/17) is out-of-sample vs that selection, but receiver-quality still varies.
+single_week_ceiling <- function(prep, season, min_side = 100L) {
+  fact <- prep$fact
+  score <- unique(fact[, .(entry_id, s = roster_points)])
+  qbs <- merge(.qb_stack(fact), score, by = "entry_id", all.x = TRUE)
+  q95 <- function(x) as.numeric(quantile(x, .95, names = FALSE))
+  perqb <- suppressWarnings(qbs[, {
+    si <- stacked; y <- s[si]; n <- s[!si]
+    list(n_yes = length(y), n_no = length(n),
+         med_yes = median(y), med_no = median(n),
+         p95_yes = q95(y), p95_no = q95(n),
+         sd_yes = sd(y), sd_no = sd(n))
+  }, by = qb])
+  w <- perqb[n_yes >= min_side & n_no >= min_side]
+  w[, `:=`(med_lift = med_yes - med_no, p95_lift = p95_yes - p95_no,
+           sd_ratio = sd_yes / sd_no)]
+  w[, tail_extra := p95_lift - med_lift]
+  w[, wt := pmin(n_yes, n_no)]
+  data.table(
+    season       = season,
+    match_rate   = round(prep$match_rate, 3),
+    n_entry      = nrow(score),
+    n_qb         = nrow(w),
+    med_lift_w   = round(weighted.mean(w$med_lift, w$wt), 1),   # weekly level shift
+    p95_lift_w   = round(weighted.mean(w$p95_lift, w$wt), 1),   # weekly ceiling shift
+    tail_extra_w = round(weighted.mean(w$tail_extra, w$wt), 1), # ceiling beyond level
+    sd_ratio_w   = round(weighted.mean(w$sd_ratio, w$wt), 3),   # >1 = more weekly variance
+    pct_tail_pos = round(mean(w$tail_extra > 0), 3)
+  )
 }
