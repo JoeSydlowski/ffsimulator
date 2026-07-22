@@ -33,10 +33,19 @@ ingest_rich <- function(csv, season, tournament, out_prefix) {
   cat(sprintf("[rich] fact -> %s/\n", fact_dir))
 }
 
+rich_specs <- list(
+  list(csv = "data/raw/bbm2023_rd1.csv", season = 2023L, tournament = "BBM IV",  prefix = "data/parquet/2023_BBMIV"),
+  list(csv = "data/raw/bbm2024_rd1.csv", season = 2024L, tournament = "BBM V",   prefix = "data/parquet/2024_BBMV"),
+  list(csv = "data/raw/bbm2025_rd1.csv", season = 2025L, tournament = "BBM VI",  prefix = "data/parquet/2025_BBMVI")
+)
+
 if (sys.nframe() == 0L) {
-  ingest_rich(
-    csv = "data/raw/bbm2023_rd1.csv",
-    season = 2023L, tournament = "BBM IV",
-    out_prefix = "data/parquet/2023_BBMIV"
-  )
+  # ingest any year whose raw file is present and whose fact isn't built yet
+  only <- commandArgs(trailingOnly = TRUE)  # optional: restrict to season(s)
+  for (s in rich_specs) {
+    if (length(only) && !(as.character(s$season) %in% only)) next
+    if (!file.exists(s$csv)) { cat(sprintf("[skip] %d - raw not present\n", s$season)); next }
+    if (dir.exists(paste0(s$prefix, "_fact"))) { cat(sprintf("[skip] %d - already ingested\n", s$season)); next }
+    ingest_rich(s$csv, s$season, s$tournament, s$prefix)
+  }
 }
