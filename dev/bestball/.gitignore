@@ -1,0 +1,2 @@
+# Raw field dumps and derived Parquet are large (GBs) and re-downloadable — never commit.
+data/
