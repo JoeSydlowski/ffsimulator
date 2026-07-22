@@ -87,11 +87,17 @@ ffs_player_value <- function(base_simulation, player_id, franchise_id,
     h2h_wins = s * (base_summary$h2h_wins - cf$h2h_wins),
     allplay_winpct = s * (base_summary$allplay_winpct - cf$allplay_winpct),
     points_for = s * (base_summary$points_for - cf$points_for),
-    playoff_pct = s * (base_summary$playoff_pct - cf$playoff_pct)
+    playoff_pct = s * (base_summary$playoff_pct - cf$playoff_pct),
+    # report-only championship delta alongside the berth delta (see
+    # .ffs_champion_pct); NA-safe for any caller passing a pre-champion summary
+    champion_pct = s * (.nz(base_summary$champion_pct) - .nz(cf$champion_pct))
   )
 
   return(out)
 }
+
+# NULL/absent-safe numeric accessor for optional summary columns
+.nz <- function(x) if (is.null(x) || length(x) == 0 || is.na(x)) 0 else x
 
 #' Evaluate a proposed trade
 #'
@@ -170,7 +176,10 @@ ffs_trade_eval <- function(base_simulation, franchise_a, gives_a, franchise_b, g
     points_delta = after$points_for - before$points_for,
     playoff_pct_before = before$playoff_pct,
     playoff_pct_after = after$playoff_pct,
-    playoff_pct_delta = after$playoff_pct - before$playoff_pct
+    playoff_pct_delta = after$playoff_pct - before$playoff_pct,
+    champion_pct_before = before$champion_pct,
+    champion_pct_after = after$champion_pct,
+    champion_pct_delta = after$champion_pct - before$champion_pct
   )
 
   return(out)
@@ -249,8 +258,10 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20) {
       player_id = p,
       value_to_you = to_you$h2h_wins,
       playoff_delta_you = to_you$playoff_pct,
+      champ_delta_you = to_you$champion_pct,
       value_to_owner = to_owner$h2h_wins,
       playoff_delta_owner = to_owner$playoff_pct,
+      champ_delta_owner = to_owner$champion_pct,
       surplus = to_you$h2h_wins - to_owner$h2h_wins
     )
   }))
@@ -341,6 +352,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                              winwin_bonus = 0, uneven_require_winwin = FALSE,
                              shapes = list(c(1, 1), c(2, 1), c(1, 2)),
                              future_weight = 0, min_future_delta = -Inf,
+                             champ_weight = 0, ceiling_weight = 0,
                              opponents = NULL, must_send = NULL,
                              screen_n = 40L, top_n = 20L) {
   checkmate::assert_class(base_simulation, "ff_simulation")
@@ -350,6 +362,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     cur_value <- next_value_mean <- value_to_me <- add_gain <- my_win_delta <-
     my_playoff_delta <- opp_win_delta <- opp_playoff_delta <- h2h_wins_delta <-
     playoff_pct_delta <- future_capital_delta <- screen <- score <- NULL
+  send_top <- recv_top <- my_champ_delta <- opp_champ_delta <- champion_pct_delta <- NULL
 
   # standard-deviation scaling that is safe when the column is constant/singleton
   z <- function(x) {
@@ -412,7 +425,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
       send_pkgs[[length(send_pkgs) + 1L]] <- list(
         n = ns, ids = r$player_id, names = paste(r$player_name, collapse = " + "),
         value = sum(r$cur_value), next_value = sum(r$next_value_mean),
-        cost_me = sum(r$value_to_me))
+        cost_me = sum(r$value_to_me), top = max(r$value_to_me))
     }
   }
 
@@ -450,12 +463,17 @@ ffs_build_trades <- function(base_simulation, franchise_id,
             if (prem < floor_prem || prem > floor_prem + uneven_shade) next
           }
           gain <- recv_gain - sp$cost_me
-          if (gain <= 0) next
+          # additive win-gain gate for even/split shapes only. A consolidation
+          # (send a package for one better player) trades slot-count for top-end
+          # ceiling - a non-additive payoff (convex championship value) the exact
+          # eval + champion screen judge downstream - so let it through here.
+          if (sp$n <= nr && gain <= 0) next
           deals[[length(deals) + 1L]] <- data.table::data.table(
             opponent = o, send_ids = list(sp$ids), send = sp$names,
             recv_ids = list(rr$player_id), receive = paste(rr$player_name, collapse = " + "),
             send_value = sp$value, recv_value = recv_val, value_gap = recv_val - sp$value,
-            add_gain = gain, future_capital_delta = recv_next - sp$next_value)
+            add_gain = gain, send_top = sp$top, recv_top = max(rr$value_to_you),
+            future_capital_delta = recv_next - sp$next_value)
         }
       }
     }
@@ -468,8 +486,12 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   if (nrow(deals) == 0) return(empty)
 
   # screen down to the exact-eval budget, blending win gain with retention so
-  # future-friendly deals are not pruned before they are valued
-  deals[, screen := z(add_gain) + future_weight * z(future_capital_delta)]
+  # future-friendly deals are not pruned before they are valued. ceiling_weight
+  # adds a top-end proxy (best player received minus best player sent) so
+  # consolidations - which lose additive win-gain but raise your ceiling - are
+  # not pruned before the exact eval can price their championship value.
+  deals[, screen := z(add_gain) + future_weight * z(future_capital_delta) +
+          ceiling_weight * z(recv_top - send_top)]
   data.table::setorder(deals, -screen)
   deals <- deals[seq_len(min(screen_n, .N))]
 
@@ -480,7 +502,9 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     op <- te[franchise_id == deals$opponent[[i]]]
     data.table::data.table(
       my_win_delta = m$h2h_wins_delta, my_playoff_delta = m$playoff_pct_delta,
-      opp_win_delta = op$h2h_wins_delta, opp_playoff_delta = op$playoff_pct_delta)
+      my_champ_delta = m$champion_pct_delta,
+      opp_win_delta = op$h2h_wins_delta, opp_playoff_delta = op$playoff_pct_delta,
+      opp_champ_delta = op$champion_pct_delta)
   }))
   deals <- cbind(deals, ev)
   deals[, win_win := my_win_delta > 0 & opp_win_delta > 0]
@@ -500,13 +524,15 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 
   # final ranking: win-now gain traded off against future value by future_weight,
   # with a soft lean toward deals that help both sides
-  deals[, score := z(my_playoff_delta) + future_weight * z(future_capital_delta) +
+  deals[, score := z(my_playoff_delta) + champ_weight * z(my_champ_delta) +
+          future_weight * z(future_capital_delta) +
           winwin_bonus * as.numeric(win_win %in% TRUE)]
   data.table::setorder(deals, -score, -my_win_delta)
 
   out <- deals[seq_len(min(top_n, .N)), list(
     opponent, send, receive, send_value, recv_value, value_gap,
-    my_win_delta, my_playoff_delta, opp_win_delta, opp_playoff_delta,
+    my_win_delta, my_playoff_delta, my_champ_delta,
+    opp_win_delta, opp_playoff_delta, opp_champ_delta,
     win_win, future_capital_delta, score, send_ids, recv_ids)]
   return(as.data.frame(out))
 }
@@ -568,8 +594,10 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 #' @keywords internal
 .ffs_summarise_optimal <- function(base_simulation, optimal, fids) {
   season <- h2h_wins <- points_for <- lg_rank <- h2h_winpct <- allplay_winpct <- NULL
+  franchise_id <- champion_pct <- top_seed_pct <- NULL
 
-  sw <- ffs_summarise_week(optimal_scores = optimal, schedules = base_simulation$schedules)
+  sw <- data.table::as.data.table(
+    ffs_summarise_week(optimal_scores = optimal, schedules = base_simulation$schedules))
   ss <- data.table::as.data.table(ffs_summarise_season(summary_week = sw))
   # playoff seeding: wins, then points-for (how real leagues break ties).
   # Deterministic on purpose - with random tie-breaks, paired comparisons
@@ -578,13 +606,88 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   ss[, lg_rank := data.table::frank(list(-h2h_wins, -points_for), ties.method = "first"),
      by = season]
 
-  ss[franchise_id %in% fids, list(
+  # regular-season aggregates + playoff-berth odds (top-6)
+  agg <- ss[, list(
     h2h_wins = mean(h2h_wins),
     h2h_winpct = mean(h2h_winpct),
     allplay_winpct = mean(allplay_winpct),
     points_for = mean(points_for),
     playoff_pct = mean(lg_rank <= 6)
   ), by = franchise_id]
+  # championship + top-seed odds from a deterministic bracket over the seedings
+  # (report-only for now; the trade score still rides on playoff_pct)
+  champ <- .ffs_champion_pct(sw, ss)
+  agg <- merge(agg, champ, by = "franchise_id", all.x = TRUE)
+  agg[is.na(champion_pct), champion_pct := 0][is.na(top_seed_pct), top_seed_pct := 0]
+  agg[franchise_id %in% fids]
+}
+
+#' Championship + top-seed probability from a deterministic playoff bracket
+#'
+#' Reuses the already-simulated weekly team scores instead of re-simulating
+#' playoff weeks. For each of the simulated seasons the top-6 seeds are taken
+#' from `ss` (the same wins-then-points-for seeding used for berth odds), then a
+#' standard fixed 6-team bracket (seeds 1-2 bye; R1 3v6 & 4v5; semis 1-vs-(4/5)
+#' and 2-vs-(3/6); final) is resolved by **win-probability propagation**, not
+#' random draws: each matchup uses `P(A>B) = pnorm((muA-muB)/sqrt(sdA^2+sdB^2))`
+#' from each franchise's weekly-score mean/sd. Deterministic on purpose so the
+#' paired leave-one-out delta carries no extra Monte-Carlo bracket noise (same
+#' rationale as the deterministic seeding tie-break above). Single-elimination
+#' rewards week-to-week ceiling (`sd`) that 14-week berth odds wash out - which
+#' is exactly the signal we want to surface.
+#'
+#' @param sw weekly summary (`ffs_summarise_week` output) with `team_score`
+#' @param ss season summary with a `lg_rank` seeding column
+#' @return a data.table: franchise_id, champion_pct, top_seed_pct (sum to 1 each)
+#' @keywords internal
+.ffs_champion_pct <- function(sw, ss) {
+  team_score <- franchise_id <- lg_rank <- season <- champ <- mu <- sd <- NULL
+  champion_pct <- top_seed_pct <- NULL
+  sw <- data.table::as.data.table(sw)
+  # global per-franchise weekly-score strength (mean + ceiling/variance)
+  strength <- sw[, list(mu = mean(team_score), sd = stats::sd(team_score)), by = franchise_id]
+  strength[is.na(sd) | sd <= 0, sd := 1e-6]
+
+  seeds <- merge(ss[lg_rank <= 6L, list(season, franchise_id, lg_rank)],
+                 strength, by = "franchise_id")
+  w <- data.table::dcast(seeds, season ~ lg_rank,
+                         value.var = c("franchise_id", "mu", "sd"))
+  # any season missing a full 6-team field can't seed a bracket - drop it
+  need <- c(paste0("mu_", 1:6), paste0("sd_", 1:6))
+  if (!all(need %in% names(w))) return(strength[, list(franchise_id, champion_pct = NA_real_, top_seed_pct = NA_real_)])
+  w <- w[stats::complete.cases(w[, need, with = FALSE])]
+
+  pb <- function(a, sa, b, sb) stats::pnorm((a - b) / sqrt(sa^2 + sb^2))
+  # round 1: 3v6, 4v5
+  p36 <- pb(w$mu_3, w$sd_3, w$mu_6, w$sd_6); p63 <- 1 - p36
+  p45 <- pb(w$mu_4, w$sd_4, w$mu_5, w$sd_5); p54 <- 1 - p45
+  # semis (fixed bracket): A = 1 vs (4/5 winner); B = 2 vs (3/6 winner)
+  a1 <- p45 * pb(w$mu_1, w$sd_1, w$mu_4, w$sd_4) + p54 * pb(w$mu_1, w$sd_1, w$mu_5, w$sd_5)
+  a4 <- p45 * pb(w$mu_4, w$sd_4, w$mu_1, w$sd_1)
+  a5 <- p54 * pb(w$mu_5, w$sd_5, w$mu_1, w$sd_1)
+  b2 <- p36 * pb(w$mu_2, w$sd_2, w$mu_3, w$sd_3) + p63 * pb(w$mu_2, w$sd_2, w$mu_6, w$sd_6)
+  b3 <- p36 * pb(w$mu_3, w$sd_3, w$mu_2, w$sd_2)
+  b6 <- p63 * pb(w$mu_6, w$sd_6, w$mu_2, w$sd_2)
+  # champion = win your semi, then beat whoever comes out of the other semi
+  cA <- function(mt, st, pa) pa * (b2 * pb(mt, st, w$mu_2, w$sd_2) +
+                                   b3 * pb(mt, st, w$mu_3, w$sd_3) +
+                                   b6 * pb(mt, st, w$mu_6, w$sd_6))
+  cB <- function(mt, st, pbb) pbb * (a1 * pb(mt, st, w$mu_1, w$sd_1) +
+                                     a4 * pb(mt, st, w$mu_4, w$sd_4) +
+                                     a5 * pb(mt, st, w$mu_5, w$sd_5))
+  champ_long <- data.table::rbindlist(list(
+    data.table::data.table(franchise_id = w$franchise_id_1, champ = cA(w$mu_1, w$sd_1, a1)),
+    data.table::data.table(franchise_id = w$franchise_id_2, champ = cB(w$mu_2, w$sd_2, b2)),
+    data.table::data.table(franchise_id = w$franchise_id_3, champ = cB(w$mu_3, w$sd_3, b3)),
+    data.table::data.table(franchise_id = w$franchise_id_4, champ = cA(w$mu_4, w$sd_4, a4)),
+    data.table::data.table(franchise_id = w$franchise_id_5, champ = cA(w$mu_5, w$sd_5, a5)),
+    data.table::data.table(franchise_id = w$franchise_id_6, champ = cB(w$mu_6, w$sd_6, b6))))
+  nseason <- length(unique(ss$season))
+  champ_tbl <- champ_long[, list(champion_pct = sum(champ) / nseason), by = franchise_id]
+  top_tbl <- ss[lg_rank == 1L, list(top_seed_pct = .N / nseason), by = franchise_id]
+  out <- merge(champ_tbl, top_tbl, by = "franchise_id", all = TRUE)
+  out[is.na(champion_pct), champion_pct := 0][is.na(top_seed_pct), top_seed_pct := 0]
+  out[]
 }
 
 #' Started-lineup-only optimiser (skips the hindsight-optimal LP)

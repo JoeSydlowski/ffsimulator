@@ -36,7 +36,8 @@
 # scope), or standalone: Rscript dev/suite/trade_intel.R (reads the newest
 # saved report folder for the league).
 # Env knobs: FFS_TRADE_NSIMS, FFS_TRADE_TOP_N, FFS_TRADE_VALUE_BAND,
-# FFS_TRADE_UNEVEN_SHADE, FFS_TRADE_FUTURE_WEIGHT, FFS_TRADE_MIN_FUTURE
+# FFS_TRADE_UNEVEN_SHADE, FFS_TRADE_FUTURE_WEIGHT, FFS_TRADE_MIN_FUTURE,
+# FFS_TRADE_CHAMP_WEIGHT (championship-odds weight in the deal score)
 
 ## ---- inputs: suite mode (objects in scope) or standalone ----------------------
 standalone <- !exists("sim") || !exists("me") || !exists("out")
@@ -86,7 +87,7 @@ if (!exists("round_sheet")) {
 n_trade      <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "60"))
 # targets are exact-valued (~7s each on the n=60 search sim), so top_n trades
 # breadth for time: 100 ~= +6 min over 50, 200 ~= +17 min. Frontier wants breadth.
-trade_top_n  <- as.integer(Sys.getenv("FFS_TRADE_TOP_N", "100"))
+trade_top_n  <- as.integer(Sys.getenv("FFS_TRADE_TOP_N", "200"))
 confirm_n    <- as.integer(Sys.getenv("FFS_TRADE_CONFIRM_N", "15"))
 # deal-shape defaults per Joe: weigh next-year value equally with win-now
 # (future_weight=1), refuse deals bleeding >500 of future capital, and match
@@ -108,6 +109,15 @@ uneven_winwin <- as.logical(as.integer(Sys.getenv("FFS_TRADE_UNEVEN_WINWIN", "0"
 max_opp_drop <- as.numeric(Sys.getenv("FFS_TRADE_MAX_OPP_DROP", "0.20"))
 future_weight <- as.numeric(Sys.getenv("FFS_TRADE_FUTURE_WEIGHT", "1"))
 min_future   <- as.numeric(Sys.getenv("FFS_TRADE_MIN_FUTURE", "-750"))
+# blend championship odds into the trade score next to playoff-berth odds (both
+# z-scored, 1 = equal weight). champ_delta ~0.98 collinear with playoff_delta on
+# SPLITS, so the blend barely moves those; its real job is with CONSOLIDATIONS
+# (see ceiling_weight) where berth and title ceiling DIVERGE. 0 = berth-only.
+champ_weight <- as.numeric(Sys.getenv("FFS_TRADE_CHAMP_WEIGHT", "1"))
+# ceiling_weight lets consolidation deals (package contributors for one better
+# player - berth-negative, ceiling-positive) survive the builder's win-gain
+# screen so their championship value can be priced. 0 = never surface them.
+ceiling_weight <- as.numeric(Sys.getenv("FFS_TRADE_CEILING_WEIGHT", "0.5"))
 playoff_slots <- if (!is.null(config$playoff_slots)) config$playoff_slots else 6L
 
 # role thresholds (shared by roster labels and the console narrative)
@@ -125,7 +135,16 @@ TH <- list(
   rise_p      = 0.25,  # ... with decent P(rise) (absolute p_rise is already
                        # conservative under a -20% tide)
   bust_p      = 0.20,  # exit-risk flag
-  edge_floor  = 300    # edge/robust rankings only above this value
+  edge_floor  = 300,   # edge/robust rankings only above this value
+  # sell-board cutoffs on win_now_edge (the renamed fit_residual). strongly
+  # negative = stranded surplus; mildly negative & holding = PARKED CHIP.
+  # Value tiers split the stranded-surplus space: >= sell_high_min = SELL HIGH
+  # (valuable, market overvalues him for my lineup -> cash at market), mid =
+  # DUMP, < sweetener_max & declining = SWEETENER throw-in.
+  edge_shed     = -250,
+  edge_fair     = -150,
+  sweetener_max = 1500,
+  sell_high_min = 3000
 )
 
 ## ---- valuation sim: fast, REAL schedule ----------------------------------------
@@ -175,17 +194,6 @@ d[, `:=`(
   growth_abs = next_value_med - cur_value * (1 + pos_drift)  # $ added vs drift
 )]
 
-# end-of-roster shrinkage: wins-per-1k$ explodes at small denominators, so pull
-# it toward the positional median with weight rising in market value - cheap
-# players need extreme, repeated evidence to earn an extreme label
-shrink_ratio <- function(raw, cur_value, pos) {
-  med <- stats::ave(raw, pos, FUN = function(x) stats::median(x, na.rm = TRUE))
-  w <- cur_value / (cur_value + 1000)
-  out <- w * raw + (1 - w) * med
-  out[is.na(raw)] <- NA_real_
-  out
-}
-
 # value decomposition. cur_value is a 1-D projection of a 2-D asset: win-now
 # production + future store. Split it:
 #   mkt_winnow = cur_value - next_value_mean  = what the market charges for THIS
@@ -234,7 +242,8 @@ base_me <- ffsimulator:::.ffs_franchise_summary(sim, me)
 roster <- data.table::rbindlist(lapply(my_ids, function(p) {
   v <- ffs_player_value(sim, p, me, base_summary = base_me)
   data.table::data.table(player_id = as.character(p),
-                         value_to_me = v$h2h_wins, playoff_delta_me = v$playoff_pct)
+                         value_to_me = v$h2h_wins, playoff_delta_me = v$playoff_pct,
+                         champ_delta_me = v$champion_pct)
 }))
 names_v <- unique(rs_v[, list(player_id = as.character(player_id), player_name, pos)])
 roster <- merge(roster, names_v, by = "player_id", all.x = TRUE)
@@ -242,7 +251,7 @@ roster <- merge(
   roster,
   d[, list(player_id, age, cur_value, next_value_mean, next_value_med,
            next_value_p10, next_value_p90,
-           p_rise, p_exit, exp_change, rel_change, pos_drift, trend_pct,
+           p_rise, p_exit, exp_change, rel_change, growth_abs, pos_drift, trend_pct,
            redraft_ratio, tier)],
   by = "player_id", all.x = TRUE
 )
@@ -271,64 +280,143 @@ drivers <- local({
 })
 roster <- merge(roster, drivers, by = "player_id", all.x = TRUE)
 
-roster[, wins_per_1k := shrink_ratio(value_to_me / (cur_value / 1000), cur_value, pos)]
-roster[, pos_depth_rank := data.table::frank(-value_to_me, ties.method = "first"), by = pos]
+roster[, my_pos_rank := data.table::frank(-value_to_me, ties.method = "first"), by = pos]
 
-# dedicated starting slots per position: TRADE CHIP only applies to players
-# buried behind a full room (starters + 1 insurance), otherwise a deep dynasty
-# bench flags half the roster as movable - true but unactionable
-lc_v <- data.table::as.data.table(vsim$lineup_constraints)
-n_start <- stats::setNames(lc_v[["min"]], lc_v[["pos"]])
-roster[, pos_starters := data.table::fifelse(pos %in% names(n_start),
-                                             as.numeric(n_start[pos]), 1)]
-
-# roles, not directives: two independent axes - does he help MY lineup win
-# (leave-one-out wins), and what is his value doing (appreciating / holding /
-# declining)? Surplus is a MODIFIER of low-wins holders, not a sell trigger:
-# a TRADE CHIP's capital is parked and portable (convert only for a lineup
-# upgrade), a SELL (fading)'s capital is actually leaving - urgency comes from
-# the trajectory axis. Bust risk is a flag, not a role. (Redesigned after the
-# Egbuka case: a young appreciating WR buried behind three starters read
-# "SELL (redundant)" on a knife-edge wins-per-$ threshold.)
+# trajectory axis: what is his value doing next year, RELATIVE to his position's
+# incumbent drift (appreciating / holding / declining). The verdict itself is
+# derived LATER (see the two-axis SELL/BUY board), once win_now_edge has been
+# scored against the league's win-now price line in the targets block.
 ge <- function(x, y) !is.na(x) & x >= y
 le <- function(x, y) !is.na(x) & x <= y
-roster[, wins_now := ge(value_to_me, TH$win_wins)]
 roster[, trajectory := data.table::fifelse(
   le(rel_change, TH$fade), "declining",
   data.table::fifelse(ge(rel_change, TH$rise) & ge(p_rise, TH$rise_p),
                       "appreciating", "holding"))]
-roster[, verdict := data.table::fifelse(
-  is.na(cur_value) | cur_value < TH$depth_value, "depth",
-  data.table::fifelse(
-    wins_now & trajectory != "declining", "CORE (wins + value)",
-    data.table::fifelse(
-      wins_now, "RENTAL (win-now, fading)",
-      data.table::fifelse(
-        trajectory == "appreciating", "STASH (appreciating)",
-        data.table::fifelse(
-          trajectory == "declining", "SELL (fading)",
-          data.table::fifelse(
-            ge(cur_value, TH$chip_value) & pos_depth_rank > pos_starters + 1,
-            "TRADE CHIP (surplus)", "hold")
-        )
-      )
-    )
-  )
-)]
 roster[, bust_flag := ge(p_exit, TH$bust_p)]
 
-# best buyers for the biggest MOVABLE pieces - SELL (urgent), TRADE CHIP
-# (parked surplus), RENTAL (melting win-now, sellable when not contending):
-# the player's value to each OTHER franchise (11 valuation calls per player,
-# so cap to the most capital-relevant ones)
+# NOTE: the verdict and the best-buyers scan are computed LATER (right before
+# roster.csv is written) so they can use win_now_edge, which is only available
+# after the league's win-now price line is fit in the targets block below.
+
+## ---- 2. targets.csv --------------------------------------------------------------
+message("trade targets (top_n=", trade_top_n, ") @ ", Sys.time())
+targets <- data.table::as.data.table(ffs_trade_targets(vsim, me, top_n = trade_top_n))
+targets[, player_id := as.character(player_id)]
+tg <- merge(
+  targets,
+  d[, list(player_id, age, franchise_name, cur_value, next_value_mean, next_value_med,
+           p_rise, p_exit,
+           exp_change, rel_change, trend_pct, redraft_ratio, growth_abs, tier)],
+  by = "player_id", all.x = TRUE
+)
+tg <- tg[!is.na(cur_value) & cur_value > 0]
+# gettability is judged by the paired trade eval downstream, not a leave-one-out
+# surplus column. The buy signal on the sheet is win_now_edge (renamed
+# fit_residual: how underpriced his win-now is to MY lineup) read against year+1
+# (growth_abs / exp_change / rel_change) - both computed below.
+
+# confirm the SHORTLIST's value on the n=2000 standings sim. The search sim
+# ranks candidates fine (ranking is rank-stable at low n - the whole convergence
+# finding), but the reported value_to_you carries ~5% run-to-run noise there: a
+# QB3's rank-lineup optionality can read 0.2 at n=60 yet ~0.05 at n=2000. So
+# the top targets' value/playoff get re-priced on the standings sim
+# (`confirmed` = TRUE); default confirms ALL top_n rows (~38s each - two n=2000
+# valuations, you + owner - so 200 targets ~= 2h). Set FFS_TRADE_TARGET_CONFIRM_N
+# to cap it (highest win_now_edge rows kept, the tail stays on n=60); =0 skips it.
+# PRELIMINARY win-now decomposition on the search-sim playoff deltas, used only to
+# TARGET confirmation: the buy board ranks on win_now_edge, and that is exactly
+# where the QB-optionality inflation lives (a QB reads a fat edge at n=60), so we
+# confirm the highest-edge rows - the actual bargains AND the most-inflated ones.
+tg[, win_now_value := cur_value - next_value_mean]
+prelim_wn <- tg[win_now_value > 0 & is.finite(playoff_delta_you)]
+prelim_coef <- if (nrow(prelim_wn) >= 8L)
+  stats::coef(stats::lm(win_now_value ~ playoff_delta_you, prelim_wn)) else c(NA_real_, NA_real_)
+tg[, win_now_edge := fit_residual_cols(tg, "playoff_delta_you", prelim_coef)$fit_residual]
+
+# confirm the buy-board leaders on the n=2000 sim. Confirming the biggest studs
+# (top value_to_you) instead burns the budget on players you would never acquire
+# and leaves the real bargains on noisy n=60 values. =0 skips it.
+tg[, confirmed := FALSE]
+tconf_n <- as.integer(Sys.getenv("FFS_TRADE_TARGET_CONFIRM_N", as.character(trade_top_n)))
+conf_rows <- utils::head(order(-tg$win_now_edge), tconf_n)
+if (tconf_n > 0 && length(conf_rows) && exists("sim")) {
+  message("confirming ", length(conf_rows), " top targets on the standings sim @ ", Sys.time())
+  tbase <- new.env(parent = emptyenv())
+  tbase_summ <- function(f) { k <- as.character(f); v <- tbase[[k]]
+    if (is.null(v)) { v <- ffsimulator:::.ffs_franchise_summary(sim, f); tbase[[k]] <- v }; v }
+  for (ri in conf_rows) {
+    p <- tg$player_id[ri]; o <- tg$owner_id[ri]
+    ty <- ffs_player_value(sim, p, me, base_summary = tbase_summ(me))
+    to <- ffs_player_value(sim, p, o,  base_summary = tbase_summ(o))
+    tg[ri, `:=`(value_to_you = ty$h2h_wins, playoff_delta_you = ty$playoff_pct,
+                champ_delta_you = ty$champion_pct,
+                value_to_owner = to$h2h_wins, playoff_delta_owner = to$playoff_pct,
+                champ_delta_owner = to$champion_pct,
+                surplus = ty$h2h_wins - to$h2h_wins, confirmed = TRUE)]
+  }
+}
+
+# RE-fit the league win-now price line and win_now_edge with the confirmed playoff
+# deltas mixed in - inflated rows deflate here and re-sort down the buy board. This
+# is the SAME line my roster is scored against below (mkt_coef).
+tg[, win_now_value := cur_value - next_value_mean]
+mkt_wn <- tg[win_now_value > 0 & is.finite(playoff_delta_you)]
+mkt_coef <- if (nrow(mkt_wn) >= 8L)
+  stats::coef(stats::lm(win_now_value ~ playoff_delta_you, mkt_wn)) else c(NA_real_, NA_real_)
+tg[, win_now_edge := fit_residual_cols(tg, "playoff_delta_you", mkt_coef)$fit_residual]
+
+# BUY board: biggest bargain first. win_now_edge (how underpriced his win-now is to
+# MY lineup) is the spine; playoff_delta_you breaks ties (bigger objective among
+# equal bargains); confirmed rows lead. year+1 (growth_abs / exp_change) stays
+# visible so the appreciating tilt is applied by eye. playoff_delta_you sorts but
+# is not shown (noisy magnitude; win_now_edge already prices it against cost).
+data.table::setorder(tg, -confirmed, -win_now_edge, -playoff_delta_you, na.last = TRUE)
+data.table::fwrite(round_sheet(tg[, list(
+  player_name, pos, age, owner = franchise_name, cur_value, confirmed,
+  win_now_value, win_now_edge, playoff_delta_you, champ_delta_you,
+  growth_abs, exp_change, rel_change, p_rise, p_exit,
+  player_id, owner_id)]), file.path(out, "targets.csv"))
+
+# roster win-now decomposition vs the SAME league line used for targets.
+roster[, `:=`(win_now_value = cur_value - next_value_mean,
+              win_now_edge = fit_residual_cols(roster, "playoff_delta_me", mkt_coef)$fit_residual)]
+
+# ---- verdict: the SELL board on win_now_edge x trajectory x value ----
+# win_now_value<=0 gates a FUTURE asset (judge on year+1 only). For a win-now asset:
+#  - win_now_edge < 0 = market overvalues him for MY lineup (reallocation candidate);
+#    playoff_add (shown) says whether he still contributes or is truly redundant.
+#  - SELL HIGH = strongly stranded AND valuable -> cash at market (someone without my
+#    depth pays sticker); declining = urgent, holding = a pure value arb.
+#  - DUMP = strongly stranded but mid-value; SWEETENER = cheap & melting (throw-in).
+#  - CASH RENTAL = fairly/mildly priced but declining -> sell at full value.
+#  - edge>=0 (underpriced to me) = keep even if declining (CORE); appreciating = STASH.
+roster[, verdict := data.table::fcase(
+  is.na(cur_value) | cur_value < TH$depth_value, "depth",
+  win_now_value <= 0 & trajectory == "appreciating", "STASH (appreciating)",
+  win_now_value <= 0 & trajectory == "declining", "SELL (fading)",
+  win_now_value <= 0, "hold",
+  trajectory != "appreciating" & win_now_edge <= TH$edge_shed & cur_value >= TH$sell_high_min, "SELL HIGH",
+  trajectory == "declining" & cur_value < TH$sweetener_max, "SWEETENER",
+  trajectory == "declining" & win_now_edge <= TH$edge_shed, "DUMP",
+  trajectory == "declining" & win_now_edge < 0, "CASH RENTAL",
+  trajectory == "declining", "CORE",
+  trajectory == "appreciating" & win_now_edge < 0, "STASH (appreciating)",
+  trajectory == "appreciating", "CORE",
+  win_now_edge <= TH$edge_fair, "PARKED CHIP",
+  win_now_edge >= 0, "CORE",
+  default = "hold"
+)]
+
+# ---- best buyers for the movable pieces (relocated here so it can read verdict +
+# win_now_edge): the player's value to each OTHER franchise on the search sim,
+# capped to the most capital-relevant SELL HIGH/RENTAL/DUMP/CHIP/SWEETENER pieces ----
 sell_max <- as.integer(Sys.getenv("FFS_SELL_MAX", "4"))
 others <- setdiff(fr$franchise_id, me)
-sell_rows <- roster[grepl("SELL|TRADE CHIP|RENTAL", verdict)][order(-cur_value)][
+sell_rows <- roster[grepl("SELL|RENTAL|DUMP|CHIP|SWEETENER", verdict)][order(-cur_value)][
   seq_len(min(.N, sell_max))]
 buyer_tbl <- NULL
 if (nrow(sell_rows)) {
   message("finding buyers for ", nrow(sell_rows), " movable players @ ", Sys.time())
-  # cache each buyer franchise's base summary (player-independent) across the scan
   buyer_base <- lapply(stats::setNames(others, as.character(others)),
                        function(f) ffsimulator:::.ffs_franchise_summary(vsim, f))
   buyer_tbl <- data.table::rbindlist(lapply(sell_rows$player_id, function(p) {
@@ -336,8 +424,7 @@ if (nrow(sell_rows)) {
       v <- ffs_player_value(vsim, p, f, base_summary = buyer_base[[as.character(f)]])
       data.table::data.table(franchise_id = f, playoff = v$playoff_pct, wins = v$h2h_wins)
     }))
-    # rank buyers by wins delta (converges much faster than playoff pct at the
-    # search sim's n); playoff shown alongside as the noisier headline number
+    # rank buyers by wins delta (converges faster than playoff pct at the search n)
     vb <- merge(vb, fr, by = "franchise_id")[order(-wins)]
     data.table::data.table(
       player_id = p,
@@ -353,188 +440,44 @@ if (nrow(sell_rows)) {
   roster[, best_buyers := NA_character_]
 }
 
-# reallocation view on my OWN roster (same two axes as targets): pareto_front =
-# efficiency x trajectory front (1 = non-dominated); dominated_by names the
-# rostermate(s) that give more wins-per-$ AND a better trajectory. This is a
-# pure efficiency lens - it IGNORES concentration, so it will flag studs
-# (Lamb/London are "dominated" by cheaper efficient players you can't replace
-# in-slot). Read it as "who is efficiency-inferior to someone I already have"
-# and judge replaceability (top-end value can't always be reassembled cheaply).
-roster[, `:=`(pareto_front = NA_real_, dominated_by = NA_character_)]
-rm_mat <- which(roster$cur_value >= TH$depth_value &
-                is.finite(roster$wins_per_1k) & is.finite(roster$exp_change))
-if (length(rm_mat) >= 2L) {
-  rf <- roster[rm_mat]
-  roster[rm_mat, pareto_front := ffs_pareto_front(
-    rf[, list(wins_per_1k, exp_change)], maximize = c(TRUE, TRUE))]
-  wp <- rf$wins_per_1k; ec <- rf$exp_change; nm <- rf$player_name
-  dom <- vapply(seq_along(wp), function(i) {
-    d <- which(wp >= wp[i] & ec >= ec[i] & (wp > wp[i] | ec > ec[i]))
-    if (!length(d)) return(NA_character_)
-    paste(nm[d[order(-wp[d])]][seq_len(min(3L, length(d)))], collapse = "; ")
-  }, character(1))
-  roster[rm_mat, dominated_by := dom]
-}
-
-# NOTE: roster.csv is written LATER (right after targets.csv) so its win-now
-# decomposition (mkt_winnow / fit_residual) scores against the SAME market
-# $/playoff-point line fit on the league's available players - see the targets
-# block. roster stays fully computed here (verdict, dominated_by, best_buyers).
-
-## ---- 2. targets.csv --------------------------------------------------------------
-message("trade targets (top_n=", trade_top_n, ") @ ", Sys.time())
-targets <- data.table::as.data.table(ffs_trade_targets(vsim, me, top_n = trade_top_n))
-targets[, player_id := as.character(player_id)]
-tg <- merge(
-  targets,
-  d[, list(player_id, age, franchise_name, cur_value, next_value_mean, next_value_med,
-           p_rise, p_exit,
-           exp_change, rel_change, trend_pct, redraft_ratio, growth_abs, tier)],
-  by = "player_id", all.x = TRUE
-)
-tg <- tg[!is.na(cur_value) & cur_value > 0]
-tg[, retention := next_value_med / cur_value]
-tg[, wins_per_1k := shrink_ratio(value_to_you / (cur_value / 1000), cur_value, pos)]
-tg[, gettable := surplus > 0]
-tg[, fade_flag := !is.na(trend_pct) & le(rel_change, TH$fade) & trend_pct >= 0]
-# reallocation frontier: return-on-capital (wins_per_1k) vs value trajectory
-# (exp_change). value MAGNITUDE is fungible via trades, so it is folded into the
-# wins_per_1k ratio rather than standing as its own axis (the old 3-axis
-# value_to_you/cur_value/growth front was so broad ~half the pool was front-1).
-# exp_change is the RAW expected % move, not drift-adjusted: drift-adjusting
-# (rel_change) forgives structural RB decline while cheap RBs already win the
-# wins_per_1k axis, double-counting them onto the front; Pareto keeps the
-# corners either way, so raw is both honest capital and more position-balanced.
-# Computed on the material subset (helps me, priced) so cheap fringe with noisy
-# ratios do not crowd the front.
-tg[, pareto_front := NA_real_]
-mat <- which(tg$value_to_you > 0 & tg$cur_value >= TH$depth_value &
-             is.finite(tg$wins_per_1k) & is.finite(tg$exp_change))
-if (length(mat) >= 1L) {
-  tg[mat, pareto_front := ffs_pareto_front(
-    tg[mat, list(wins_per_1k, exp_change)], maximize = c(TRUE, TRUE))]
-}
-
-# buy edge + sweet-spot robustness, only where values are trustworthy
-eligible <- which(tg$cur_value >= TH$edge_floor)
-tg[, `:=`(edge_rk = NA_real_, robust_rank = NA_real_, sweet_spot = FALSE, tilt = "")]
-if (length(eligible) >= 5) {
-  e <- tg[eligible]
-  # our wins-per-$ rank minus the market's redraft-value rank: positive = the
-  # market prices him below what he does for MY lineup
-  has_rr <- !is.na(e$redraft_ratio)
-  if (sum(has_rr) >= 5) {
-    erk <- data.table::frank(-e$redraft_ratio[has_rr]) -
-      data.table::frank(-e$wins_per_1k[has_rr])
-    tg[eligible[has_rr], edge_rk := erk]
-  }
-  # sweet-spot iteration: rank candidates under a grid of win-now/growth
-  # weightings (cost always counts against); robust picks are top-k under most
-  zs <- function(x) {
-    s <- stats::sd(x, na.rm = TRUE)
-    if (is.na(s) || s == 0) return(rep(0, length(x)))
-    (x - mean(x, na.rm = TRUE)) / s
-  }
-  # same two axes as the frontier: wins_per_1k already nets cost (it is a ratio),
-  # exp_change is the value trajectory - no separate cost term to subtract.
-  zw <- zs(e$wins_per_1k); zg <- zs(e$exp_change)
-  wgrid <- data.table::CJ(win_w = c(0.5, 1, 2), growth_w = c(0.5, 1, 2))
-  rks <- vapply(seq_len(nrow(wgrid)), function(i) {
-    data.table::frank(-(wgrid$win_w[i] * zw + wgrid$growth_w[i] * zg),
-                      ties.method = "average")
-  }, numeric(nrow(e)))
-  top_k <- min(10L, nrow(e))
-  tg[eligible, robust_rank := apply(rks, 1, stats::median)]
-  tg[eligible, sweet_spot := rowMeans(rks <= top_k) >= 0.75]
-  rw <- rks[, wgrid$win_w == 2 & wgrid$growth_w == 0.5]
-  rg <- rks[, wgrid$win_w == 0.5 & wgrid$growth_w == 2]
-  tg[eligible, tilt := data.table::fifelse(
-    rw <= top_k & rg > top_k, "win-now pick",
-    data.table::fifelse(rg <= top_k & rw > top_k, "growth pick", ""))]
-}
-# confirm the SHORTLIST's value on the n=2000 standings sim. The search sim
-# ranks candidates fine (ranking is rank-stable at low n - the whole convergence
-# finding), but the reported value_to_you carries ~5% run-to-run noise there: a
-# QB3's rank-lineup optionality can read 0.2 at n=60 yet ~0.05 at n=2000. So
-# frontier/sweet-spot/edge stay on the search sim, and only the top targets'
-# value/surplus/playoff get re-priced on the standings sim (`confirmed` = TRUE).
-# Cheap: ~15 players, not all top_n. FFS_TRADE_TARGET_CONFIRM_N=0 skips it.
-tg[, confirmed := FALSE]
-tconf_n <- as.integer(Sys.getenv("FFS_TRADE_TARGET_CONFIRM_N", "15"))
-# confirm the frontier + sweet-spot picks AND the highest-value_to_you adds
-# (the biggest headline numbers, and where search-sim optionality inflates most)
-vy <- order(-tg$value_to_you)
-conf_rows <- utils::head(unique(c(which(tg$pareto_front == 1),
-                                  which(tg$sweet_spot %in% TRUE), vy)), tconf_n)
-if (tconf_n > 0 && length(conf_rows) && exists("sim")) {
-  message("confirming ", length(conf_rows), " top targets on the standings sim @ ", Sys.time())
-  tbase <- new.env(parent = emptyenv())
-  tbase_summ <- function(f) { k <- as.character(f); v <- tbase[[k]]
-    if (is.null(v)) { v <- ffsimulator:::.ffs_franchise_summary(sim, f); tbase[[k]] <- v }; v }
-  for (ri in conf_rows) {
-    p <- tg$player_id[ri]; o <- tg$owner_id[ri]
-    ty <- ffs_player_value(sim, p, me, base_summary = tbase_summ(me))
-    to <- ffs_player_value(sim, p, o,  base_summary = tbase_summ(o))
-    tg[ri, `:=`(value_to_you = ty$h2h_wins, playoff_delta_you = ty$playoff_pct,
-                value_to_owner = to$h2h_wins, playoff_delta_owner = to$playoff_pct,
-                surplus = ty$h2h_wins - to$h2h_wins, confirmed = TRUE)]
-  }
-  tg[, gettable := surplus > 0]                               # re-price on confirmed value
-  tg[, wins_per_1k := shrink_ratio(value_to_you / (cur_value / 1000), cur_value, pos)]
-}
-
-# win-now/future decomposition. Fit the market's $/playoff-point line ONCE on the
-# league's available players (targets, win-now assets, on the confirmed playoff
-# deltas), then score the targets here and my roster below against the SAME line.
-# mkt_winnow<=0 = future asset (NA fit_residual, judge on trajectory instead).
-tg[, mkt_winnow := cur_value - next_value_mean]
-mkt_wn <- tg[mkt_winnow > 0 & is.finite(playoff_delta_you)]
-mkt_coef <- if (nrow(mkt_wn) >= 8L)
-  stats::coef(stats::lm(mkt_winnow ~ playoff_delta_you, mkt_wn)) else c(NA_real_, NA_real_)
-tg[, fit_residual := fit_residual_cols(tg, "playoff_delta_you", mkt_coef)$fit_residual]
-
-# lead with confirmed win-now fit-bargains, then the search-sim ranking
-data.table::setorder(tg, -confirmed, -fit_residual, robust_rank, -value_to_you, na.last = TRUE)
-data.table::fwrite(round_sheet(tg[, list(
-  player_name, pos, age, owner = franchise_name, cur_value, confirmed,
-  value_to_you, playoff_delta_you, value_to_owner, playoff_delta_owner, surplus,
-  mkt_winnow, fit_residual,
-  gettable, retention, growth_abs, p_rise, p_exit, exp_change, rel_change, trend_pct,
-  redraft_ratio, wins_per_1k, edge_rk, pareto_front, robust_rank, sweet_spot,
-  tilt, fade_flag, player_id, owner_id)]), file.path(out, "targets.csv"))
-
-# roster win-now decomposition vs the SAME market line, then write roster.csv
-roster[, `:=`(mkt_winnow = cur_value - next_value_mean,
-              fit_residual = fit_residual_cols(roster, "playoff_delta_me", mkt_coef)$fit_residual)]
-data.table::setorder(roster, -cur_value, na.last = TRUE)
+# ---- SELL board order: bucket priority, then value; CASH RENTAL sorts by
+# replaceability (deeper my_pos_rank first) so the more-expendable rental leads
+# (a WR3 ahead of the WR1), everything else by cur_value desc (extract most first) ----
+sell_rank <- c("SELL HIGH" = 1, "CASH RENTAL" = 2, "DUMP" = 3, "PARKED CHIP" = 4,
+               "SWEETENER" = 5, "SELL (fading)" = 6, "CORE" = 7,
+               "STASH (appreciating)" = 8, "hold" = 9, "depth" = 10)
+roster[, board_rank := sell_rank[verdict]][is.na(board_rank), board_rank := 99]
+roster[, board_key := data.table::fifelse(verdict == "CASH RENTAL",
+                                          as.numeric(my_pos_rank), cur_value)]
+data.table::setorder(roster, board_rank, -board_key, -cur_value, na.last = TRUE)
 data.table::fwrite(round_sheet(roster[, list(
-  player_name, pos, age, cur_value, exp_change, rel_change, pos_drift,
-  trend_pct, p_rise, p_exit, value_to_me, playoff_delta_me, wins_per_1k,
-  mkt_winnow, fit_residual, swing,
-  mean_weeks_started, pos_depth_rank, trajectory, verdict, bust_flag,
-  pareto_front, dominated_by, best_buyers, player_id)]),
+  player_name, pos, age, cur_value, win_now_value, win_now_edge,
+  playoff_add = playoff_delta_me, champ_add = champ_delta_me,
+  growth_abs, exp_change, rel_change, p_rise, p_exit,
+  my_pos_rank, mean_weeks_started, trajectory, verdict, bust_flag,
+  best_buyers, player_id)]),
   file.path(out, "roster.csv"))
 
 # win-now value map: market's win-now charge (x) vs playoff odds to my team (y),
 # BOTH price lines (my roster + league) on both panels, coloured by fit_residual
 if (requireNamespace("ggplot2", quietly = TRUE)) {
   vm <- data.table::rbindlist(list(
-    roster[, list(player_name, pos, cur_value, mkt_winnow, fit_residual,
+    roster[, list(player_name, pos, cur_value, win_now_value, win_now_edge,
                   pd = playoff_delta_me, confirmed = TRUE, panel = "My roster")],
-    tg[, list(player_name, pos, cur_value, mkt_winnow, fit_residual,
+    tg[, list(player_name, pos, cur_value, win_now_value, win_now_edge,
               pd = playoff_delta_you, confirmed, panel = "Targets (acquire)")]))
-  vm[, cat := data.table::fifelse(mkt_winnow <= 0, "future (judge on trajectory)",
-        data.table::fifelse(fit_residual > 0, "win-now bargain (edge)", "win-now priced-rich"))]
-  rwn <- roster[mkt_winnow > 0 & is.finite(playoff_delta_me)]
-  rcoef <- if (nrow(rwn) >= 8L) stats::coef(stats::lm(mkt_winnow ~ playoff_delta_me, rwn)) else mkt_coef
+  vm[, cat := data.table::fifelse(win_now_value <= 0, "future (judge on trajectory)",
+        data.table::fifelse(win_now_edge > 0, "win-now bargain (edge)", "win-now priced-rich"))]
+  rwn <- roster[win_now_value > 0 & is.finite(playoff_delta_me)]
+  rcoef <- if (nrow(rwn) >= 8L) stats::coef(stats::lm(win_now_value ~ playoff_delta_me, rwn)) else mkt_coef
   yv <- seq(0, max(vm$pd, na.rm = TRUE), length.out = 60)
   vmln <- data.table::rbindlist(list(
-    data.table::data.table(pd = yv, mkt_winnow = rcoef[[1]] + rcoef[[2]] * yv, line = "my roster"),
-    data.table::data.table(pd = yv, mkt_winnow = mkt_coef[[1]] + mkt_coef[[2]] * yv, line = "league (available)")))
+    data.table::data.table(pd = yv, win_now_value = rcoef[[1]] + rcoef[[2]] * yv, line = "my roster"),
+    data.table::data.table(pd = yv, win_now_value = mkt_coef[[1]] + mkt_coef[[2]] * yv, line = "league (available)")))
   vmln <- rbind(cbind(data.table::copy(vmln), panel = "My roster"),
                 cbind(data.table::copy(vmln), panel = "Targets (acquire)"))
   vmlab <- rbind(vm[panel == "My roster"], vm[panel == "Targets (acquire)" & confirmed == TRUE])
-  vp <- ggplot2::ggplot(vm, ggplot2::aes(mkt_winnow, pd)) +
+  vp <- ggplot2::ggplot(vm, ggplot2::aes(win_now_value, pd)) +
     ggplot2::geom_vline(xintercept = 0, color = "#dddddd", linewidth = 0.4) +
     ggplot2::geom_line(data = vmln, ggplot2::aes(linetype = line), color = "#333333", linewidth = 0.6) +
     ggplot2::geom_point(ggplot2::aes(color = cat, shape = confirmed, size = cur_value), alpha = 0.85) +
@@ -549,7 +492,7 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
     ggplot2::labs(
       title = "Win-now value map: market's win-now charge vs playoff odds to your team",
       subtitle = "Above/left of a line = bargain vs that market. Gap between the lines = your reallocation edge. Left of 0 = future asset.",
-      x = "mkt_winnow = market's charge for this-year production (cur - next; <0 = future)",
+      x = "win_now_value = market's charge for this-year production (cur - next; <0 = future)",
       y = "playoff odds added to YOUR team") +
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(legend.position = "top", panel.grid.minor = ggplot2::element_blank(),
@@ -561,30 +504,6 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
   ggplot2::ggsave(file.path(out, "value_map.png"), vp, width = 13, height = 6.6, dpi = 150)
 }
 
-# pareto plot, highlighting the robust sweet-spot picks
-if (requireNamespace("ggplot2", quietly = TRUE)) {
-  library(ggplot2)
-  p <- ggplot(tg[!is.na(pareto_front)], aes(x = wins_per_1k, y = exp_change)) +
-    geom_point(aes(size = cur_value, color = sweet_spot,
-                   shape = pareto_front == 1), alpha = 0.7) +
-    scale_color_manual(values = c(`TRUE` = "#1b9e77", `FALSE` = "#999999"),
-                       name = "sweet spot") +
-    scale_shape_manual(values = c(`TRUE` = 17, `FALSE` = 16),
-                       name = "on frontier") +
-    scale_size_continuous(name = "acquisition cost ($)") +
-    labs(title = "trade targets: return on capital vs value trajectory",
-         subtitle = "triangles = Pareto frontier; green = robust across win-now/growth weightings",
-         x = "wins added per $1k (return on capital)",
-         y = "expected value change next year") +
-    theme_minimal(base_size = 12)
-  if (requireNamespace("ggrepel", quietly = TRUE)) {
-    p <- p + ggrepel::geom_text_repel(data = tg[sweet_spot == TRUE],
-                                      aes(label = player_name), size = 3,
-                                      max.overlaps = 20)
-  }
-  ggsave(file.path(out, "pareto.png"), p, width = 10, height = 7, dpi = 150)
-}
-
 ## ---- 3. trades.csv ----------------------------------------------------------------
 message("building buy-side trades @ ", Sys.time())
 trades_buy <- data.table::as.data.table(ffs_build_trades(
@@ -592,6 +511,7 @@ trades_buy <- data.table::as.data.table(ffs_build_trades(
   uneven_shade = uneven_shade, consolidation_penalty = consolidation,
   max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
   uneven_require_winwin = uneven_winwin,
+  champ_weight = champ_weight, ceiling_weight = ceiling_weight,
   future_weight = future_weight, min_future_delta = min_future))
 if (nrow(trades_buy)) trades_buy[, motive := "buy"]
 
@@ -630,6 +550,7 @@ if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
       uneven_shade = uneven_shade, consolidation_penalty = consolidation,
       max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
       uneven_require_winwin = uneven_winwin,
+      champ_weight = champ_weight, ceiling_weight = ceiling_weight,
       future_weight = future_weight, min_future_delta = min_future,
       must_send = p, opponents = buyers, screen_n = 15L, top_n = 5))
     if (nrow(deal)) {
@@ -671,7 +592,9 @@ if (nrow(trades)) {
     op <- te[te$franchise_id != me]
     trades[rid == rid_i, `:=`(
       my_win_delta = m$h2h_wins_delta, my_playoff_delta = m$playoff_pct_delta,
+      my_champ_delta = m$champion_pct_delta,
       opp_win_delta = op$h2h_wins_delta, opp_playoff_delta = op$playoff_pct_delta,
+      opp_champ_delta = op$champion_pct_delta,
       win_win = m$h2h_wins_delta > 0 & op$h2h_wins_delta > 0,
       confirmed = TRUE)]
   }
@@ -685,7 +608,8 @@ if (nrow(trades)) {
     if (is.na(s) || s == 0) return(rep(0, length(x)))
     (x - mean(x, na.rm = TRUE)) / s
   }
-  trades[, score := zt(my_playoff_delta) + future_weight * zt(future_capital_delta) +
+  trades[, score := zt(my_playoff_delta) + champ_weight * zt(my_champ_delta) +
+           future_weight * zt(future_capital_delta) +
            winwin_bonus * as.numeric(win_win %in% TRUE)]
   data.table::setorder(trades, -confirmed, -score)
   trades[, rid := NULL]
@@ -762,15 +686,15 @@ cat("concentration: top-3 assets hold ", sprintf("%.0f%%", 100 * top3 / cap),
 cat("\n-- capital by verdict --\n")
 print(verdict_cap)
 
-cat("\n-- roster --\n")
+cat("\n-- roster (SELL board: SELL HIGH > CASH RENTAL > DUMP > PARKED CHIP > SWEETENER, then holds) --\n")
 print(round_sheet(roster[, list(player_name, pos, age, cur_value,
-  model_chg = fmtp(exp_change), vs_drift = fmtp(rel_change), mkt_trend = fmtp(trend_pct),
-  value_to_me, wins_per_1k, verdict)]))
+  win_now_value, win_now_edge, playoff_add = playoff_delta_me, champ_add = champ_delta_me,
+  model_chg = fmtp(exp_change), my_pos_rank, verdict)]))
 
 if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
-  cat("\n-- movable pieces (SELL = value leaving, urgent; TRADE CHIP = parked",
-      "\n   surplus, no rush; RENTAL = win-now with melting value - keep while",
-      "\n   contending): who buys, and what improves my team back --\n")
+  cat("\n-- movable pieces (SELL HIGH = valuable & overvalued-for-my-lineup, cash at",
+      "\n   market; CASH RENTAL = fairly priced but melting; DUMP = mid stranded;",
+      "\n   PARKED CHIP = holding surplus; SWEETENER = throw-in): who buys, what I get back --\n")
   for (i in seq_len(nrow(buyer_tbl))) {
     p <- buyer_tbl$player_id[i]
     p_name <- roster[player_id == p][["player_name"]][1]
@@ -788,10 +712,11 @@ if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
   }
 }
 
-cat("\n-- top buys (sweet-spot picks first) --\n")
-print(round_sheet(utils::head(tg[order(!sweet_spot, robust_rank, -value_to_you), list(
-  player_name, pos, owner = franchise_name, cur_value, value_to_you,
-  surplus, growth_abs, sweet_spot, tilt, fade_flag)], 12)))
+cat("\n-- top buys (biggest win_now_edge bargains first; year+1 growth_abs alongside) --\n")
+print(round_sheet(utils::head(tg[order(-confirmed, -win_now_edge), list(
+  player_name, pos, owner = franchise_name, cur_value, win_now_value, win_now_edge,
+  playoff_delta_you, champ_delta_you,
+  growth_abs, model_chg = fmtp(exp_change), confirmed)], 12)))
 
 # leaguewide fades outside the target list: don't buy these / their fragile assets
 fades <- d[!is.na(trend_pct) & le(rel_change, TH$fade) & trend_pct >= 0 &
@@ -813,9 +738,9 @@ if (nrow(trades)) {
     dd <- trades[i]
     if (sum(seen_recv == dd$receive) >= 2) next
     seen_recv <- c(seen_recv, dd$receive)
-    cat(sprintf("[%s]%s send %-28s -> get %-24s | me %+.2fw %+.1f%%pl | opp %+.2fw %+.1f%%pl | fut %+d%s\n",
+    cat(sprintf("[%s]%s send %-28s -> get %-24s | me %+.2fw %+.1f%%pl %+.1f%%ch | opp %+.2fw %+.1f%%pl | fut %+d%s\n",
                 dd$motive, if (isTRUE(dd$confirmed)) "" else "~", dd$send, dd$receive,
-                dd$my_win_delta, 100 * dd$my_playoff_delta,
+                dd$my_win_delta, 100 * dd$my_playoff_delta, 100 * dd$my_champ_delta,
                 dd$opp_win_delta, 100 * dd$opp_playoff_delta,
                 as.integer(round(dd$future_capital_delta)),
                 if (isTRUE(dd$win_win)) " | WIN-WIN" else ""))

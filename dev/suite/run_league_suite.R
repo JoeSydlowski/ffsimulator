@@ -35,7 +35,7 @@ config <- list(
   # computed per decision with ffs_player_value on the shared sim - so it is
   # off by default; flip on for a leaguewide war_players.csv.
   run_war = as.logical(Sys.getenv("FFS_RUN_WAR", "FALSE")),
-  trade_top_n = as.integer(Sys.getenv("FFS_TRADE_TOP_N", "50"))
+  trade_top_n = as.integer(Sys.getenv("FFS_TRADE_TOP_N", "200"))
 )
 
 out <- here::here("dev", "league_sims", config$league_id, format(Sys.Date()))
@@ -92,6 +92,13 @@ odds <- ss[, list(
   top_seed_pct = mean(lg_rank == 1),
   last_pct = mean(lg_rank == max(lg_rank))
 ), by = franchise_name][order(-mean_wins)]
+# championship odds from the deterministic playoff bracket (ceiling-aware; berth
+# odds wash out week-to-week variance, titles do not) - reported for comparison
+champ_tbl <- ffsimulator:::.ffs_champion_pct(as.data.table(sim$summary_week), ss)
+champ_tbl <- merge(champ_tbl, unique(ss[, list(franchise_id, franchise_name)]),
+                   by = "franchise_id")
+odds <- merge(odds, champ_tbl[, list(franchise_name, champion_pct)],
+              by = "franchise_name", all.x = TRUE)[order(-champion_pct)]
 fwrite(odds, file.path(out, "playoff_odds.csv"))
 
 for (t in c("wins", "rank", "points")) {
