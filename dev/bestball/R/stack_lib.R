@@ -208,3 +208,28 @@ stack_gradient_week <- function(prep, season, min_cell = 60L) {
         tail_extra = round(weighted.mean(tail_extra, wt), 1),
         sd_ratio = round(weighted.mean(sd_ratio, wt), 3)), by = ssize][order(ssize)]
 }
+
+# universal fread prep for any round CSV (rich or thin schema both carry these
+# columns) -> fact(entry_id, pos, nfl_team, roster_points). For prevalence-by-
+# round work where we don't need pkey identity, just positions + teams.
+prep_csv <- function(csv, season) {
+  d <- rbindlist(lapply(csv, fread, showProgress = FALSE), use.names = TRUE, fill = TRUE)
+  d <- d[, .(entry_id = tournament_entry_id, player_name,
+             pos = position_name, roster_points)]
+  d[, key := .clean(player_name)]
+  d <- merge(d, nfl_teammap(season), by = c("key", "pos"), all.x = TRUE)
+  d[, key := NULL]
+  d[]
+}
+
+# entry-level stack flags: max same-team QB+catcher stack size, WR/TE stack bools
+stack_prevalence <- function(fact) {
+  qt <- unique(fact[pos == "QB" & !is.na(nfl_team), .(entry_id, team = nfl_team)])
+  ct <- fact[pos %in% c("WR","TE") & !is.na(nfl_team), .(entry_id, team = nfl_team, cpos = pos)]
+  j <- merge(qt, ct, by = c("entry_id","team"), allow.cartesian = TRUE)  # catcher on a QB's team
+  per <- j[, .(ss = .N, wr = any(cpos == "WR"), te = any(cpos == "TE")), by = .(entry_id, team)]
+  ent <- per[, .(max_ss = max(ss), wr = any(wr), te = any(te)), by = entry_id]
+  ent <- ent[data.table(entry_id = unique(fact$entry_id)), on = "entry_id"]  # add unstacked
+  ent[is.na(max_ss), `:=`(max_ss = 0L, wr = FALSE, te = FALSE)]
+  ent[]
+}

@@ -37,7 +37,10 @@ Rscript R/01_field_study.R
 - [x] **Stack-size gradient**, 5 seasons (2021–25) — concentration *lowers* single-week
   variance (`sd_ratio` falls with stack size every year); 2022 (BBM III) ingested.
 - [x] **Game-stack / bring-back**, WR-vs-TE, and QB-tier tests (`08`) — all null / no edge.
-  **Stacking question is now closed: no robust edge.**
+- [x] **Prevalence by round** (`09`) — stacking ~90% base rate; only slight, confound-sized
+  rise to Finals; all winners stacked but so is everyone (survivorship).
+- [x] **Raw weekly correlation** (`10`) — QB↔WR1 +0.37, co-blow-up ~2×: the correlation is
+  REAL, but best ball's weekly auto-optimisation makes it valueless. **Stacking question closed.**
 - [ ] **Move the gate to the other raw signals** (positional structure, draft-value) with
   player fixed effects — still un-de-confounded and the most likely place for a real edge.
 - [ ] Add 2020 (BBM I xlsx) for a sixth regular-season year (no single-week playoff scores).
@@ -149,10 +152,44 @@ concentrate") — now confirmed at the roster level over 5 seasons.
   QB): `sd_ratio ≈ 1.00` every year, wk15 points lift ≈ 0 — **null**, as season-level dilution
   (one matchup per pairing) predicts.
 
-**Final verdict on stacking:** across binary, size-gradient, WR-vs-TE, QB-tier, bring-back,
-season-total and single-week tests, over 4–5 seasons, **there is no robust stacking edge in
-Underdog best ball.** The only actionable nuance is *prefer WR over TE stacks* (a minor
-construction tilt, not an edge). This decisively steers the engine: **do not build it to
-exploit correlation/stacking** — best ball's weekly auto-optimisation already neutralises it.
-The sim engine remains the clean arbiter if ever revisited; the article's per-week
-correlations (WR1↔WR2 +0.16, bring-back +0.09) are ready-made copula loadings.
+## Prevalence by round — the survivorship check (`09_stack_by_round.R`)
+
+Do stacked teams get over-represented as you go deeper (field → QF → SF → Finals → winner)?
+
+- **Stacking is near-universal:** ~**86–94%** of the *entire field* is "stacked" (≥1 same-team
+  catcher). So "the winners were stacked" is almost tautological.
+- Stack prevalence rises only **slightly** field→Finals (2022: 85.7%→92.1%; 2023: 89.5%→92.7%;
+  2025 basically flat), and `mean_ss` a touch (e.g. 2022 1.36→1.56). A few points — exactly the
+  size you'd expect from the confound (stackers draft good offenses), **not** a causal edge,
+  consistent with the within-QB null.
+- **All 5 winners had a QB-WR stack** (size 1–3); top-10 finalists ~80–100% stacked — but so is
+  ~90% of everyone. Textbook survivorship/base-rate illusion.
+
+## Why stacks blow up together yet it doesn't matter (`10_weekly_correlation.R`)
+
+Raw nflverse weekly data, half-PPR, **all teams, no advancement filter** (2021–25):
+
+- Same-team **weekly** correlation is real and strong: **QB1↔WR1 +0.37**, QB1↔WR2 +0.31,
+  QB1↔TE1 +0.29 (WR1↔WR2 ≈ 0 — they compete for targets).
+- **Co-blow-up:** when WR1 smashes (20+), his QB smashes **61.5%** of the time vs **32.1%**
+  base; both-smash-same-week **9.3%** vs **4.8%** if independent (~2×).
+
+**So the correlation is unambiguously real — stacks *do* explode together, on every team,
+regardless of playoff luck.** The reconciliation with the null: **best ball auto-optimises the
+weekly lineup, so correlated booms are *redundant*, not additive.** When your QB+WR both go for
+30 in week 5 you bank one big week — but you'd likely have banked a big week anyway from *some*
+of your 18 players. Independent boom sources spread across games give you a big week *more often*;
+correlation concentrates booms into *fewer* weeks. The best-ball optimiser (top-8 of 18 each
+week) routes around busts, absorbing the joint-variance a stack adds — which is exactly why
+`sd_ratio ≈ 1` and stacking yields no edge. **The correlation is real; best ball neutralises its
+value.**
+
+## Final verdict on stacking
+
+Across binary, size-gradient, WR-vs-TE, QB-tier, bring-back, prevalence-by-round, season-total,
+single-week roster tests AND the raw weekly player correlation, over 4–5 seasons: **the QB-WR
+correlation is real (+0.37) but produces no advancement or ceiling edge in Underdog best ball.**
+The only actionable nuance is *prefer WR over TE stacks*. This decisively steers the engine:
+**do not build it to exploit correlation/stacking** — best ball's weekly auto-optimisation
+already neutralises it. (If ever revisited, the measured loadings QB↔WR1 +0.37 / WR1↔WR2 ≈ 0 are
+the real copula inputs — note our own +0.37 is stronger than the article's ceiling-only +0.16.)
