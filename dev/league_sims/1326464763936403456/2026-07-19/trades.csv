@@ -1,0 +1,31 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy & sell CeeDee Lamb,10,CeeDee Lamb,Sam LaPorta + Chase Brown,6328,7075,747,0.177,0.039,-0.273,-0.047,FALSE,1540,1.761,6786,10859 + 9224,TRUE
+buy & sell CeeDee Lamb,10,CeeDee Lamb,David Montgomery + Chase Brown,6328,6769,441,0.468,0.084,-0.601,-0.109,FALSE,776,1.362,6786,5892 + 9224,TRUE
+buy,4,Colston Loveland,RJ Harvey + Justin Herbert,4662,5247,585,0.186,0.044,-0.554,-0.121,FALSE,1173,1.1,12517,12489 + 6797,TRUE
+buy,10,Tyler Warren,Terry McLaurin + D'Andre Swift,4210,4597,387,0.409,0.092,-0.987,-0.174,FALSE,496,0.98,12518,5927 + 6790,TRUE
+buy,9,Tyler Warren,Woody Marks + Zay Flowers,4210,4839,629,0.268,0.053,-0.329,-0.071,FALSE,809,0.562,12518,12474 + 9997,TRUE
+sell Tyler Warren,2,Tyler Warren,Nico Collins,4210,4269,59,0.316,0.075,-0.39,-0.061,FALSE,324,0.123,12518,7569,TRUE
+buy,10,Colston Loveland,Chase Brown,4662,4296,-366,0.466,0.098,-0.535,-0.1,FALSE,-14,0.036,12517,9224,TRUE
+buy,10,Colston Loveland + KeAndre Lambert-Smith,Chase Brown,4761,4296,-465,0.462,0.098,-0.497,-0.089,FALSE,-104,-0.149,12517 + 12670,9224,TRUE
+buy,10,Savion Williams + Colston Loveland,Chase Brown,4770,4296,-474,0.458,0.095,-0.5,-0.091,FALSE,-117,-0.279,12482 + 12517,9224,TRUE
+buy,10,Emari Demercado + Colston Loveland,Chase Brown,4851,4296,-555,0.454,0.094,-0.479,-0.085,FALSE,-112,-0.297,11199 + 12517,9224,TRUE
+sell Tyler Warren,11,Tyler Warren,Garrett Wilson,4210,4081,-129,0.139,0.027,-0.123,-0.03,FALSE,382,-1.148,12518,8146,TRUE
+sell Colston Loveland,2,Savion Williams + Colston Loveland,Nico Collins,4770,4269,-501,0.293,0.066,-0.226,-0.03,FALSE,-185,-1.244,12482 + 12517,7569,TRUE
+sell Tyler Warren,11,Tyler Warren + KeAndre Lambert-Smith,Garrett Wilson,4309,4081,-228,0.136,0.025,-0.114,-0.027,FALSE,291,-1.392,12518 + 12670,8146,TRUE
+sell Tyler Warren,11,Tyler Warren + Phil Mafah,Garrett Wilson,4309,4081,-228,0.12,0.022,-0.099,-0.025,FALSE,250,-1.569,12518 + 12738,8146,TRUE
+sell Tyler Warren,11,Emari Demercado + Tyler Warren,Garrett Wilson,4399,4081,-318,0.11,0.019,-0.073,-0.02,FALSE,283,-1.583,11199 + 12518,8146,TRUE
+buy,10,Colston Loveland + Phil Mafah,Chase Brown,4761,4296,-465,0.5,0.133,-0.6,-0.1,FALSE,-145,0.79,12517 + 12738,9224,FALSE
+buy,10,Jarquez Hunter + Colston Loveland,Chase Brown,4732,4296,-436,0.533,0.133,-0.533,-0.1,FALSE,-148,0.784,11569 + 12517,9224,FALSE
+buy,10,Colston Loveland + DeMario Douglas,Chase Brown,4899,4296,-603,0.517,0.133,-0.55,-0.067,FALSE,-195,0.682,12517 + 9501,9224,FALSE
+buy,10,Colston Loveland + Sam Roush,Chase Brown,4833,4296,-537,0.517,0.133,-0.567,-0.1,FALSE,-217,0.632,12517 + 13322,9224,FALSE
+buy,10,Tyler Warren,Chase Brown,4210,4296,86,0.467,0.083,-0.567,-0.067,FALSE,392,0.515,12518,9224,FALSE
+buy,4,Tyler Warren,RJ Harvey + Bhayshul Tuten,4210,4535,325,0.25,0.05,-0.267,0,FALSE,821,0.487,12518,12489 + 12490,FALSE
+buy,4,Tre Tucker + Courtland Sutton,Bhayshul Tuten,2610,2485,-125,0.15,0.083,-0.117,0.033,FALSE,370,0.466,10213 + 5045,12490,FALSE
+buy & sell CeeDee Lamb,10,CeeDee Lamb,D'Andre Swift + Chase Brown,6328,6726,398,0.417,0.05,-0.467,-0.15,FALSE,793,0.424,6786,6790 + 9224,FALSE
+buy,4,Omar Cooper,RJ Harvey,2086,2050,-36,0.3,0.117,-0.133,-0.067,FALSE,-160,0.273,13276,12489,FALSE
+buy,4,Dalton Kincaid + Jauan Jennings,Bhayshul Tuten,2763,2485,-278,0.133,0.067,0.083,0.083,TRUE,261,0.241,10236 + 7049,12490,FALSE
+buy,4,Dalton Kincaid + David Njoku,Bhayshul Tuten,2668,2485,-183,0.133,0.083,0.117,0.05,TRUE,-14,0.122,10236 + 4033,12490,FALSE
+sell Colston Loveland,2,Colston Loveland,Nico Collins,4662,4269,-393,0.267,0.083,-0.517,-0.117,FALSE,-82,-0.527,12517,7569,FALSE
+sell Colston Loveland,11,Colston Loveland,Alvin Kamara + Garrett Wilson,4662,5324,662,0.1,0.033,-0.083,0.05,FALSE,510,-0.682,12517,4035 + 8146,FALSE
+sell Colston Loveland,2,Colston Loveland + KeAndre Lambert-Smith,Nico Collins,4761,4269,-492,0.283,0.083,-0.433,-0.083,FALSE,-173,-0.726,12517 + 12670,7569,FALSE
+sell Colston Loveland,2,Emari Demercado + Colston Loveland,Nico Collins,4851,4269,-582,0.233,0.083,-0.4,-0.1,FALSE,-180,-0.743,11199 + 12517,7569,FALSE

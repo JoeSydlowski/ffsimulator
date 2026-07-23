@@ -43,3 +43,178 @@ sell matchmaker for Colston Loveland: valuing 28 pieces from 3 buyers @ 2026-07-
 sell matchmaker for Tyler Warren: valuing 26 pieces from 3 buyers @ 2026-07-20 13:32:56.5378
 sell matchmaker for Tee Higgins: valuing 25 pieces from 3 buyers @ 2026-07-20 13:40:11.098076
 confirming 15 deals on the standings sim @ 2026-07-20 13:42:32.283821
+
+==== sox05syd trade intelligence (1qb, valuation n=60) ====
+
+posture: contend (playoff odds 70% @ n=2000)
+capital: 61823 now -> 49481 expected (p10 20823 / p90 86519); value-at-risk 1888
+concentration: top-3 assets hold 27% of capital
+
+-- capital by verdict --
+                    verdict capital n
+1:      CORE (wins + value)   23445 8
+2: RENTAL (win-now, fading)   20138 5
+3:     STASH (appreciating)    7179 6
+4:     TRADE CHIP (surplus)    5655 4
+5:            SELL (fading)    4859 7
+6:                    depth     376 4
+7:                     hold     171 1
+
+-- roster --
+              player_name pos  age cur_value model_chg vs_drift mkt_trend
+ 1:           CeeDee Lamb  WR 27.3      6328      -33%      -8%       -3%
+ 2:          Drake London  WR 25.0      5699      -27%      -0%       -2%
+ 3:      Colston Loveland  TE 22.3      4662      -36%     -11%       +1%
+ 4:          Emeka Egbuka  WR 23.8      4525      -19%     +11%       -0%
+ 5:          Tyler Warren  TE 24.2      4210      -34%      -9%       +1%
+ 6:           Tee Higgins  WR 27.5      3220      -35%     -11%       -0%
+ 7:       Patrick Mahomes  QB 30.9      3072       -9%     +14%       +2%
+ 8:       Trevor Lawrence  QB 26.8      2646      -16%      +4%       +0%
+ 9:         Kyle Monangai  RB 24.1      2106      -16%     +26%       +9%
+10:           Omar Cooper  WR 22.6      2086      -12%     +21%        NA
+11:       Jonathon Brooks  RB 23.0      2047      -14%     +29%       +8%
+12:           Rico Dowdle  RB 28.1      1817      -26%     +11%       -2%
+13:       Zach Charbonnet  RB 25.5      1796      -25%     +13%       -5%
+14:    Nicholas Singleton  RB 22.5      1771      -16%     +26%        NA
+15:          Tyler Shough  QB 26.8      1718      -43%     -28%       -6%
+16:        Dalton Kincaid  TE 26.8      1706      -21%     +10%       +4%
+17:         Jakobi Meyers  WR 29.7      1545      -28%      -1%       +4%
+18:      Courtland Sutton  WR 30.8      1533      -27%      -0%      -12%
+19:         Khalil Shakir  WR 26.5      1352      -26%      +1%       -3%
+20:            Tre Tucker  WR 25.4      1077      -51%     -32%       +5%
+21:        Jauan Jennings  WR 29.0      1057      -72%     -62%       -4%
+22:           Trey Benson  RB 24.0      1014      -58%     -37%       -9%
+23:           Eli Raridon  TE 22.4      1010      -16%     +16%        NA
+24:          Kimani Vidal  RB 24.9       982      -67%     -50%       -9%
+25:           David Njoku  TE 30.0       962      -26%      +3%       -6%
+26:        Trevor Etienne  RB 22.0       410      -21%     +18%      -15%
+27:         Kevin Coleman  WR 22.9       303      -58%     -43%        NA
+28:       DeMario Douglas  WR 25.6       237      -70%     -58%       -4%
+29:         Michael Trigg  TE 24.1       196      -18%     +14%        NA
+30:       Emari Demercado  RB 27.5       189      -71%     -57%      +34%
+31:             Sam Roush  TE 22.9       171      -29%      -2%        NA
+32:       Savion Williams  WR 24.7       108      -72%     -62%      -77%
+33: KeAndre Lambert-Smith  WR 24.8        99      -90%     -87%      -19%
+34:            Phil Mafah  RB 23.7        99      -55%     -32%      -17%
+35:        Jarquez Hunter  RB 23.6        70      -77%     -65%     -180%
+              player_name pos  age cur_value model_chg vs_drift mkt_trend
+    value_to_me wins_per_1k                  verdict
+ 1:       0.580       0.084 RENTAL (win-now, fading)
+ 2:       0.537       0.085      CORE (wins + value)
+ 3:       0.222       0.042 RENTAL (win-now, fading)
+ 4:       0.288       0.058      CORE (wins + value)
+ 5:       0.206       0.042 RENTAL (win-now, fading)
+ 6:       0.321       0.084 RENTAL (win-now, fading)
+ 7:       0.225       0.079      CORE (wins + value)
+ 8:       0.379       0.131      CORE (wins + value)
+ 9:       0.202       0.093      CORE (wins + value)
+10:       0.030       0.021     STASH (appreciating)
+11:       0.148       0.077      CORE (wins + value)
+12:       0.254       0.120      CORE (wins + value)
+13:       0.079       0.059     TRADE CHIP (surplus)
+14:       0.048       0.048     STASH (appreciating)
+15:       0.165       0.096 RENTAL (win-now, fading)
+16:       0.043       0.021     STASH (appreciating)
+17:       0.063       0.038     TRADE CHIP (surplus)
+18:       0.102       0.054      CORE (wins + value)
+19:       0.048       0.035     TRADE CHIP (surplus)
+20:       0.025       0.029            SELL (fading)
+21:       0.022       0.028            SELL (fading)
+22:       0.023       0.054            SELL (fading)
+23:       0.000       0.006     STASH (appreciating)
+24:       0.083       0.085            SELL (fading)
+25:       0.012       0.012     TRADE CHIP (surplus)
+26:       0.022       0.076     STASH (appreciating)
+27:       0.003       0.029            SELL (fading)
+28:       0.004       0.031            SELL (fading)
+29:       0.000       0.011     STASH (appreciating)
+30:       0.036       0.102            SELL (fading)
+31:       0.000       0.011                     hold
+32:       0.003       0.034                    depth
+33:       0.003       0.034                    depth
+34:       0.020       0.096                    depth
+35:       0.012       0.091                    depth
+    value_to_me wins_per_1k                  verdict
+
+-- movable pieces (SELL = value leaving, urgent; TRADE CHIP = parked 
+   surplus, no rush; RENTAL = win-now with melting value - keep while 
+   contending): who buys, and what improves my team back --
+
+CeeDee Lamb -> buyers: JMLarkin (+0.90w/+10%); KingGabe (+0.90w/+12%); Flipadelphia05 (+0.80w/+13%)
+  no value-matched return improves my team - hold or widen the band
+
+Colston Loveland -> buyers: Permian Panthers (+0.58w/+13%); KingGabe (+0.57w/+8%); Flipadelphia05 (+0.45w/+13%)
+  best return: send Savion Williams + Colston Loveland -> get Nico Collins | me +0.29w +6.6%pl | opp -0.23w -3.0%pl
+
+Tyler Warren -> buyers: KingGabe (+0.55w/+7%); Prestige Worldwide (+0.53w/+7%); Permian Panthers (+0.43w/+13%)
+  best return: send Tyler Warren -> get Nico Collins | me +0.32w +7.5%pl | opp -0.39w -6.1%pl
+
+Tee Higgins -> buyers: Flipadelphia05 (+0.73w/+12%); Prestige Worldwide (+0.73w/+7%); KingGabe (+0.65w/+8%)
+  no value-matched return improves my team - hold or widen the band
+
+-- top buys (sweet-spot picks first) --
+               player_name pos                owner cur_value value_to_you
+ 1:            Woody Marks  RB           ZPMiller97      1353        0.104
+ 2:            Chase Brown  RB             JMLarkin      4296        0.641
+ 3:        Chris Rodriguez  RB       Flipadelphia05      1359        0.101
+ 4:              RJ Harvey  RB   Mumpfield and Sons      2050        0.207
+ 5:           Tyrone Tracy  RB Obvious 49ers Ripoff      1398        0.123
+ 6: Jacory Croskey-Merritt  RB       Flipadelphia05      1612        0.123
+ 7:         Terry McLaurin  WR             JMLarkin      2167        0.218
+ 8:           Nico Collins  WR             KingGabe      4269        0.447
+ 9:            Rashee Rice  WR   Prestige Worldwide      3515        0.289
+10:         Garrett Wilson  WR     Permian Panthers      4081        0.315
+11:          Dylan Sampson  RB   Prestige Worldwide      1487        0.114
+12:          Rachaad White  RB       Flipadelphia05      1752        0.166
+    surplus growth_abs sweet_spot         tilt fade_flag
+ 1:  -0.018        402       TRUE                  FALSE
+ 2:  -0.318        409       TRUE win-now pick     FALSE
+ 3:  -0.051        398       TRUE  growth pick     FALSE
+ 4:  -0.032        267       TRUE win-now pick     FALSE
+ 5:   0.087        373       TRUE  growth pick     FALSE
+ 6:  -0.067        169      FALSE win-now pick     FALSE
+ 7:  -0.577        398      FALSE  growth pick     FALSE
+ 8:  -0.568        366      FALSE                  FALSE
+ 9:  -0.271        634      FALSE  growth pick     FALSE
+10:  -0.245        498      FALSE                  FALSE
+11:  -0.072        344      FALSE  growth pick     FALSE
+12:  -0.055        134      FALSE                  FALSE
+
+-- leaguewide fades (fading BEYOND position drift, market still bidding; not in targets) --
+         player_name pos  age               owner cur_value vs_drift mkt_trend
+ 1:     Deebo Samuel  WR 30.5           TwoFrames       879     -81%       +6%
+ 2:   MarShawn Lloyd  RB 25.5  Mumpfield and Sons      1114     -52%       +1%
+ 3: Dontayvion Wicks  WR 25.1          ZPMiller97       854     -47%       +1%
+ 4:    Jaylen Wright  RB 23.3  Prestige Worldwide       827     -41%       +5%
+ 5: Matthew Stafford  QB 38.5            JMLarkin      1560     -25%       +8%
+ 6:    Elic Ayomanor  WR 23.1          ZPMiller97       964     -23%       +1%
+ 7:     Daniel Jones  QB 29.2           TwoFrames      1333     -22%       +1%
+ 8:  Jacoby Brissett  QB 33.6    Permian Panthers       809     -20%       +3%
+ 9:      Jordan Love  QB 27.7 Buy My Quarterbacks      2201     -10%       +8%
+10:     Greg Dulcich  TE 26.3           solarpool      1004     -10%       +1%
+    p_exit
+ 1:  0.320
+ 2:  0.124
+ 3:  0.108
+ 4:  0.122
+ 5:  0.114
+ 6:  0.068
+ 7:  0.060
+ 8:  0.190
+ 9:  0.084
+10:  0.089
+
+-- top deals (win-now + future value blend, future_weight=1; deltas confirmed on the n=400 standings sim, ~ = search-sim only) --
+[buy & sell CeeDee Lamb] send CeeDee Lamb                  -> get Sam LaPorta + Chase Brown | me +0.18w +3.9%pl | opp -0.27w -4.7%pl | fut +1540
+[buy & sell CeeDee Lamb] send CeeDee Lamb                  -> get David Montgomery + Chase Brown | me +0.47w +8.4%pl | opp -0.60w -10.9%pl | fut +776
+[buy] send Colston Loveland             -> get RJ Harvey + Justin Herbert | me +0.19w +4.4%pl | opp -0.55w -12.1%pl | fut +1173
+[buy] send Tyler Warren                 -> get Terry McLaurin + D'Andre Swift | me +0.41w +9.2%pl | opp -0.99w -17.4%pl | fut +496
+[buy] send Tyler Warren                 -> get Woody Marks + Zay Flowers | me +0.27w +5.3%pl | opp -0.33w -7.1%pl | fut +809
+[sell Tyler Warren] send Tyler Warren                 -> get Nico Collins             | me +0.32w +7.5%pl | opp -0.39w -6.1%pl | fut +324
+[buy] send Colston Loveland             -> get Chase Brown              | me +0.47w +9.8%pl | opp -0.54w -10.0%pl | fut -14
+[buy] send Colston Loveland + KeAndre Lambert-Smith -> get Chase Brown              | me +0.46w +9.8%pl | opp -0.50w -8.9%pl | fut -104
+[sell Tyler Warren] send Tyler Warren                 -> get Garrett Wilson           | me +0.14w +2.7%pl | opp -0.12w -3.0%pl | fut +382
+[sell Colston Loveland] send Savion Williams + Colston Loveland -> get Nico Collins             | me +0.29w +6.6%pl | opp -0.23w -3.0%pl | fut -185
+
+wrote roster.csv, targets.csv, trades.csv, portfolio.csv to C:/Github/ffsimulator/dev/league_sims/1326464763936403456/2026-07-19
+DONE - outputs in C:/Github/ffsimulator/dev/league_sims/1326464763936403456/2026-07-19
