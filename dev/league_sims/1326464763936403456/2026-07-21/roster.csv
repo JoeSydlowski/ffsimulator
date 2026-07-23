@@ -1,0 +1,36 @@
+player_name,pos,age,cur_value,win_now_value,win_now_edge,playoff_add,champ_add,growth_abs,exp_change,rel_change,p_rise,p_exit,my_pos_rank,mean_weeks_started,trajectory,verdict,bust_flag,best_buyers,player_id
+Colston Loveland,TE,22.3,4725,1190,-826,0.033,0.017,-577,-0.404,-0.17,0.218,0.005,1,8.662,declining,SELL HIGH,FALSE,Permian Panthers (+0.57w/+13%); Buy My Quarterbacks (+0.50w/+5%); KingGabe (+0.48w/+3%),12517
+Tyler Warren,TE,24.2,4273,992,-706,0.028,0.013,-261,-0.343,-0.085,0.26,0.003,2,7.558,declining,SELL HIGH,FALSE,Prestige Worldwide (+0.48w/+8%); KingGabe (+0.47w/+5%); Permian Panthers (+0.42w/+12%),12518
+Tee Higgins,WR,27.5,3267,974,-207,0.062,0.026,-370,-0.375,-0.154,0.172,0.002,3,9.983,declining,CASH RENTAL,FALSE,Buy My Quarterbacks (+0.62w/+10%); Prestige Worldwide (+0.58w/+3%); TwoFrames (+0.55w/+10%),6801
+Courtland Sutton,WR,30.8,1557,324,-166,0.019,0.009,12,-0.254,0.01,0.144,0.038,5,6.392,holding,PARKED CHIP,FALSE,Buy My Quarterbacks (+0.40w/-0%); KingGabe (+0.40w/+7%); JMLarkin (+0.33w/+3%),5045
+Jakobi Meyers,WR,29.7,1556,311,-237,0.013,0.006,-7,-0.266,-0.006,0.226,0.044,6,4.724,holding,PARKED CHIP,FALSE,,5947
+Khalil Shakir,WR,26.5,1323,261,-223,0.01,0.004,-53,-0.301,-0.054,0.314,0.062,7,2.858,holding,PARKED CHIP,FALSE,,8134
+Jauan Jennings,WR,29,1088,600,-619,0.006,0.003,-430,-0.657,-0.535,0.096,0.14,9,1.843,declining,SWEETENER,FALSE,,7049
+Trey Benson,RB,24,1045,328,-368,0.005,0.002,-172,-0.48,-0.241,0.388,0.132,8,1.093,declining,SWEETENER,FALSE,,11589
+Tre Tucker,WR,25.4,1042,355,-430,0.002,0.002,-210,-0.463,-0.272,0.329,0.088,10,1.563,declining,SWEETENER,FALSE,,10213
+Kimani Vidal,RB,24.9,1039,543,-420,0.016,0.005,-358,-0.66,-0.504,0.222,0.11,5,2.106,declining,SWEETENER,FALSE,,11647
+DeMario Douglas,WR,25.6,196,25,-157,-0.002,0,-78,-0.659,-0.538,0.332,0.24,13,0.23,declining,SWEETENER,TRUE,,9501
+Kevin Coleman,WR,22.9,285,-4,,-0.001,0,-81,-0.544,-0.383,0.279,0.115,11,0.237,declining,SELL (fading),FALSE,,13338
+Savion Williams,WR,24.7,189,-1,,-0.002,0,-64,-0.602,-0.461,0.327,0.214,14,0.252,declining,SELL (fading),TRUE,,12482
+Jarquez Hunter,RB,23.6,162,-62,,0.005,0.002,-30,-0.499,-0.268,0.26,0.146,10,0.832,declining,SELL (fading),FALSE,,11569
+Drake London,WR,25,5706,1159,294,0.11,0.039,-132,-0.285,-0.031,0.168,0.001,2,10.652,holding,CORE,FALSE,,8112
+Emeka Egbuka,WR,23.8,4583,502,159,0.054,0.024,420,-0.17,0.124,0.208,0,4,9.568,holding,CORE,FALSE,,12514
+Patrick Mahomes,QB,30.9,3126,502,53,0.047,0.016,231,-0.112,0.091,0.304,0.028,2,4.703,appreciating,CORE,FALSE,,4046
+Trevor Lawrence,QB,26.8,2711,199,738,0.074,0.028,-17,-0.192,-0.008,0.37,0.018,1,7.044,holding,CORE,FALSE,,7523
+Kyle Monangai,RB,24.1,2087,66,163,0.024,0.015,384,-0.132,0.269,0.302,0.01,2,6.399,appreciating,CORE,FALSE,,12534
+Jonathon Brooks,RB,23,2026,34,309,0.032,0.011,381,-0.127,0.275,0.304,0.011,3,4.767,appreciating,CORE,FALSE,,11583
+Rico Dowdle,RB,28.1,1835,429,62,0.042,0.019,74,-0.275,0.059,0.138,0.024,1,7.232,holding,CORE,FALSE,,7021
+Tyler Shough,QB,26.8,1801,270,136,0.036,0.012,-148,-0.268,-0.101,0.284,0.108,3,2.164,declining,CORE,FALSE,,12545
+Omar Cooper,WR,22.6,2011,142,-231,0.001,0.002,328,-0.098,0.221,0.354,0.029,8,1.963,appreciating,STASH (appreciating),FALSE,,13276
+Nicholas Singleton,RB,22.5,1807,153,-150,0.008,0.004,247,-0.179,0.2,0.366,0.046,6,1.978,appreciating,STASH (appreciating),FALSE,,13288
+Dalton Kincaid,TE,26.8,1668,170,-224,0.004,0.003,125,-0.207,0.104,0.287,0.018,3,2.921,appreciating,STASH (appreciating),FALSE,,10236
+David Njoku,TE,30,1003,176,-237,0.003,0.001,97,-0.185,0.135,0.354,0.075,4,0.59,appreciating,STASH (appreciating),FALSE,,4033
+Eli Raridon,TE,22.4,895,78,-181,0,0,65,-0.209,0.102,0.406,0.037,7,0.168,appreciating,STASH (appreciating),FALSE,,13421
+CeeDee Lamb,WR,27.3,6230,1740,-103,0.123,0.042,-315,-0.312,-0.068,0.175,0.005,1,10.777,holding,hold,FALSE,,6786
+Zach Charbonnet,RB,25.5,1830,174,-57,0.016,0.008,81,-0.271,0.065,0.28,0.018,4,4.093,holding,hold,FALSE,,9753
+Trevor Etienne,RB,22,354,-47,,0.002,0.002,17,-0.267,0.07,0.358,0.082,9,0.808,holding,hold,FALSE,,12531
+Michael Trigg,TE,24.1,222,-245,,0.001,0,-6,-0.31,-0.039,0.394,0.148,6,0.043,holding,hold,FALSE,,13401
+Sam Roush,TE,22.9,171,-72,,0.001,0,3,-0.267,0.021,0.218,0.162,5,0.062,holding,hold,FALSE,,13322
+Emari Demercado,RB,27.5,135,62,-94,0.005,0.002,-51,-0.691,-0.548,0.131,0.235,7,0.922,declining,depth,TRUE,,11199
+KeAndre Lambert-Smith,WR,24.8,114,0,,0.001,0,-56,-0.753,-0.666,0.18,0.37,12,0.122,declining,depth,TRUE,,12670
+Phil Mafah,RB,23.7,89,-75,,0.004,0.001,-19,-0.528,-0.311,0.257,0.256,11,0.6,declining,depth,TRUE,,12738
