@@ -41,7 +41,42 @@ below has to clear.
 
 ---
 
+## Findings to date — the engine-free gate has run (see `dev/bestball/`)
+
+We built the phase-0/1 machinery and ran the gate on **6 seasons** of the real field
+(2020–25 ingested to Parquet; 5 full funnels). Headline results — these **revise the plan
+below**, so read them first:
+
+- **Game model validated:** advancement = top-2-of-pod by `roster_points` matches the real
+  `made_playoffs` flag at **99.98%**. We can replay any year.
+- **Stacking is NOT the edge we assumed (~13 tests, `03`–`13`).** The QB↔WR1 weekly
+  correlation is real (**+0.37**, co-blow-up ~2× independent), but **same-team stacking
+  produces no advancement or ceiling edge** for the regular season, QF, or SF — because best
+  ball auto-optimises the weekly lineup, making correlated booms *redundant* vs. diversified
+  ones. Confirmed via within-QB fix-the-anchor, a stack-size gradient (concentration *lowers*
+  ceiling), WR-vs-TE, QB-tier, wk15 bring-back, archetype, and a random-assignment baseline
+  (~54% of "stacking" is incidental; the intentional layer is large, growing, and **taxed
+  ~1–1.5 picks of reach** for no payoff → *not* stacking is mildly +EV).
+- **One real correlation edge, in the FINALS only.** Checking ETR's manifesto (`13`), wk17
+  **game stacks** raise the finals top-10% rate monotonically (**7.3% → 12.3%** by
+  game-stack count) — a single winner-take-most week won in the extreme tail. ETR otherwise
+  aligns with us (13.7% don't stack ≈ our number; they flag the Kelce/TE confound too).
+- **Net engine implication (updated):** correlation is worthless for the accumulation/
+  advancement model — **don't build it there** — but a proper engine **should** model wk17
+  game-stack correlation for the finals objective. This flips the premise of Q1 below.
+- **Still un-de-confounded (the live frontier):** the raw phase-1 signals **positional
+  structure** (Zero-RB / WR-heavy looked strong — ETR agrees) and **draft-value captured**
+  need the same player-fixed-effects treatment before they can be called edges. **This is the
+  next work**, and it's where an actual structural edge is most likely to be.
+
+---
+
 ## Q1. How do we make correlation (stacking) work?
+
+> **Empirical revision (see Findings above):** correlation turned out *not* to drive
+> advancement — best ball neutralises it — so this is **no longer the priority fidelity gap**.
+> Build correlation only into the **finals-week** objective (wk17 game stacks), not the
+> accumulation model. The mechanics below still apply *there*.
 
 This is the most important fidelity gap. ffsimulator draws each player's weekly outcome
 **independently** from per-`pos`/`rank` pools (`R/01-outcomes_week.R`), so a QB can boom
@@ -376,28 +411,30 @@ ones. Acceptable.
 
 ## Proposed phases
 
-0. **Ingest.** Convert all six years (CSV/xlsx, two hosts, split parts) to a canonical
-   Parquet schema via DuckDB/Arrow, with graceful degradation for thin/minimal years.
-1. **Empirical field study (Test 1) — the gate.** Engine-free. Label real entries with
-   construction features; measure realized advance-rate/points-percentile vs. those features,
-   isolating *structure* from *player-selection* via **player fixed effects** +
-   **fix-the-anchor** stack tests + the **concentration diagnostic** (see "Isolating
-   structure from players"), and checking sign-stability across the six years. **Decision
-   point: if *structural* construction doesn't predict advancement, stop here** — the edge is
-   just player-picking, which belongs to the projections, not this build.
-2. **Advancement + cutline model.** Reproduce known outcomes and read/validate the true
-   cutlines (reg-season sum → top-2-of-12; single-week playoff rounds) off the data.
-3. **Correlation layer (Q1) + engine calibration (Test 2).** Copula sampler calibrated to
-   historical same-game correlations; validate the engine's advance-prob on a held-out year
-   (calibration + discrimination) and confirm it beats a points-only baseline.
+0. **Ingest.** ✅ **DONE** — 6 seasons (2020–25) in canonical Parquet (`00`/`02` in
+   `dev/bestball/R`); arrow streaming for the 5 GB rich years, per-year adapters for schema
+   drift, two hosts, split parts.
+1. **Empirical field study (Test 1) — the gate.** 🔶 **IN PROGRESS.** Game model validated
+   (99.98%). **Stacking sub-question fully answered** (`03`–`13`): no advancement edge, one
+   real finals-week game-stack edge (see Findings). **Remaining and next: de-confound
+   positional structure (Zero-RB / WR-heavy) and draft-value** with player fixed effects — the
+   live candidates for a real structural edge. Decision point still stands: if *structural*
+   construction doesn't predict advancement out-of-sample, stop.
+2. **Advancement + cutline model.** Partly done — advancement rule validated; formal cutline
+   estimation for the single-week playoff rounds still to build.
+3. **Correlation layer (Q1) + engine calibration (Test 2).** **Scope reduced by Findings:**
+   correlation is a **finals-week-only** concern (wk17 game stacks); skip it in the
+   accumulation model. Calibrate against wk17 game/bring-back correlation, not season-long.
 4. **Draft agent + edge experiments (Test 3, Q3).** Draft against a behaviorally-calibrated
-   ADP field; test construction/stack/reach/value rules on realized points vs. real cutlines
-   and rake, on held-out years, with vintaged (no-lookahead) inputs.
+   ADP field; test construction/value rules on realized points vs. real cutlines and rake, on
+   held-out years, with vintaged (no-lookahead) inputs. **De-prioritise stacking rules**
+   (answered); prioritise structure/value and finals game-stacking.
 5. **Bankroll / contest tooling (Q5).** Turn realized edge + variance into entry-count and
    contest-mix recommendations by bankroll.
 
-Two hard gates: **phase 1** (does construction predict advancement at all?) and **phase 4**
-(does it clear the vig on held-out years?). Fail either → stop.
+Two hard gates: **phase 1** (does *structural* construction predict advancement?) and
+**phase 4** (does it clear the vig on held-out years?). Fail either → stop. Phase-1 verdict so
+far: stacking is not that edge; structure/value are the remaining hope.
 
 ---
 
