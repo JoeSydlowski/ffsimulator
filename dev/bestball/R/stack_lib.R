@@ -34,7 +34,7 @@ prep_rich <- function(prefix, season) {
   players[, key := .clean(player_name)]
   players <- merge(players, nfl_teammap(season), by = c("key","pos"), all.x = TRUE)
   fact <- as.data.table(open_dataset(paste0(prefix, "_fact")) %>%
-    select(entry_id, draft_id, player_id, pos, roster_points) %>% collect())
+    select(entry_id, draft_id, player_id, pos, adp, roster_points) %>% collect())
   fact <- merge(fact, players[, .(player_id, nfl_team)], by = "player_id", all.x = TRUE)
   setnames(fact, "player_id", "pkey")
   list(fact = fact, match_rate = mean(!is.na(players$nfl_team)))
@@ -42,7 +42,7 @@ prep_rich <- function(prefix, season) {
 
 prep_thin <- function(parquet, season) {
   d <- as.data.table(read_parquet(parquet))[round == 1L,
-        .(entry_id, draft_id, pkey = player_name, pos, roster_points)]
+        .(entry_id, draft_id, pkey = player_name, pos, adp, roster_points)]
   d[, key := .clean(pkey)]
   d <- merge(d, nfl_teammap(season), by = c("key","pos"), all.x = TRUE)
   d[, key := NULL]
@@ -54,16 +54,17 @@ prep_thin <- function(parquet, season) {
 prep_thin_raw <- function(csv, season) {
   d <- rbindlist(lapply(csv, fread, showProgress = FALSE), use.names = TRUE, fill = TRUE)
   d <- d[, .(entry_id = tournament_entry_id, draft_id,
-             pkey = player_name, pos = position_name, roster_points)]
+             pkey = player_name, pos = position_name, adp = projection_adp, roster_points)]
   d[, key := .clean(pkey)]
   d <- merge(d, nfl_teammap(season), by = c("key", "pos"), all.x = TRUE)
   d[, key := NULL]
   list(fact = d, match_rate = d[, mean(!is.na(nfl_team))])
 }
 
-# entry x QB stack flag: TRUE if the entry rosters a WR/TE on that QB's team
-.qb_stack <- function(fact) {
-  catch <- unique(fact[pos %in% c("WR","TE") & !is.na(nfl_team), .(entry_id, team = nfl_team)])
+# entry x QB stack flag: TRUE if the entry rosters a same-team catcher of the
+# given position(s) - catch_pos lets us split QB-WR vs QB-TE stacks.
+.qb_stack <- function(fact, catch_pos = c("WR","TE")) {
+  catch <- unique(fact[pos %in% catch_pos & !is.na(nfl_team), .(entry_id, team = nfl_team)])
   catch[, has_catcher := TRUE]
   qbs <- fact[pos == "QB" & !is.na(nfl_team), .(entry_id, qb = pkey, qb_team = nfl_team)]
   qbs <- merge(qbs, catch, by.x = c("entry_id","qb_team"),

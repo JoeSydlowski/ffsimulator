@@ -36,11 +36,11 @@ Rscript R/01_field_study.R
   no weekly ceiling from minimal stacks.
 - [x] **Stack-size gradient**, 5 seasons (2021–25) — concentration *lowers* single-week
   variance (`sd_ratio` falls with stack size every year); 2022 (BBM III) ingested.
-- [ ] **Game-stack / bring-back** test (QB ↔ opposing pass-catcher) — the one stacking form
-  not yet tested.
+- [x] **Game-stack / bring-back**, WR-vs-TE, and QB-tier tests (`08`) — all null / no edge.
+  **Stacking question is now closed: no robust edge.**
+- [ ] **Move the gate to the other raw signals** (positional structure, draft-value) with
+  player fixed effects — still un-de-confounded and the most likely place for a real edge.
 - [ ] Add 2020 (BBM I xlsx) for a sixth regular-season year (no single-week playoff scores).
-- [ ] Move the gate to the *other* raw signals (positional structure, draft-value) with
-  player fixed effects — still un-de-confounded.
 - [ ] Sim engine (Test 2): toggle correlation with players held identical — the clean arbiter;
   seed copula loadings from the Underdog article (WR1↔WR2 +0.16, bring-back +0.09).
 
@@ -136,13 +136,23 @@ stacks" beat concentrated ones. This matches Underdog's own correlation research
 WR1↔WR2 only +0.16; two WRs both 20+ just 1.1% of weeks; "spread mini-stacks, don't
 concentrate") — now confirmed at the roster level over 5 seasons.
 
-**Verdict on stacking:** across binary, size-gradient, season-total and single-week tests,
-over 4–5 seasons, **same-team stacking is not a ceiling or advancement edge in Underdog best
-ball, and over-concentration modestly hurts.** This steers the engine design: don't build to
-exploit same-team stacking.
+## More stacking angles — 5 seasons (`08_stack_evidence.R`)
 
-**Still open:** **game stacks / bring-backs** (QB or WR1 ↔ *opposing* pass-catcher; the
-article's +0.09–0.10) — untested, though season-level dilution (one matchup/season) makes it
-likely small. The sim engine (toggle correlation, players identical) remains the clean arbiter,
-and the article's per-week correlations (WR1↔WR2 +0.16, bring-back +0.09) are ready-made
-copula loadings for it.
+- **(A) QB-WR vs QB-TE:** QB-**WR** advance lift is positive 4/5 years (~+0.004 avg) with
+  `sd_ratio ≈ 1.0`; QB-**TE** advance lift ~0 and `sd_ratio < 1` **every year** (0.94–0.99) —
+  TE stacks *reduce* ceiling. So QB-WR is mildly preferable and TE stacks are the worst form,
+  matching the article's negative TE↔WR2 correlation. Still not an *edge*, just a preference.
+- **(B) By QB draft tier:** elite-ADP-QB stack lift = +0.027, −0.003, +0.018, −0.027, +0.010
+  across years — **no tier pattern**, year noise dominates. Stacking is **not** bigger for
+  highly-drafted QBs.
+- **(C) Bring-back / game stack** (own-stack + the QB's *week-15 opponent's* catcher, within
+  QB): `sd_ratio ≈ 1.00` every year, wk15 points lift ≈ 0 — **null**, as season-level dilution
+  (one matchup per pairing) predicts.
+
+**Final verdict on stacking:** across binary, size-gradient, WR-vs-TE, QB-tier, bring-back,
+season-total and single-week tests, over 4–5 seasons, **there is no robust stacking edge in
+Underdog best ball.** The only actionable nuance is *prefer WR over TE stacks* (a minor
+construction tilt, not an edge). This decisively steers the engine: **do not build it to
+exploit correlation/stacking** — best ball's weekly auto-optimisation already neutralises it.
+The sim engine remains the clean arbiter if ever revisited; the article's per-week
+correlations (WR1↔WR2 +0.16, bring-back +0.09) are ready-made copula loadings.
