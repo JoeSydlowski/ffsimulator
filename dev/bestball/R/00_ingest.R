@@ -45,6 +45,19 @@ specs <- list(
       pick_points = "pick_points", roster_points = "roster_points",
       made_playoffs = "playoff_team"
     )
+  ),
+  bbm3_2022 = list(
+    season = 2022L, tournament = "BBM III",
+    files = sprintf("data/raw/bbm2022_reg_%02d.csv", 0:8),  # 9 split parts
+    rename = c(
+      draft_id = "draft_id", entry_id = "tournament_entry_id",
+      round = "tournament_round_number", player_name = "player_name",
+      pos = "position_name", adp = "projection_adp",
+      overall_pick = "overall_pick_number", team_pick = "team_pick_number",
+      pick_slot = "pick_order", bye_week = "bye_week", draft_time = "draft_time",
+      pick_points = "pick_points", roster_points = "roster_points",
+      made_playoffs = "playoff_team"
+    )
   )
 )
 

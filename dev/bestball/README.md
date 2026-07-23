@@ -34,10 +34,15 @@ Rscript R/01_field_study.R
   **4 years** (2021 thin + 2023/24/25 rich) in `04_stack_replication.R`.
 - [x] **Playoff-week (single-week) ceiling test** on rd2 (wk15), 4 years — `sd_ratio ≈ 1.0`,
   no weekly ceiling from minimal stacks.
-- [ ] **Stack-size / game-stack gradient** — does concentration (QB + 2–3 receivers, bring-backs)
-  behave differently than the binary ≥1-catcher stack tested so far?
-- [ ] Add 2020 xlsx + 2022 split-parts for two more regular-season years.
-- [ ] Sim engine (Test 2): toggle correlation with players held identical — the clean arbiter.
+- [x] **Stack-size gradient**, 5 seasons (2021–25) — concentration *lowers* single-week
+  variance (`sd_ratio` falls with stack size every year); 2022 (BBM III) ingested.
+- [ ] **Game-stack / bring-back** test (QB ↔ opposing pass-catcher) — the one stacking form
+  not yet tested.
+- [ ] Add 2020 (BBM I xlsx) for a sixth regular-season year (no single-week playoff scores).
+- [ ] Move the gate to the *other* raw signals (positional structure, draft-value) with
+  player fixed effects — still un-de-confounded.
+- [ ] Sim engine (Test 2): toggle correlation with players held identical — the clean arbiter;
+  seed copula loadings from the Underdog article (WR1↔WR2 +0.16, bring-back +0.09).
 
 ### Note: advancement in rich years
 Rich rd1 files leave `made_playoffs = 0`; advancement is derived as **top-2-of-pod by
@@ -110,8 +115,34 @@ across 4 years, at neither horizon.
 theoretical edge is largely neutralised by best ball's own mechanic (a known best-ball
 counter-argument, now with field evidence).
 
-**Main remaining caveat:** "stacked" here = **≥1** same-team pass-catcher (a minimal 2-man
-stack). Elite players run **concentrated** stacks (QB + 2–3 receivers, plus opponent
-bring-backs / game stacks). The null on *marginal* stacks doesn't rule out an effect for
-*concentrated* ones — a **stack-size / game-stack gradient** test is the next refinement, and
-the sim engine (toggle correlation, players held identical) remains the fully-clean arbiter.
+## Stack-size gradient — 5 seasons (`07_stack_gradient.R`) — CONCENTRATION *LOWERS* CEILING
+
+Tests whether **bigger** same-team stacks (QB + 1/2/3+ pass-catchers) behave differently
+than the binary test, across 5 full-funnel years (2021–25; added 2022 BBM III).
+
+- **Regular-season advance lift** by stack size is **inconsistent** — positive some years,
+  negative others, and **3-stacks are negative in 3 of 5 years** (2023/24/25). No reliable
+  advancement edge from concentration.
+- **Single-week `sd_ratio` (stacked/no-stack weekly variance) DECREASES with stack size in
+  *every* year:** ssize +1 ≈ 1.00 → +2 < 1 → +3 ≈ **0.90–0.99**. Concentrating on one team's
+  receivers **reduces** your single-week ceiling — the *opposite* of the stack-for-ceiling thesis.
+
+**Mechanism (now well-supported):** best ball auto-optimises the weekly lineup, so ceiling
+comes from having **many independent boom sources**. A big same-team stack makes your
+catchers boom/bust *together*, so a down week for that offense sinks the whole stack —
+*fewer* effective shots at a spike, hence **lower** weekly variance. Diversified "mini
+stacks" beat concentrated ones. This matches Underdog's own correlation research
+([article](https://underdognetwork.com/football/best-ball-research/correlation-at-ceiling-outcomes-between-teammates-and-their-opponents):
+WR1↔WR2 only +0.16; two WRs both 20+ just 1.1% of weeks; "spread mini-stacks, don't
+concentrate") — now confirmed at the roster level over 5 seasons.
+
+**Verdict on stacking:** across binary, size-gradient, season-total and single-week tests,
+over 4–5 seasons, **same-team stacking is not a ceiling or advancement edge in Underdog best
+ball, and over-concentration modestly hurts.** This steers the engine design: don't build to
+exploit same-team stacking.
+
+**Still open:** **game stacks / bring-backs** (QB or WR1 ↔ *opposing* pass-catcher; the
+article's +0.09–0.10) — untested, though season-level dilution (one matchup/season) makes it
+likely small. The sim engine (toggle correlation, players identical) remains the clean arbiter,
+and the article's per-week correlations (WR1↔WR2 +0.16, bring-back +0.09) are ready-made
+copula loadings for it.

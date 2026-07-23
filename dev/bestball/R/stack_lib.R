@@ -49,9 +49,10 @@ prep_thin <- function(parquet, season) {
   list(fact = d, match_rate = d[, mean(!is.na(nfl_team))])
 }
 
-# thin playoff dumps (2021/2022): fread a raw CSV directly (name-keyed)
+# thin playoff dumps (2021/2022): fread raw CSV(s) directly (name-keyed).
+# csv may be a vector of part files (2022 splits its rounds).
 prep_thin_raw <- function(csv, season) {
-  d <- fread(csv, showProgress = FALSE)
+  d <- rbindlist(lapply(csv, fread, showProgress = FALSE), use.names = TRUE, fill = TRUE)
   d <- d[, .(entry_id = tournament_entry_id, draft_id,
              pkey = player_name, pos = position_name, roster_points)]
   d[, key := .clean(pkey)]
@@ -153,4 +154,56 @@ single_week_ceiling <- function(prep, season, min_side = 100L) {
     sd_ratio_w   = round(weighted.mean(w$sd_ratio, w$wt), 3),   # >1 = more weekly variance
     pct_tail_pos = round(mean(w$tail_extra > 0), 3)
   )
+}
+
+# ---- STACK-SIZE GRADIENT --------------------------------------------------
+# The binary "any stack" test can't tell a 1-catcher stack from a 3-catcher one.
+# Underdog's own research says same-team ceiling correlation is modest (WR1-WR2
+# ~+0.16; two WRs both 20+ only 1.1% of weeks) and recommends spreading mini
+# stacks over concentrating - so we expect the gradient to be ~flat. This tests
+# it: per (entry, QB), ssize = # same-team pass-catchers, capped at 3 (=3+).
+
+.qb_stack_size <- function(fact) {
+  cnt <- fact[pos %in% c("WR","TE") & !is.na(nfl_team), .N, by = .(entry_id, team = nfl_team)]
+  qbs <- fact[pos == "QB" & !is.na(nfl_team), .(entry_id, qb = pkey, qb_team = nfl_team)]
+  qbs <- merge(qbs, cnt, by.x = c("entry_id","qb_team"), by.y = c("entry_id","team"), all.x = TRUE)
+  qbs[is.na(N), N := 0L]
+  qbs[, ssize := pmin(N, 3L)]
+  qbs[, .(entry_id, qb, ssize)]
+}
+
+# regular-season advance lift by stack size, vs ssize 0, within QB
+stack_gradient_adv <- function(prep, season, min_cell = 100L) {
+  fact <- prep$fact
+  em <- unique(fact[, .(entry_id, draft_id, roster_points)])
+  em[, pod_rank := frank(-roster_points, ties.method = "first"), by = draft_id]
+  em[, advanced := as.integer(pod_rank <= 2L)]
+  qbs <- merge(.qb_stack_size(fact), em[, .(entry_id, advanced)], by = "entry_id")
+  cell <- qbs[, .(n = .N, adv = mean(advanced)), by = .(qb, ssize)]
+  base <- cell[ssize == 0L, .(qb, adv0 = adv, n0 = n)]
+  g <- merge(cell[ssize > 0L], base, by = "qb")
+  g <- g[n >= min_cell & n0 >= min_cell]
+  g[, `:=`(lift = adv - adv0, wt = pmin(n, n0))]
+  g[, .(season = season, n_qb = .N, adv_lift = round(weighted.mean(lift, wt), 4),
+        mean_n = round(mean(n))), by = ssize][order(ssize)]
+}
+
+# single-week (playoff) ceiling by stack size, vs ssize 0, within QB
+stack_gradient_week <- function(prep, season, min_cell = 60L) {
+  fact <- prep$fact
+  score <- unique(fact[, .(entry_id, s = roster_points)])
+  qbs <- merge(.qb_stack_size(fact), score, by = "entry_id")
+  q95 <- function(x) as.numeric(quantile(x, .95, names = FALSE))
+  cell <- suppressWarnings(qbs[, .(n = .N, med = median(s), p95 = q95(s), sd = sd(s)),
+                               by = .(qb, ssize)])
+  base <- cell[ssize == 0L, .(qb, med0 = med, p950 = p95, sd0 = sd, n0 = n)]
+  g <- merge(cell[ssize > 0L], base, by = "qb")
+  g <- g[n >= min_cell & n0 >= min_cell]
+  g[, `:=`(med_lift = med - med0, p95_lift = p95 - p950, sd_ratio = sd / sd0, wt = pmin(n, n0))]
+  g[, tail_extra := p95_lift - med_lift]
+  g[, .(season = season, n_qb = .N,
+        med_lift = round(weighted.mean(med_lift, wt), 1),
+        p95_lift = round(weighted.mean(p95_lift, wt), 1),
+        tail_extra = round(weighted.mean(tail_extra, wt), 1),
+        sd_ratio = round(weighted.mean(sd_ratio, wt), 3)), by = ssize][order(ssize)]
 }
