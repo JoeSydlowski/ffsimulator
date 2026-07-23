@@ -1,0 +1,38 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed,my_champ_delta,opp_champ_delta
+buy,10,Drake London,Terry McLaurin + Chase Brown,5706,6479,773,0.458,0.108,-0.768,-0.135,FALSE,903,2.796,8112,5927 + 9224,TRUE,0.046,-0.051
+buy,10,CeeDee Lamb,David Montgomery + Chase Brown,6230,6766,536,0.449,0.093,-0.592,-0.094,FALSE,766,1.975,6786,5892 + 9224,TRUE,0.042,-0.041
+buy,5,CeeDee Lamb,Derrick Henry + A.J. Brown,6230,7011,781,0.372,0.101,-0.228,-0.019,FALSE,559,1.672,6786,3198 + 5859,TRUE,0.041,-0.037
+buy,10,CeeDee Lamb,Sam LaPorta + Chase Brown,6230,7025,795,0.173,0.044,-0.265,-0.027,FALSE,1644,1.6,6786,10859 + 9224,TRUE,0.018,-0.019
+buy,5,CeeDee Lamb,Josh Jacobs + A.J. Brown,6230,6873,643,0.347,0.081,-0.197,-0.02,FALSE,493,0.995,6786,5850 + 5859,TRUE,0.038,-0.035
+sell Tyler Warren,1,Tyler Warren,Dylan Sampson + Cam Skattebo,4273,4894,621,0.317,0.076,-0.414,-0.082,FALSE,874,0.982,12518,12469 + 12481,TRUE,0.025,-0.009
+buy,4,Colston Loveland,Ladd McConkey + Keaton Mitchell,4725,5202,477,0.153,0.049,-0.114,-0.028,FALSE,1098,0.308,12517,11635 + 9511,TRUE,0.014,-0.008
+buy & sell Colston Loveland,11,Colston Loveland,Aaron Jones + Garrett Wilson,4725,5290,565,0.271,0.073,-0.385,-0.075,FALSE,571,0.181,12517,4199 + 8146,TRUE,0.024,-0.007
+buy,4,Drake London,Ladd McConkey + Bhayshul Tuten,5706,6333,627,0.039,0.024,-0.054,-0.013,FALSE,1183,-0.64,8112,11635 + 12490,TRUE,0.002,-0.003
+sell Courtland Sutton,10,Courtland Sutton + Tee Higgins,Chase Brown,4824,4292,-532,0.215,0.036,0.117,0.032,TRUE,5,-1.639,5045 + 6801,9224,TRUE,0.016,0.01
+sell Tee Higgins,8,Tee Higgins + Khalil Shakir,Breece Hall,4590,4227,-363,0.094,0.035,0.197,0.034,TRUE,125,-1.824,6801 + 8134,8155,TRUE,0.008,0.012
+sell Tyler Warren,1,Tyler Warren,Jayden Daniels,4273,3974,-299,0.008,0.017,-0.037,-0.012,FALSE,480,-2.228,12518,11566,TRUE,0.003,-0.001
+sell Colston Loveland,11,Colston Loveland,Makai Lemon + Tony Pollard,4725,5064,339,0.059,0.027,-0.107,-0.03,FALSE,310,-2.228,12517,13294 + 5967,TRUE,0.006,-0.002
+sell Tyler Warren,1,Tyler Warren + KeAndre Lambert-Smith,Jayden Daniels,4387,3974,-413,0.003,0.016,-0.034,-0.011,FALSE,366,-2.493,12518 + 12670,11566,TRUE,0.003,-0.001
+sell Courtland Sutton,10,Courtland Sutton + Khalil Shakir,Sam LaPorta,2880,2733,-147,-0.129,-0.019,0.319,0.064,FALSE,309,-4.141,5045 + 8134,10859,TRUE,-0.013,0.033
+buy,4,Tyler Warren,RJ Harvey + Bhayshul Tuten,4273,4547,274,0.333,0.167,-0.25,0,FALSE,808,,12518,12489 + 12490,FALSE,,
+buy,10,CeeDee Lamb,Christian McCaffrey + David Montgomery,6230,7098,868,0.867,0.2,-0.783,-0.167,FALSE,170,,6786,4034 + 5892,FALSE,,
+buy,10,CeeDee Lamb,Christian McCaffrey + D'Andre Swift,6230,7095,865,0.667,0.2,-0.633,-0.133,FALSE,165,,6786,4034 + 6790,FALSE,,
+buy,4,Colston Loveland,RJ Harvey + Justin Herbert,4725,5311,586,0.2,0.1,-0.55,-0.15,FALSE,1342,,12517,12489 + 6797,FALSE,,
+buy,5,Tyler Warren,Josh Jacobs + Isaiah Likely,4273,4804,531,0.417,0.167,-0.2,0,FALSE,458,,12518,5850 + 8131,FALSE,,
+buy,4,Tyler Warren,Ladd McConkey + Dalton Schultz,4273,4883,610,0.283,0.117,-0.2,0,FALSE,1066,,12518,11635 + 5001,FALSE,,
+buy,10,Tyler Warren,Chase Brown,4273,4292,19,0.65,0.167,-0.55,-0.05,FALSE,250,,12518,9224,FALSE,,
+buy,10,Tee Higgins + Khalil Shakir,Chase Brown,4590,4292,-298,0.367,0.167,-0.167,-0.05,FALSE,176,,6801 + 8134,9224,FALSE,,
+buy,5,CeeDee Lamb,A.J. Brown + Travis Etienne,6230,7138,908,0.283,0.117,-0.05,-0.033,FALSE,792,,6786,5859 + 7543,FALSE,,
+buy,9,Tyler Warren,Woody Marks + Zay Flowers,4273,4831,558,0.283,0.133,-0.3,-0.05,FALSE,570,,12518,12474 + 9997,FALSE,,
+buy,10,CeeDee Lamb,D'Andre Swift + Chase Brown,6230,6763,533,0.5,0.117,-0.383,-0.117,FALSE,761,,6786,6790 + 9224,FALSE,,
+buy,10,Colston Loveland + KeAndre Lambert-Smith,Chase Brown,4839,4292,-547,0.75,0.183,-0.45,-0.083,FALSE,-118,,12517 + 12670,9224,FALSE,,
+sell Colston Loveland,11,Colston Loveland,Alvin Kamara + Garrett Wilson,4725,5194,469,0.2,0.1,-0.167,0.033,FALSE,528,,12517,4035 + 8146,FALSE,,
+sell Colston Loveland,2,Savion Williams + Colston Loveland,Nico Collins,4914,4338,-576,0.383,0.133,-0.583,-0.117,FALSE,-174,,12482 + 12517,7569,FALSE,,
+sell Colston Loveland,2,Colston Loveland,Nico Collins,4725,4338,-387,0.35,0.117,-0.65,-0.133,FALSE,16,,12517,7569,FALSE,,
+sell Tyler Warren,1,Tyler Warren,Rashee Rice + Tyjae Spears,4273,4873,600,0.183,0.067,-0.3,-0.067,FALSE,531,,12518,10229 + 9508,FALSE,,
+sell Tyler Warren,2,Tyler Warren,Nico Collins,4273,4338,65,0.333,0.083,-0.567,-0.133,FALSE,271,,12518,7569,FALSE,,
+sell Tee Higgins,8,Tee Higgins + Jauan Jennings,Saquon Barkley,4355,4115,-240,0.2,0.083,-0.167,-0.067,FALSE,-155,,6801 + 7049,4866,FALSE,,
+sell Tee Higgins,8,Tee Higgins + Khalil Shakir,Saquon Barkley,4590,4115,-475,0.183,0.067,-0.167,-0.067,FALSE,-729,,6801 + 8134,4866,FALSE,,
+sell Courtland Sutton,2,Courtland Sutton + Jauan Jennings,DJ Moore,2645,2336,-309,0.117,0.05,-0.1,0.017,FALSE,366,,5045 + 7049,4983,FALSE,,
+sell Courtland Sutton,10,Courtland Sutton + Jauan Jennings,David Montgomery,2645,2474,-171,0.067,0.083,0.1,0.033,TRUE,4,,5045 + 7049,5892,FALSE,,
+sell Courtland Sutton,10,Courtland Sutton + Jauan Jennings,D'Andre Swift,2645,2471,-174,0.033,0.083,0.05,0.017,TRUE,-1,,5045 + 7049,6790,FALSE,,

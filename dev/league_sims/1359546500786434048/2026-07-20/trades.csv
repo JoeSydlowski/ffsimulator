@@ -1,0 +1,33 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy,9,Puka Nacua,Jalen Hurts + Chase Brown,8585,9273,688,0.601,0.115,-0.687,-0.143,FALSE,2414,2.025,9493,6904 + 9224,TRUE
+buy,8,Puka Nacua,Jonathan Taylor + Nico Collins,8585,9557,972,0.555,0.127,-0.528,-0.113,FALSE,1238,1.089,9493,6813 + 7569,TRUE
+buy & sell Puka Nacua,2,Puka Nacua,Joe Burrow + Javonte Williams,8585,9478,893,0.318,0.076,-0.818,-0.179,FALSE,2143,1.046,9493,6770 + 7588,TRUE
+buy,11,Puka Nacua,Ladd McConkey + Drake London,8585,9589,1004,0.311,0.07,-0.458,-0.099,FALSE,2151,0.935,9493,11635 + 8112,TRUE
+buy,9,Puka Nacua,Jayden Daniels + D'Andre Swift,8585,9795,1210,0.143,0.029,-0.212,-0.043,FALSE,2889,0.911,9493,11566 + 6790,TRUE
+buy,7,Puka Nacua,Bucky Irving + Justin Herbert,8585,9244,659,0.152,0.039,-0.285,-0.062,FALSE,2526,0.747,9493,11584 + 6797,TRUE
+buy,2,Justin Jefferson,Luther Burden + Christian McCaffrey,7137,7751,614,0.561,0.11,-0.539,-0.108,FALSE,1031,0.567,6794,12519 + 4034,TRUE
+sell Justin Jefferson,1,Justin Jefferson,Cam Skattebo + Brock Purdy,7137,7700,563,0.205,0.033,-0.699,-0.128,FALSE,2266,0.382,6794,12481 + 8183,TRUE
+sell Puka Nacua,2,Puka Nacua,Luther Burden + Patrick Mahomes,8585,9429,844,0.047,0.014,-0.511,-0.109,FALSE,2495,0.25,9493,12519 + 4046,TRUE
+buy,8,Puka Nacua,Omarion Hampton + Tee Higgins,8585,9312,727,0.343,0.078,-0.34,-0.074,FALSE,1279,0.235,9493,12507 + 6801,TRUE
+buy,12,Puka Nacua,Caleb Williams + Kyle Monangai,8585,9173,588,0.082,0.014,-0.535,-0.105,FALSE,2312,0.08,9493,11560 + 12534,TRUE
+buy,2,Justin Jefferson,Joe Burrow + J.K. Dobbins,7137,8138,1001,0.138,0.026,-0.623,-0.132,FALSE,2036,0.019,6794,6770 + 6806,TRUE
+buy & sell Justin Jefferson,1,Justin Jefferson,Cam Skattebo + Kenneth Walker,7137,7519,382,0.137,0.022,-0.239,-0.048,FALSE,1317,-0.751,6794,12481 + 8151,TRUE
+sell Daniel Jones,1,Kaelon Black + Daniel Jones,Cam Skattebo,3483,3197,-286,0.001,0.002,-0.123,-0.025,FALSE,-293,-2.697,13414 + 5870,12481,TRUE
+sell Daniel Jones,5,Chris Rodriguez + Daniel Jones,Zay Flowers,3708,3504,-204,-0.087,-0.027,0.005,0.003,FALSE,-206,-3.141,10219 + 5870,9997,TRUE
+buy,9,Justin Jefferson,D'Andre Swift + Jalen Hurts,7137,7670,533,0.167,0.1,-0.35,-0.033,FALSE,1858,1.205,6794,6790 + 6904,FALSE
+buy,7,Puka Nacua,Quinshon Judkins + Justin Herbert,8585,9869,1284,-0.067,0.033,-0.25,-0.083,FALSE,3072,1.179,9493,12512 + 6797,FALSE
+buy & sell Puka Nacua,10,Puka Nacua,Saquon Barkley + De'Von Achane,8585,9646,1061,0.533,0.15,-0.517,-0.067,FALSE,826,1.105,9493,4866 + 9226,FALSE
+buy,1,Tetairoa McMillan,Cam Skattebo + Terry McLaurin,5028,5390,362,0.683,0.183,-0.467,-0.117,FALSE,190,1.09,12526,12481 + 5927,FALSE
+buy,1,Puka Nacua,Cam Skattebo + CeeDee Lamb,8585,9500,915,0.483,0.1,-0.317,-0.05,FALSE,1386,0.741,9493,12481 + 6786,FALSE
+buy,8,Justin Jefferson,Dalton Kincaid + Omarion Hampton,7137,7920,783,0.217,0.083,-0.15,-0.067,FALSE,1660,0.707,6794,10236 + 12507,FALSE
+buy,12,Puka Nacua,Jeremiyah Love + Jameson Williams,8585,9743,1158,0.217,0.05,-0.633,-0.117,FALSE,2265,0.691,9493,13287 + 8148,FALSE
+buy,4,Puka Nacua,RJ Harvey + Lamar Jackson,8585,9190,605,0.017,0.033,-0.5,-0.083,FALSE,2449,0.568,9493,12489 + 4881,FALSE
+sell Justin Jefferson,1,Justin Jefferson,Blake Corum + CeeDee Lamb,7137,8036,899,0.333,0.1,-0.1,-0.017,FALSE,1077,0.438,6794,11586 + 6786,FALSE
+sell Puka Nacua,2,Puka Nacua,Patrick Mahomes + Jaylen Waddle,8585,9229,644,0.117,0.05,-0.433,-0.133,FALSE,1841,0.275,9493,4046 + 7526,FALSE
+buy,8,Justin Jefferson,Omarion Hampton + Jaylen Warren,7137,7867,730,0.433,0.067,-0.35,-0.05,FALSE,1356,0.103,6794,12507 + 8228,FALSE
+sell Puka Nacua,10,Puka Nacua,Marvin Harrison + De'Von Achane,8585,9175,590,0.1,0.05,-0.133,-0.017,FALSE,1265,-0.291,9493,11628 + 9226,FALSE
+sell Justin Jefferson,3,Justin Jefferson,Bhayshul Tuten + Jaxson Dart,7137,7598,461,-0.317,-0.05,-0.283,-0.067,FALSE,2575,-0.831,6794,12490 + 12508,FALSE
+sell Justin Jefferson,4,Justin Jefferson,Fernando Mendoza + A.J. Brown,7137,7985,848,0.017,-0.05,-0.35,-0.067,FALSE,2147,-1.251,6794,13269 + 5859,FALSE
+sell Daniel Jones,5,MarShawn Lloyd + Daniel Jones,DeVonta Smith,3503,3326,-177,0.1,0.067,-0.2,-0.017,FALSE,-555,-1.772,11581 + 5870,7525,FALSE
+sell Daniel Jones,1,Jack Bech + Daniel Jones,Cam Skattebo,3569,3197,-372,0.017,0,0.133,0.083,TRUE,-328,-2.267,12483 + 5870,12481,FALSE
+sell Daniel Jones,1,MarShawn Lloyd + Daniel Jones,Cam Skattebo,3503,3197,-306,-0.067,-0.017,0.217,0.083,FALSE,-141,-2.889,11581 + 5870,12481,FALSE

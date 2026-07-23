@@ -1,0 +1,38 @@
+motive,opponent,send,receive,send_value,recv_value,value_gap,my_win_delta,my_playoff_delta,opp_win_delta,opp_playoff_delta,win_win,future_capital_delta,score,send_ids,recv_ids,confirmed
+buy,9,Puka Nacua,Jalen Hurts + Chase Brown,8588,9318,730,0.601,0.115,-0.687,-0.143,FALSE,2428,1.899,9493,6904 + 9224,TRUE
+buy & sell Puka Nacua,2,Puka Nacua,Joe Burrow + Javonte Williams,8588,9572,984,0.318,0.076,-0.818,-0.179,FALSE,2172,0.937,9493,6770 + 7588,TRUE
+buy,9,Puka Nacua,Jayden Daniels + D'Andre Swift,8588,9752,1164,0.143,0.029,-0.212,-0.043,FALSE,3015,0.764,9493,11566 + 6790,TRUE
+buy,8,Puka Nacua,Omarion Hampton + Jared Goff,8588,9544,956,0.243,0.053,-0.318,-0.071,FALSE,2423,0.718,9493,12507 + 3163,TRUE
+buy,7,Puka Nacua,Bucky Irving + Justin Herbert,8588,9272,684,0.152,0.039,-0.285,-0.062,FALSE,2654,0.652,9493,11584 + 6797,TRUE
+buy & sell Justin Jefferson,1,Justin Jefferson,Kenneth Walker + Breece Hall,7170,8199,1029,0.282,0.051,-0.384,-0.073,FALSE,1981,0.299,6794,8151 + 8155,TRUE
+sell Puka Nacua,10,Puka Nacua,Saquon Barkley + De'Von Achane,8588,9606,1018,0.45,0.1,-0.808,-0.17,FALSE,841,0.245,9493,4866 + 9226,TRUE
+buy,8,Justin Jefferson,Matthew Stafford + Jonathan Taylor,7170,8161,991,0.484,0.097,-0.544,-0.112,FALSE,647,0.011,6794,421 + 6813,TRUE
+buy,12,Puka Nacua,Caleb Williams + Kyle Monangai,8588,9114,526,0.082,0.014,-0.535,-0.105,FALSE,2441,-0.006,9493,11560 + 12534,TRUE
+sell Justin Jefferson,1,Justin Jefferson,Cam Skattebo + Brock Purdy,7170,7634,464,0.205,0.033,-0.699,-0.128,FALSE,2020,-0.009,6794,12481 + 8183,TRUE
+buy,8,Justin Jefferson,Ricky Pearsall + Omarion Hampton,7170,7933,763,0.11,0.015,-0.036,-0.007,FALSE,1587,-0.723,6794,11638 + 12507,TRUE
+sell Ty Simpson,1,Ty Simpson,Terry McLaurin,2278,2160,-118,0.333,0.072,-0.578,-0.111,FALSE,-497,-1.45,13275,5927,TRUE
+sell Aaron Jones,9,Jack Bech + Aaron Jones,Davante Adams,2305,2136,-169,0.075,0.008,-0.259,-0.048,FALSE,213,-2.051,12483 + 4199,2133,TRUE
+sell Aaron Jones,7,Aaron Jones + Calvin Ridley,Chuba Hubbard,1881,1775,-106,-0.02,-0.005,0.005,-0.007,FALSE,419,-2.111,4199 + 4981,7594,TRUE
+sell Ty Simpson,2,Ty Simpson,Jayden Reed + Trey Benson,2278,2567,289,0.104,0.013,-0.151,-0.034,FALSE,-159,-2.268,13275,10222 + 11589,TRUE
+buy,11,Puka Nacua,Drake London + Kyren Williams,8588,9118,530,0.533,0.183,-0.35,-0.067,FALSE,1174,2.113,9493,8112 + 8150,FALSE
+buy,8,Puka Nacua,Jonathan Taylor + Nico Collins,8588,9617,1029,0.533,0.167,-0.433,-0.15,FALSE,1332,1.933,9493,6813 + 7569,FALSE
+buy,2,Justin Jefferson,Luther Burden + Christian McCaffrey,7170,7730,560,0.467,0.167,-0.333,-0.067,FALSE,1098,1.731,6794,12519 + 4034,FALSE
+buy,11,Puka Nacua,Ladd McConkey + Drake London,8588,9661,1073,0.483,0.117,-0.35,-0.033,FALSE,2189,1.724,9493,11635 + 8112,FALSE
+buy,8,Puka Nacua,Omarion Hampton + Tee Higgins,8588,9330,742,0.683,0.15,-0.483,-0.167,FALSE,1308,1.597,9493,12507 + 6801,FALSE
+buy & sell Puka Nacua,2,Puka Nacua,Luther Burden + Patrick Mahomes,8588,9387,799,0.05,0.083,-0.217,-0.1,FALSE,2528,1.384,9493,12519 + 4046,FALSE
+buy,7,Puka Nacua,Quinshon Judkins + Justin Herbert,8588,9841,1253,-0.067,0.033,-0.25,-0.083,FALSE,3172,0.991,9493,12512 + 6797,FALSE
+buy,12,Puka Nacua,Jeremiyah Love + Jameson Williams,8588,9691,1103,0.217,0.05,-0.633,-0.117,FALSE,2441,0.677,9493,13287 + 8148,FALSE
+buy,12,Puka Nacua,Caleb Williams + Parker Washington,8588,9140,552,0.15,0.05,-0.967,-0.1,FALSE,2427,0.665,9493,11560 + 9487,FALSE
+buy,7,Puka Nacua,Justin Herbert + C.J. Stroud,8588,9470,882,-0.3,0,-0.75,-0.15,FALSE,3404,0.559,9493,6797 + 9758,FALSE
+buy,4,Puka Nacua,RJ Harvey + Lamar Jackson,8588,9148,560,0.017,0.033,-0.5,-0.083,FALSE,2621,0.516,9493,12489 + 4881,FALSE
+sell Justin Jefferson,1,Justin Jefferson,Blake Corum + CeeDee Lamb,7170,8002,832,0.333,0.1,-0.1,-0.017,FALSE,1124,0.489,6794,11586 + 6786,FALSE
+sell Puka Nacua,2,Puka Nacua,Patrick Mahomes + Jaylen Waddle,8588,9136,548,0.117,0.05,-0.433,-0.133,FALSE,1562,-0.082,9493,4046 + 7526,FALSE
+sell Justin Jefferson,1,Justin Jefferson,CeeDee Lamb + Brenton Strange,7170,7951,781,0.167,0.033,-0.333,-0.067,FALSE,1323,-0.604,6794,6786 + 9480,FALSE
+sell Puka Nacua,10,Puka Nacua,Drake Maye + Chimere Dike,8588,9629,1041,0.05,0,-0.267,-0.05,FALSE,2041,-0.616,9493,11564 + 12540,FALSE
+sell Justin Jefferson,4,Justin Jefferson,Fernando Mendoza + A.J. Brown,7170,8038,868,0.017,-0.05,-0.35,-0.067,FALSE,2637,-1.051,6794,13269 + 5859,FALSE
+sell Ty Simpson,1,Ty Simpson,Blake Corum + Adam Randall,2278,2490,212,0.4,0.083,-0.15,-0.033,FALSE,-344,-1.093,13275,11586 + 13302,FALSE
+sell Ty Simpson,5,Ty Simpson,Oscar Delp + Rhamondre Stevenson,2278,2457,179,0.467,0.083,-0.467,-0.117,FALSE,-355,-1.103,13275,13319 + 7611,FALSE
+sell Aaron Jones,9,Ty Simpson + Aaron Jones,Rome Odunze,3508,3333,-175,0.167,0.067,-0.233,-0.05,FALSE,-359,-1.422,13275 + 4199,11620,FALSE
+sell Aaron Jones,7,Ty Simpson + Aaron Jones,Bucky Irving,3508,3219,-289,0.233,0.067,-0.3,-0.067,FALSE,-378,-1.439,13275 + 4199,11584,FALSE
+sell Ty Simpson,1,Ty Simpson,Deshaun Watson + Cade Otton,2278,2452,174,0.1,0.017,-0.2,-0.017,FALSE,249,-1.847,13275,4017 + 8111,FALSE
+sell Aaron Jones,9,Chris Rodriguez + Aaron Jones,D'Andre Swift,2482,2292,-190,0.283,0.017,-0.317,-0.05,FALSE,37,-2.029,10219 + 4199,6790,FALSE

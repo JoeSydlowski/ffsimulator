@@ -109,15 +109,14 @@ uneven_winwin <- as.logical(as.integer(Sys.getenv("FFS_TRADE_UNEVEN_WINWIN", "0"
 max_opp_drop <- as.numeric(Sys.getenv("FFS_TRADE_MAX_OPP_DROP", "0.20"))
 future_weight <- as.numeric(Sys.getenv("FFS_TRADE_FUTURE_WEIGHT", "1"))
 min_future   <- as.numeric(Sys.getenv("FFS_TRADE_MIN_FUTURE", "-750"))
-# blend championship odds into the trade score next to playoff-berth odds (both
-# z-scored, 1 = equal weight). champ_delta ~0.98 collinear with playoff_delta on
-# SPLITS, so the blend barely moves those; its real job is with CONSOLIDATIONS
-# (see ceiling_weight) where berth and title ceiling DIVERGE. 0 = berth-only.
-champ_weight <- as.numeric(Sys.getenv("FFS_TRADE_CHAMP_WEIGHT", "1"))
-# ceiling_weight lets consolidation deals (package contributors for one better
-# player - berth-negative, ceiling-positive) survive the builder's win-gain
-# screen so their championship value can be priced. 0 = never surface them.
-ceiling_weight <- as.numeric(Sys.getenv("FFS_TRADE_CEILING_WEIGHT", "0.5"))
+# championship-odds weighting in the trade score. OFF by default: champ_delta
+# tested ~0.98 collinear with playoff_delta at every level (splits AND
+# consolidations), so it re-ranks nothing - the berth-negative/champ-positive
+# region we hoped to exploit does not exist in practice. champion_pct is still
+# REPORTED (roster/targets/trades sheets, playoff_odds.csv) as a diagnostic;
+# set >0 only to experiment. Same for ceiling_weight (the consolidation screen).
+champ_weight <- as.numeric(Sys.getenv("FFS_TRADE_CHAMP_WEIGHT", "0"))
+ceiling_weight <- as.numeric(Sys.getenv("FFS_TRADE_CEILING_WEIGHT", "0"))
 playoff_slots <- if (!is.null(config$playoff_slots)) config$playoff_slots else 6L
 
 # role thresholds (shared by roster labels and the console narrative)
