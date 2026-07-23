@@ -43,8 +43,10 @@ Rscript R/01_field_study.R
   REAL, but best ball's weekly auto-optimisation makes it valueless.
 - [x] **Intent + reaching** (`11`) — ~54% of stacking is incidental, but the intentional layer
   is large and growing, and taxed ~1–1.5 picks of reach. Not stacking is mildly +EV.
-- [x] **Archetype** (`12`) — no stack archetype helps; stud-WR stacks are the *worst* for
-  ceiling. **Stacking question closed.**
+- [x] **Archetype** (`12`) — no stack archetype helps; stud-WR stacks are the *worst* for ceiling.
+- [x] **ETR manifesto check** (`13`) — most claims align; their **finals (wk17) game-stack** edge
+  is REAL and we'd missed it (top-10% 7.3%→12.3% by game-stack count). Regular-season same-team
+  stacking still no edge. **Two regimes: no edge for advancement, real edge for the finals week.**
 - [ ] **Move the gate to the other raw signals** (positional structure, draft-value) with
   player fixed effects — still un-de-confounded and the most likely place for a real edge.
 - [ ] Add 2020 (BBM I xlsx) for a sixth regular-season year (no single-week playoff scores).
@@ -214,13 +216,54 @@ Split each stack by its best same-team catcher's ADP: **stud_WR** (≤48), **mid
   sources per dollar). "Stud QB + stud WR pop off" is real at the player level (+0.37) but
   *worse* for best-ball ceiling, not better.
 
-## Final verdict on stacking
+## Does ETR's Best Ball Mania Manifesto hold up? (`13_finals_gamestack.R`)
 
-Across binary, size-gradient, WR-vs-TE, QB-tier, bring-back, prevalence-by-round, intentional-
-vs-incidental, reaching, archetype, season-total AND single-week tests, plus the raw weekly
-player correlation, over 4–5 seasons: **the QB-WR correlation is real (+0.37) but produces no
-advancement or ceiling edge in Underdog best ball — and best ball's weekly auto-optimisation is
-why.** Deliberate stacking is large, growing, and taxed (~1–1.5-pick reach) for no payoff, so
-**not stacking is mildly +EV**. Only nuance: if you do stack, prefer WR over TE, and a cheap
-dart-WR stack is more ceiling-neutral than a stud-WR one. **Do not build the engine to exploit
-correlation.** (If ever revisited: measured loadings QB↔WR1 +0.37 / WR1↔WR2 ≈ 0.)
+Checked the [ETR manifesto](https://establishtherun.com/best-ball-mania-manifesto-a-guide-to-winning-big-on-underdog-fantasy/)
+against our work (they analysed 75,200 BBM3 playoff teams).
+
+**Agrees with us:** stacking is table stakes ("13.7% avoid stacking entirely" ≈ our ~10–15%);
+the Kelce/TE confound is real (they flag it too); "live players / advance max teams" is our
+diversification mechanism; ADP value matters; it's a volume game with a modest edge
+("30 optimally-stacked ≈ 35 random", ~17%).
+
+**The big one we had NOT tested — and it holds up:** ETR's headline is that **game stacks win
+the FINALS (week 17), ~+50% win odds**, and are "less beneficial in quarters/semis." Our
+bring-back test was at wk15 (quarters) — null, which *matches* them. Testing the **finals**
+directly (a player is game-stacked if the entry also holds a pass-catcher on its wk17
+opponent), pooled 2021–25: finals-score percentile and top-10% rate **rise monotonically** with
+game-stacked players (top-10%: 7.3% at 0 → **12.3% at 7+**; mean finals pts 121 → 130;
+cor(n_gs, pctile) +0.084). **A real finals-week edge our same-team/regular-season/QF tests
+correctly did not see.** *(Descriptive, not de-confounded — but mechanism-consistent.)*
+
+**Why it fits our mechanism:** the finals are a single, winner-take-most week decided in the
+extreme right tail. Same-team stacks lose to diversification over 14 weeks and even in the QF
+"beat your group" week — but to post a top-1-of-500 finals score you need to catch a *whole
+game going nuclear*, and a game stack (both sides) is the correlated bet that delivers that
+tail. Correlation is worthless for accumulation/advancement, valuable for the finals ceiling.
+
+**One genuine disagreement:** ETR likes 3–5 same-team stacked skill players in the *regular*
+season; our de-confounded within-QB gradient says same-team stack size doesn't help advance
+(3-stacks negative 3/5 yrs). Their claim reads like the confounded EV comparison (stackers draft
+good offences) our player-FE method dismantles. We stand by the regular-season null; the finals
+game-stack edge is a separate, real thing.
+
+## Final verdict on stacking (revised after the ETR check)
+
+Two regimes, and they differ:
+
+1. **Accumulation & advancement (regular season → QF → SF): same-team stacking is NOT an edge.**
+   Across binary, size-gradient, WR-vs-TE, QB-tier, wk15 bring-back, prevalence-by-round,
+   intentional-vs-incidental, reaching, archetype, season-total and single-week tests plus the
+   raw weekly correlation (+0.37, real) over 4–5 seasons — no advancement or ceiling edge, because
+   best ball's weekly auto-optimisation makes correlated booms redundant vs. diversified ones.
+   Deliberate same-team stacking is large, growing, and taxed (~1–1.5-pick reach) for no payoff,
+   so **not stacking is mildly +EV** through the QF/SF. (Nuance: prefer WR over TE; a cheap
+   dart-WR stack is more ceiling-neutral than a stud-WR one.)
+2. **The FINALS (week 17): GAME stacks ARE an edge.** A single winner-take-most week decided in
+   the extreme tail — game-stacking both sides of a wk17 shootout raises the finals ceiling
+   monotonically (top-10% 7.3%→12.3%), confirming ETR.
+
+**Engine implication (updated):** correlation is worthless for the accumulation/advancement
+model, so don't build it in there — but a proper BBM engine **should model wk17 game-stack
+correlation for the finals-week objective**. Same-team QB↔WR1 +0.37 (regular weeks) and
+game/bring-back correlation (finals) are the loadings that matter, in that second regime only.
