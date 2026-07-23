@@ -40,7 +40,11 @@ Rscript R/01_field_study.R
 - [x] **Prevalence by round** (`09`) — stacking ~90% base rate; only slight, confound-sized
   rise to Finals; all winners stacked but so is everyone (survivorship).
 - [x] **Raw weekly correlation** (`10`) — QB↔WR1 +0.37, co-blow-up ~2×: the correlation is
-  REAL, but best ball's weekly auto-optimisation makes it valueless. **Stacking question closed.**
+  REAL, but best ball's weekly auto-optimisation makes it valueless.
+- [x] **Intent + reaching** (`11`) — ~54% of stacking is incidental, but the intentional layer
+  is large and growing, and taxed ~1–1.5 picks of reach. Not stacking is mildly +EV.
+- [x] **Archetype** (`12`) — no stack archetype helps; stud-WR stacks are the *worst* for
+  ceiling. **Stacking question closed.**
 - [ ] **Move the gate to the other raw signals** (positional structure, draft-value) with
   player fixed effects — still un-de-confounded and the most likely place for a real edge.
 - [ ] Add 2020 (BBM I xlsx) for a sixth regular-season year (no single-week playoff scores).
@@ -184,12 +188,39 @@ week) routes around busts, absorbing the joint-variance a stack adds — which i
 `sd_ratio ≈ 1` and stacking yields no edge. **The correlation is real; best ball neutralises its
 value.**
 
+## Is stacking intentional, and do people reach for it? (`11_stack_intent.R`)
+
+- **Intentional vs incidental:** the ~90% "stacked" rate is inflated by chance — shuffling
+  catchers' NFL teams across the field gives a **~54% random baseline** (with ~2.5 QBs + ~10
+  catchers, incidental overlap is common). But observed sits **~35 pts above** random, so
+  deliberate stacking is large and **growing every year** (intentional excess +0.32 in 2021 →
+  +0.39 in 2024). The field is getting *more* stack-obsessed.
+- **Reaching (the stack tax):** stack-completing catchers are drafted **~1–1.5 picks earlier**
+  than comparable non-stack catchers (reach +1.7–2.0 vs +0.3–0.7; reached above ADP ~59–61% vs
+  ~52%). A real, if modest, cost.
+- **So: not stacking is not a disadvantage — it's mildly favourable.** The field pays a rising
+  reach tax for a form with no edge; skipping it (draft best-available) fades a −EV behaviour.
+
+## Does it depend on archetype? (`12_stack_archetype.R`)
+
+Split each stack by its best same-team catcher's ADP: **stud_WR** (≤48), **mid_WR** (49–108),
+**dart_WR** (>108), within QB, 5 seasons.
+
+- **Advance lift:** no archetype is reliably positive; **stud_WR** (the "stud QB + stud WR"
+  case) averages ~0 and is worst in 2024 (−0.033).
+- **Single-week ceiling (sd_ratio):** **backwards from the intuition** — stud_WR is the *lowest*
+  (~0.96, most below 1), dart_WR the most neutral (~1.00); none exceed 1. Concentrating two
+  *expensive* players on one team reduces relative ceiling the most (fewest independent boom
+  sources per dollar). "Stud QB + stud WR pop off" is real at the player level (+0.37) but
+  *worse* for best-ball ceiling, not better.
+
 ## Final verdict on stacking
 
-Across binary, size-gradient, WR-vs-TE, QB-tier, bring-back, prevalence-by-round, season-total,
-single-week roster tests AND the raw weekly player correlation, over 4–5 seasons: **the QB-WR
-correlation is real (+0.37) but produces no advancement or ceiling edge in Underdog best ball.**
-The only actionable nuance is *prefer WR over TE stacks*. This decisively steers the engine:
-**do not build it to exploit correlation/stacking** — best ball's weekly auto-optimisation
-already neutralises it. (If ever revisited, the measured loadings QB↔WR1 +0.37 / WR1↔WR2 ≈ 0 are
-the real copula inputs — note our own +0.37 is stronger than the article's ceiling-only +0.16.)
+Across binary, size-gradient, WR-vs-TE, QB-tier, bring-back, prevalence-by-round, intentional-
+vs-incidental, reaching, archetype, season-total AND single-week tests, plus the raw weekly
+player correlation, over 4–5 seasons: **the QB-WR correlation is real (+0.37) but produces no
+advancement or ceiling edge in Underdog best ball — and best ball's weekly auto-optimisation is
+why.** Deliberate stacking is large, growing, and taxed (~1–1.5-pick reach) for no payoff, so
+**not stacking is mildly +EV**. Only nuance: if you do stack, prefer WR over TE, and a cheap
+dart-WR stack is more ceiling-neutral than a stud-WR one. **Do not build the engine to exploit
+correlation.** (If ever revisited: measured loadings QB↔WR1 +0.37 / WR1↔WR2 ≈ 0.)

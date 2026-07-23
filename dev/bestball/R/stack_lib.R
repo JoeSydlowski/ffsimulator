@@ -34,7 +34,7 @@ prep_rich <- function(prefix, season) {
   players[, key := .clean(player_name)]
   players <- merge(players, nfl_teammap(season), by = c("key","pos"), all.x = TRUE)
   fact <- as.data.table(open_dataset(paste0(prefix, "_fact")) %>%
-    select(entry_id, draft_id, player_id, pos, adp, roster_points) %>% collect())
+    select(entry_id, draft_id, player_id, pos, adp, overall_pick, roster_points) %>% collect())
   fact <- merge(fact, players[, .(player_id, nfl_team)], by = "player_id", all.x = TRUE)
   setnames(fact, "player_id", "pkey")
   list(fact = fact, match_rate = mean(!is.na(players$nfl_team)))
@@ -42,7 +42,7 @@ prep_rich <- function(prefix, season) {
 
 prep_thin <- function(parquet, season) {
   d <- as.data.table(read_parquet(parquet))[round == 1L,
-        .(entry_id, draft_id, pkey = player_name, pos, adp, roster_points)]
+        .(entry_id, draft_id, pkey = player_name, pos, adp, overall_pick, roster_points)]
   d[, key := .clean(pkey)]
   d <- merge(d, nfl_teammap(season), by = c("key","pos"), all.x = TRUE)
   d[, key := NULL]
