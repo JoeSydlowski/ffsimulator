@@ -480,22 +480,23 @@ ffs_dynasty_outlook <- function(base_simulation,
 #' predicted rank move < 1 at every position (predicted move magnitudes too
 #' extreme - regression to the mean not fully captured by the kernel
 #' resample). The correction shifts each draw's CENTER: the kernel-weighted
-#' mean move `dbar` becomes `move_slope * dbar + move_bias` (delta space,
-#' positive = rank number grows = decline) while the dispersion around it is
-#' left to `disp_factor`. Enabled by default with constants fit on material
-#' players (value >= 150) across all 11 holdouts, leave-one-holdout-out
-#' stable: `move_slope = c(QB = .48, RB = .76, WR = .64, TE = .51)`,
-#' `move_bias = c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5)`. On the
-#' confirmation backtest this lifts the material actual~predicted move slope
-#' from 0.48-0.76 to 0.56-0.89, cuts the user-facing exp_change optimism
-#' (WR +22% -> +6% predicted vs -5% realized; TE +32% -> +8%), improves or
-#' holds MAE, and moves material cover80 from over-coverage (0.84-0.91)
-#' toward nominal (0.81-0.91) - see
-#' dev/validate_outputs/dynasty_point_calibration.txt. Stronger constants
-#' saturate (the summarized median stops responding under the rank-1
-#' truncation) and degrade value-space slope, so this is the calibrated
-#' dose, not a partial one. Pass `NULL` to disable; positions absent from
-#' the vector get slope 1 / bias 0.
+#' mean move `dbar` becomes `move_slope * dbar + move_bias` (in the active
+#' `move_space`'s units, positive = decline) while the dispersion around it is
+#' left to `disp_factor`. The defaults are COUPLED to `move_space` (see there);
+#' both sets are fit on material players (value >= 150) across all 11 holdouts,
+#' leave-one-holdout-out stable. The shipped LOG set is
+#' `move_slope = c(QB = .639, RB = .852, TE = .734, WR = .860)`,
+#' `move_bias = c(QB = .002, RB = -.027, TE = .055, WR = .016)` - the biases are
+#' ~0 because the log coordinate removes the systematic level shift the rank set
+#' had to patch. The RANK set, used when `move_space = "rank"`, is
+#' `move_slope = c(QB = .48, RB = .76, WR = .64, TE = .51)`,
+#' `move_bias = c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5)`; it lifts the material
+#' actual~predicted slope toward 1 and cuts exp_change optimism, but its +4.1 WR
+#' bias SATURATES at the apex (over-corrects elite ranks, cover80 0.41) - the
+#' reason log became the default. See
+#' dev/validate_outputs/dynasty_point_calibration.txt (sections 3 and 7). Set the
+#' option to `numeric(0)` to disable; positions absent from the vector get
+#' slope 1 / bias 0.
 #'
 #' `disp_factor` (optional named per-position vector, e.g.
 #' `c(QB = 1.7, TE = 1.4, WR = 1.2, RB = 1.1)`): widens each survivor's rank
@@ -505,11 +506,30 @@ ffs_dynasty_outlook <- function(base_simulation,
 #' conditional resample under-states their value volatility; effective sample
 #' size is ~flat across positions, so this is a per-position, not n_eff-driven,
 #' correction). The mean is preserved, so medians/`p_rise` are unchanged - only
-#' the interval widens. Enabled by default with backtest-calibrated factors
-#' `c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)`, which lift survivor
-#' `cover80` from ~0.60-0.73 to ~0.75-0.82 across both formats (shallower
-#' rankings need more widening). Pass `NULL`, or a vector with no matching
-#' positions, to disable.
+#' the interval widens. Defaults are COUPLED to `move_space`: the shipped LOG set
+#' is `c(QB = 1.20, TE = 1.13, WR = 1.06, RB = 1.03)` - the log coordinate is
+#' already near-homoscedastic, so it needs less widening than the RANK set
+#' (`c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)`, used when
+#' `move_space = "rank"`). Both lift survivor `cover80` toward ~0.80. Set the
+#' option to `numeric(0)`, or pass a vector with no matching positions, to disable.
+#'
+#' `move_space` (`"log"` default as of 2026-07-25, or `"rank"` / `"probit"`): the
+#' coordinate the survivor rank move is recentered/widened and transported in.
+#' `"rank"` is the original behavior - byte-identical RNG stream and results (the
+#' additive positional-rank delta clipped at rank 1). The latent options instead apply
+#' the move in a monotone, unbounded, RANK-ONLY transform `T` (`"log"`:
+#' `T(r)=log r`; `"probit"`: `T(r)=qnorm(r/(pool_depth+1))`), so the rank-1
+#' reflecting boundary softens and the move is homoscedastic across the board:
+#' `next = Tinv(T(target) + [ms*Tbar + mb] + fp*(T(pick_move) - Tbar))`. This
+#' targets the apex-truncation artifact the pass-2 rank-space correction
+#' saturates against (elite ranks can't rise above 1, so their move center
+#' stops responding to `move_slope`); moving in `T` lets the shrinkage reach the
+#' summarized median and narrows the mean/median gap that inflates the
+#' mean-based capital columns downstream. `move_slope`/`move_bias`/`disp_factor`
+#' are in the units of the active space and default to the space-appropriate
+#' shipped set; a non-default latent run can refit them via
+#' `dev/suite/dynasty_latent_gate.R`. Value-free by construction: the transform
+#' touches rank only, never the value curve.
 #'
 #' @return a list of two parallel vectors: next_pos_rank, exited
 #' @keywords internal
@@ -526,19 +546,57 @@ ffs_dynasty_outlook <- function(base_simulation,
                                  exit_broad_rank = getOption("ffsimulator.dyn_exit_broad_rank", 3),
                                  exit_broad_age = getOption("ffsimulator.dyn_exit_broad_age", 3),
                                  exit_transitions = NULL,
-                                 disp_factor = getOption("ffsimulator.dyn_disp_factor",
-                                                         c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)),
-                                 move_slope = getOption("ffsimulator.dyn_move_slope",
-                                                        c(QB = 0.48, RB = 0.76, WR = 0.64, TE = 0.51)),
-                                 move_bias = getOption("ffsimulator.dyn_move_bias",
-                                                       c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5))) {
+                                 disp_factor = NULL,
+                                 move_slope = NULL,
+                                 move_bias = NULL,
+                                 move_space = getOption("ffsimulator.dyn_move_space", "log")) {
   tr <- transitions
   n <- length(pos)
   next_pos_rank <- numeric(n)
   exited <- logical(n)
+  move_space <- match.arg(move_space, c("rank", "log", "probit"))
+
+  # move_slope/move_bias/disp_factor live in the units of the ACTIVE move_space,
+  # so the shipped defaults are coupled to it (an explicit arg or option still
+  # overrides; set the option to numeric(0) to disable). LOG is the shipped
+  # coordinate as of the 2026-07-25 latent-coordinate gate: it removes the
+  # rank-space bias artifact (biases ~0, slopes toward 1) and fixes the elite
+  # over-correction the rank set produced at the apex - see
+  # dev/validate_outputs/dynasty_point_calibration.txt. The RANK constants are
+  # retained for explicit move_space = "rank" use.
+  .sp_default <- function(key, log_v, rank_v)
+    getOption(key, if (move_space == "log") log_v else rank_v)
+  if (is.null(move_slope))
+    move_slope <- .sp_default("ffsimulator.dyn_move_slope",
+                              c(QB = 0.639, RB = 0.852, TE = 0.734, WR = 0.860),
+                              c(QB = 0.48, RB = 0.76, WR = 0.64, TE = 0.51))
+  if (is.null(move_bias))
+    move_bias <- .sp_default("ffsimulator.dyn_move_bias",
+                             c(QB = 0.002, RB = -0.027, TE = 0.055, WR = 0.016),
+                             c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5))
+  if (is.null(disp_factor))
+    disp_factor <- .sp_default("ffsimulator.dyn_disp_factor",
+                               c(QB = 1.20, TE = 1.13, WR = 1.06, RB = 1.03),
+                               c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11))
 
   # pre-split by position for speed
   by_pos <- split(seq_len(nrow(tr)), tr$pos)
+  # per-position ranking depth (deepest transition pos_rank) - the probit
+  # transform needs it to map rank -> percentile; harmless for rank/log.
+  pool_depth <- vapply(by_pos, function(ix) {
+    m <- suppressWarnings(max(tr$pos_rank[ix], na.rm = TRUE))
+    if (!is.finite(m)) 60 else m
+  }, numeric(1))
+  # rank-only monotone transforms (T) and inverses, in the ACTIVE move space.
+  # Defined once (vectorised over candidates); probit takes a per-position depth.
+  Tf <- switch(move_space,
+    rank   = function(r, d) r,
+    log    = function(r, d) log(r),
+    probit = function(r, d) stats::qnorm(pmin(pmax(r / (d + 1), 1e-6), 1 - 1e-6)))
+  Tfi <- switch(move_space,
+    rank   = function(u, d) u,
+    log    = function(u, d) exp(u),
+    probit = function(u, d) stats::pnorm(u) * (d + 1))
   # optional separate exit pool (superflex: native exit rate, 1qb movement)
   by_pos_exit <- if (!is.null(exit_transitions)) {
     split(seq_len(nrow(exit_transitions)), exit_transitions$pos)
@@ -578,7 +636,7 @@ ffs_dynasty_outlook <- function(base_simulation,
     if (!is.null(prev_delta))  w <- kern(w, cand$prev_delta,  prev_delta[i],  h_momentum)
     if (!is.null(ecr_sd))      w <- kern(w, cand$sd,          ecr_sd[i],      h_sd)
     if (sum(w) == 0) w <- pmax(0.001, 1 - abs(cand$pos_rank - dyn_pos_rank[i]) / (h_rank * 4))
-    if (exit_shrink <= 0 && is.null(exit_transitions) &&
+    if (move_space == "rank" && exit_shrink <= 0 && is.null(exit_transitions) &&
         is.null(move_slope) && is.null(move_bias)) {
       # default path (unchanged): one draw, inherit its exit flag - keep the
       # exact RNG stream so backtest defaults are untouched
@@ -649,13 +707,25 @@ ffs_dynasty_outlook <- function(base_simulation,
         fp <- if (!is.null(disp_factor) && pos[i] %in% names(disp_factor)) disp_factor[[pos[i]]] else 1
         ms <- if (!is.null(move_slope) && pos[i] %in% names(move_slope)) move_slope[[pos[i]]] else 1
         mb <- if (!is.null(move_bias) && pos[i] %in% names(move_bias)) move_bias[[pos[i]]] else 0
-        if (fp != 1 || ms != 1 || mb != 0) {
-          sdelta <- cand$next_pos_rank - cand$pos_rank
-          dbar <- sum(ws * sdelta, na.rm = TRUE) / sum(ws)
-          # recalibrated center + widened dispersion around it
-          delta <- (ms * dbar + mb) + fp * (delta - dbar)
+        if (move_space == "rank") {
+          # original path (unchanged): additive positional-rank delta, clip at 1
+          if (fp != 1 || ms != 1 || mb != 0) {
+            sdelta <- cand$next_pos_rank - cand$pos_rank
+            dbar <- sum(ws * sdelta, na.rm = TRUE) / sum(ws)
+            # recalibrated center + widened dispersion around it
+            delta <- (ms * dbar + mb) + fp * (delta - dbar)
+          }
+          next_pos_rank[i] <- max(1, dyn_pos_rank[i] + delta)
+        } else {
+          # latent-space move: transport the (recentered/widened) move in T, so
+          # the rank-1 boundary softens and the shrinkage reaches the median.
+          d <- pool_depth[[pos[i]]]
+          tmove  <- Tf(cand$next_pos_rank, d) - Tf(cand$pos_rank, d)
+          tbar   <- sum(ws * tmove, na.rm = TRUE) / sum(ws)
+          tdelta <- Tf(pick$next_pos_rank, d) - Tf(pick$pos_rank, d)
+          tdelta <- (ms * tbar + mb) + fp * (tdelta - tbar)
+          next_pos_rank[i] <- max(1, Tfi(Tf(dyn_pos_rank[i], d) + tdelta, d))
         }
-        next_pos_rank[i] <- max(1, dyn_pos_rank[i] + delta)
       }
     }
   }

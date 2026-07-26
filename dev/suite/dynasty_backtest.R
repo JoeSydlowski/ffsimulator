@@ -47,6 +47,14 @@ if (feat == "momentum")   options(ffsimulator.dyn_h_momentum = 8)
 # unambiguous: sweep with FFS_EXIT_KAPPA, or FFS_EXIT_KAPPA=0 for the
 # pre-shrinkage baseline.
 options(ffsimulator.dyn_exit_shrink = as.numeric(Sys.getenv("FFS_EXIT_KAPPA", "10")))
+# exit broad-window multipliers (empirical-Bayes prior): the rank window the
+# broad exit rate is pooled over is h_rank*exit_broad_rank. Widen -> the prior is
+# contaminated by deeper (higher-exit) players, inflating mid-tier exits; shrink
+# to test that. Empty = shipped default (3).
+if (nzchar(Sys.getenv("FFS_EXIT_BROAD_RANK", "")))
+  options(ffsimulator.dyn_exit_broad_rank = as.numeric(Sys.getenv("FFS_EXIT_BROAD_RANK")))
+if (nzchar(Sys.getenv("FFS_EXIT_BROAD_AGE", "")))
+  options(ffsimulator.dyn_exit_broad_age = as.numeric(Sys.getenv("FFS_EXIT_BROAD_AGE")))
 # per-position interval widening (QB/TE under-dispersion). Empty = the shipped
 # default (widening ON, matches production); "off" = pre-widening baseline;
 # else a spec like "QB=1.7;TE=1.4;WR=1.2;RB=1.1".
@@ -74,7 +82,13 @@ for (nm in c("SLOPE", "BIAS")) {
   if (identical(spec, "off")) do.call(options, stats::setNames(list(numeric(0)), opt))
   else if (nzchar(spec)) do.call(options, stats::setNames(list(parse_kv(spec)), opt))
 }
+# coordinate the survivor move is transported in: "rank" (default, shipped),
+# "log" or "probit" (latent, rank-only transforms). Latent runs need latent-fit
+# move_slope/move_bias (pass via FFS_MOVE_SLOPE/BIAS, or "off" for the raw fit).
+move_space_env <- Sys.getenv("FFS_MOVE_SPACE", "")
+if (nzchar(move_space_env)) options(ffsimulator.dyn_move_space = move_space_env)
 if (nzchar(feat)) cat("feature variant:", feat, "\n")
+cat("move_space:", getOption("ffsimulator.dyn_move_space", "rank"), "\n")
 
 scoring_history <- readRDS(file.path(out_dir, "scoring_history_2012_2025.rds"))
 dp_id <- as.data.table(ffscrapr::dp_playerids())[
@@ -226,11 +240,13 @@ run_holdout <- function(fmt, Y) {
   pred[!is.na(next_rank), val := vcurve(p2o(hold$pos[row], next_rank))]
   val_sum <- pred[, list(
     val_mean = mean(val),                        # incl exit zeros = live next_value_mean
+    val_med  = stats::median(val),               # incl exit zeros = live next_value_med
     val_mean_surv = mean(val[!is.na(next_rank)]),
     val_q10 = stats::quantile(val, .10),
     val_q90 = stats::quantile(val, .90)
   ), by = row]
-  pred_sum[val_sum, `:=`(val_mean = i.val_mean, val_mean_surv = i.val_mean_surv,
+  pred_sum[val_sum, `:=`(val_mean = i.val_mean, val_med = i.val_med,
+                         val_mean_surv = i.val_mean_surv,
                          val_q10 = i.val_q10, val_q90 = i.val_q90), on = "row"]
   pred_sum[, val_pit := NA_real_]
   vpit_map <- pred[row %in% surv_rows][
@@ -261,6 +277,7 @@ for (fmt in fmts) {
 players <- rbindlist(players_all)
 players[, `:=`(
   exp_change_pred = val_mean / cur_val - 1,
+  exp_change_med_pred = val_med / cur_val - 1,       # median-based (win_now_value basis)
   exp_change_act = actual_val / cur_val - 1,
   val_cover80 = actual_val >= val_q10 & actual_val <= val_q90,
   cover80 = actual_rank >= q10 & actual_rank <= q90,

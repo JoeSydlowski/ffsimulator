@@ -195,8 +195,9 @@ d[, `:=`(
 
 # value decomposition. cur_value is a 1-D projection of a 2-D asset: win-now
 # production + future store. Split it:
-#   mkt_winnow = cur_value - next_value_mean  = what the market charges for THIS
-#     year's production. <=0 means a future/growth asset (a young riser the
+#   mkt_winnow = cur_value - next_value_med   = what the market charges for THIS
+#     year's production (median = the typical future store; see fit_residual_cols
+#     for why median, not mean). <=0 means a future/growth asset (a young riser the
 #     market pays you to hold) - win-now analysis does not apply to him.
 #   fit_residual = how much CHEAPER the market prices a win-now player than the
 #     PLAYOFF ODDS he adds to MY team warrant. ONE market line (the league's
@@ -216,10 +217,14 @@ d[, `:=`(
 # Future assets (mkt_winnow<=0) get NA: judge them on retention/exp_change.
 fit_residual_cols <- function(dt, valcol, coef) {
   d <- data.table::as.data.table(data.table::copy(dt))
-  # deliberately MEAN-based: mkt_winnow is a capital decomposition (cur minus
-  # expected future store), and the fit_residual regression absorbs any
-  # systematic level shift across players anyway
-  d[, mkt_winnow := cur_value - next_value_mean]
+  # MEDIAN-based (2026-07-26): win-now = cur minus the TYPICAL future store. The
+  # mean next_value is Jensen-inflated at the apex - a right-skewed rank move
+  # through the convex value curve pulls E[value] below the median value - which
+  # over-charged elite players' win-now (Puka/JSN, ~2x the realized fade). The
+  # median is the near-unbiased central estimate (same basis as exp_change);
+  # the fit_residual regression still absorbs any residual level shift. Additive
+  # capital TOTALS (portfolio/pick sums below) deliberately stay mean-based.
+  d[, mkt_winnow := cur_value - next_value_med]
   fr <- rep(NA_real_, nrow(d))
   wn <- which(d$mkt_winnow > 0 & is.finite(d[[valcol]]))
   if (length(wn) && all(is.finite(coef)))
@@ -326,7 +331,7 @@ tg <- tg[!is.na(cur_value) & cur_value > 0]
 # TARGET confirmation: the buy board ranks on win_now_edge, and that is exactly
 # where the QB-optionality inflation lives (a QB reads a fat edge at n=60), so we
 # confirm the highest-edge rows - the actual bargains AND the most-inflated ones.
-tg[, win_now_value := cur_value - next_value_mean]
+tg[, win_now_value := cur_value - next_value_med]
 prelim_wn <- tg[win_now_value > 0 & is.finite(playoff_delta_you)]
 prelim_coef <- if (nrow(prelim_wn) >= 8L)
   stats::coef(stats::lm(win_now_value ~ playoff_delta_you, prelim_wn)) else c(NA_real_, NA_real_)
@@ -358,7 +363,7 @@ if (tconf_n > 0 && length(conf_rows) && exists("sim")) {
 # RE-fit the league win-now price line and win_now_edge with the confirmed playoff
 # deltas mixed in - inflated rows deflate here and re-sort down the buy board. This
 # is the SAME line my roster is scored against below (mkt_coef).
-tg[, win_now_value := cur_value - next_value_mean]
+tg[, win_now_value := cur_value - next_value_med]
 mkt_wn <- tg[win_now_value > 0 & is.finite(playoff_delta_you)]
 mkt_coef <- if (nrow(mkt_wn) >= 8L)
   stats::coef(stats::lm(win_now_value ~ playoff_delta_you, mkt_wn)) else c(NA_real_, NA_real_)
@@ -377,7 +382,7 @@ data.table::fwrite(round_sheet(tg[, list(
   player_id, owner_id)]), file.path(out, "targets.csv"))
 
 # roster win-now decomposition vs the SAME league line used for targets.
-roster[, `:=`(win_now_value = cur_value - next_value_mean,
+roster[, `:=`(win_now_value = cur_value - next_value_med,
               win_now_edge = fit_residual_cols(roster, "playoff_delta_me", mkt_coef)$fit_residual)]
 
 # ---- verdict: the SELL board on win_now_edge x trajectory x value ----
