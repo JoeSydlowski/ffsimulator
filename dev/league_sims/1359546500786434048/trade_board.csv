@@ -1,0 +1,104 @@
+team,shape,send,receive,send_value,recv_value,gap_pct,mine_pl,opp_pl,fut,win_win,uses_pick,score
+Chase'n Purdy Strange,2-for-2,MarShawn Lloyd + Puka Nacua,CeeDee Lamb + Kenneth Walker,9596,10625,9.7,15,-15,1579,FALSE,FALSE,-0.9
+Galletti,2-for-2,Calvin Ridley + Puka Nacua,Lamar Jackson + 2029 R1 (~1.06),9290,9727,4.5,5,-6.7,3845,FALSE,TRUE,0.85
+Galletti,2-for-2,Kaelon Black + Puka Nacua,Lamar Jackson + 2027 R1 (~1.06),9576,10867,11.9,6.7,-16.7,3565,FALSE,TRUE,0.69
+Galletti,2-for-2,Kaelon Black + Puka Nacua,Lamar Jackson + 2028 R1 (~1.06),9576,10628,9.9,6.7,-16.7,3565,FALSE,TRUE,0.69
+Galletti,2-for-2,Tahj Brooks + Puka Nacua,Lamar Jackson + 2029 R1 (~1.06),8934,9727,8.1,5,-15,3719,FALSE,TRUE,0.67
+Galletti,2-for-2,Isaiah Bond + Puka Nacua,Lamar Jackson + 2029 R1 (~1.06),9164,9727,5.8,5,-13.3,3696,FALSE,TRUE,0.64
+Galletti,2-for-2,Najee Harris + Puka Nacua,Lamar Jackson + 2029 R1 (~1.06),8914,9727,8.4,1.7,-15,3985,FALSE,TRUE,0.59
+Galletti,2-for-2,MarShawn Lloyd + Puka Nacua,Lamar Jackson + 2027 R1 (~1.06),9596,10867,11.7,3.3,-15,3717,FALSE,TRUE,0.45
+Galletti,2-for-2,MarShawn Lloyd + Puka Nacua,Lamar Jackson + 2028 R1 (~1.06),9596,10628,9.7,3.3,-15,3717,FALSE,TRUE,0.45
+Galletti,2-for-2,Najee Harris + Puka Nacua,Lamar Jackson + Josh Jacobs,8914,10017,11,13.3,-25,2469,FALSE,FALSE,0.09
+Galletti,2-for-2,Emanuel Wilson + Puka Nacua,Lamar Jackson + 2029 R1 (~1.06),9138,9727,6.1,0,-10,3743,FALSE,TRUE,0.03
+Galletti,2-for-2,Tahj Brooks + Puka Nacua,Lamar Jackson + Josh Jacobs,8934,10017,10.8,15,-25,2202,FALSE,FALSE,-0.04
+Galletti,2-for-2,Isaiah Bond + Puka Nacua,Lamar Jackson + Josh Jacobs,9164,10017,8.5,15,-25,2180,FALSE,FALSE,-0.07
+Galletti,2-for-2,Tony Pollard + Puka Nacua,Lamar Jackson + A.J. Brown,10167,11159,8.9,8.3,-23.3,2836,FALSE,FALSE,-0.08
+Galletti,2-for-2,Tony Pollard + Justin Jefferson,Lamar Jackson + 2029 R1 (~1.06),8719,9727,10.4,-5,-13.3,4110,FALSE,TRUE,-0.15
+Galletti,2-for-2,George Kittle + Puka Nacua,Lamar Jackson + A.J. Brown,10749,11159,3.7,15,-18.3,2063,FALSE,FALSE,-0.23
+Galletti,2-for-2,Calvin Ridley + Puka Nacua,Lamar Jackson + Josh Jacobs,9290,10017,7.3,10,-21.7,2329,FALSE,FALSE,-0.55
+Galletti,2-for-2,George Kittle + Justin Jefferson,Lamar Jackson + 2029 R1 (~1.06),9301,9727,4.4,-1.7,-11.7,3337,FALSE,TRUE,-0.75
+NFC Nostalgia,1-for-2,Puka Nacua,Jonathan Taylor + Nico Collins,8585,9557,10.2,21.7,-20,1238,FALSE,FALSE,-0.46
+NFC Nostalgia,2-for-2,Calvin Ridley + Puka Nacua,Omarion Hampton + Nico Collins,9290,10393,10.6,8.3,-11.7,2273,FALSE,FALSE,-0.85
+NFC Nostalgia,2-for-2,Isaiah Bond + Puka Nacua,Omarion Hampton + Nico Collins,9164,10393,11.8,8.3,-15,2124,FALSE,FALSE,-1.06
+Will Nabers be ready?,2-for-2,Tony Pollard + Puka Nacua,Jayden Daniels + Chase Brown,10167,11398,10.8,18.3,-15,3401,FALSE,FALSE,2.05
+Will Nabers be ready?,1-for-2,Puka Nacua,Jalen Hurts + Chase Brown,8585,9273,7.4,25,-15,2414,FALSE,FALSE,1.6
+Will Nabers be ready?,2-for-2,Najee Harris + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),8914,9731,8.4,3.3,-3.3,4083,TRUE,TRUE,1.45
+Will Nabers be ready?,2-for-2,Najee Harris + Puka Nacua,Jalen Hurts + Chase Brown,8914,9273,3.9,25,-15,2245,FALSE,FALSE,1.37
+Will Nabers be ready?,2-for-2,Isaiah Bond + Puka Nacua,Jalen Hurts + Chase Brown,9164,9273,1.2,26.7,-15,1956,FALSE,FALSE,1.2
+Will Nabers be ready?,2-for-2,Calvin Ridley + Puka Nacua,Jayden Daniels + 2028 R1 (~1.07),9290,10546,11.9,0,-1.7,4159,TRUE,TRUE,1.1
+Will Nabers be ready?,2-for-2,Denzel Boston + Puka Nacua,Jayden Daniels + Chase Brown,10559,11398,7.4,21.7,-23.3,2375,FALSE,FALSE,1.1
+Will Nabers be ready?,2-for-2,George Kittle + Justin Jefferson,Jayden Daniels + 2028 R1 (~1.07),9301,10546,11.8,5,-5,3651,TRUE,TRUE,1.08
+Will Nabers be ready?,2-for-2,Tahj Brooks + Puka Nacua,Jalen Hurts + Chase Brown,8934,9273,3.7,25,-16.7,1979,FALSE,FALSE,1.01
+Will Nabers be ready?,2-for-2,George Kittle + Justin Jefferson,Jayden Daniels + Travis Etienne,9301,10472,11.2,18.3,-16.7,2543,FALSE,FALSE,0.87
+Will Nabers be ready?,2-for-2,Tahj Brooks + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),8934,9731,8.2,1.7,0,3817,TRUE,TRUE,0.86
+Will Nabers be ready?,2-for-2,Kaelon Black + Puka Nacua,Jayden Daniels + 2027 R1 (~1.07),9576,10761,11,3.3,1.7,3641,TRUE,TRUE,0.84
+Will Nabers be ready?,2-for-2,Kaelon Black + Puka Nacua,Jayden Daniels + 2028 R1 (~1.07),9576,10546,9.2,3.3,1.7,3641,TRUE,TRUE,0.84
+Will Nabers be ready?,2-for-2,MarShawn Lloyd + Puka Nacua,Jayden Daniels + 2027 R1 (~1.07),9596,10761,10.8,1.7,-5,3793,TRUE,TRUE,0.82
+Will Nabers be ready?,2-for-2,MarShawn Lloyd + Puka Nacua,Jayden Daniels + 2028 R1 (~1.07),9596,10546,9,1.7,-5,3793,TRUE,TRUE,0.82
+Will Nabers be ready?,2-for-2,Calvin Ridley + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9290,9731,4.5,0,-1.7,3944,TRUE,TRUE,0.8
+Will Nabers be ready?,2-for-2,Taylen Green + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9059,9731,6.9,3.3,-3.3,3607,TRUE,TRUE,0.8
+Will Nabers be ready?,2-for-2,George Kittle + Justin Jefferson,Jayden Daniels + 2029 R1 (~1.07),9301,9731,4.4,5,-5,3435,TRUE,TRUE,0.79
+Will Nabers be ready?,2-for-2,George Kittle + Puka Nacua,Jayden Daniels + Chase Brown,10749,11398,5.7,16.7,-20,2628,FALSE,FALSE,0.76
+Will Nabers be ready?,2-for-2,Isaiah Bond + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9164,9731,5.8,0,-3.3,3795,TRUE,TRUE,0.6
+Will Nabers be ready?,2-for-2,Dallas Goedert + Justin Jefferson,Jalen Hurts + Chase Brown,8525,9273,8.1,20,-21.7,2167,FALSE,FALSE,0.59
+Will Nabers be ready?,2-for-2,Kaelon Black + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9576,9731,1.6,3.3,1.7,3426,TRUE,TRUE,0.55
+Will Nabers be ready?,2-for-2,Tyler Shough + Puka Nacua,Jayden Daniels + Jalen Hurts,11947,12885,7.3,10,-10,3124,FALSE,FALSE,0.54
+Will Nabers be ready?,2-for-2,Chris Rodriguez + Justin Jefferson,Jalen Hurts + Chase Brown,8353,9273,9.9,16.7,-23.3,2461,FALSE,FALSE,0.54
+Will Nabers be ready?,2-for-2,MarShawn Lloyd + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9596,9731,1.4,1.7,-5,3578,TRUE,TRUE,0.53
+Will Nabers be ready?,2-for-2,Calvin Ridley + Puka Nacua,Jalen Hurts + Chase Brown,9290,9273,-0.2,20,-15,2106,FALSE,FALSE,0.5
+Will Nabers be ready?,2-for-2,Calvin Ridley + Puka Nacua,Jayden Daniels + Travis Etienne,9290,10472,11.3,10,-10,3052,FALSE,FALSE,0.44
+Will Nabers be ready?,2-for-2,Tony Pollard + Justin Jefferson,Jayden Daniels + 2029 R1 (~1.07),8719,9731,10.4,-1.7,-1.7,4208,FALSE,TRUE,0.44
+Will Nabers be ready?,2-for-2,MarShawn Lloyd + Puka Nacua,Jayden Daniels + Travis Etienne,9596,10472,8.4,13.3,-13.3,2686,FALSE,FALSE,0.39
+Will Nabers be ready?,2-for-2,Harold Fannin + Justin Jefferson,Jayden Daniels + Chase Brown,10402,11398,8.7,20,-23.3,2003,FALSE,FALSE,0.36
+Will Nabers be ready?,2-for-2,Eli Raridon + Puka Nacua,Jayden Daniels + 2027 R1 (~1.07),9668,10761,10.2,1.7,-3.3,3390,TRUE,TRUE,0.27
+Will Nabers be ready?,2-for-2,Eli Raridon + Puka Nacua,Jayden Daniels + 2028 R1 (~1.07),9668,10546,8.3,1.7,-3.3,3390,TRUE,TRUE,0.27
+Will Nabers be ready?,2-for-2,Aaron Jones + Justin Jefferson,Jalen Hurts + Chase Brown,8396,9273,9.5,13.3,-21.7,2560,FALSE,FALSE,0.22
+Will Nabers be ready?,2-for-2,Denzel Boston + Justin Jefferson,Jayden Daniels + 2029 R1 (~1.07),9111,9731,6.4,6.7,-5,3182,FALSE,TRUE,0.17
+Will Nabers be ready?,2-for-2,Emanuel Wilson + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9138,9731,6.1,0,-6.7,3841,FALSE,TRUE,0.16
+Will Nabers be ready?,2-for-2,Mike Washington + Puka Nacua,Jayden Daniels + 2027 R1 (~1.07),9561,10761,11.2,0,1.7,3810,FALSE,TRUE,0.12
+Will Nabers be ready?,2-for-2,Mike Washington + Puka Nacua,Jayden Daniels + 2028 R1 (~1.07),9561,10546,9.3,0,1.7,3810,FALSE,TRUE,0.12
+Will Nabers be ready?,2-for-2,Mike Washington + Puka Nacua,Jayden Daniels + Travis Etienne,9561,10472,8.7,10,-10,2703,FALSE,FALSE,-0.04
+Will Nabers be ready?,2-for-2,Kaelon Black + Puka Nacua,Jayden Daniels + Travis Etienne,9576,10472,8.6,11.7,-10,2534,FALSE,FALSE,-0.04
+Will Nabers be ready?,2-for-2,Emanuel Wilson + Puka Nacua,Jayden Daniels + D'Andre Swift,9138,9795,6.7,11.7,-10,2478,FALSE,FALSE,-0.12
+Will Nabers be ready?,2-for-2,Mike Washington + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9561,9731,1.7,0,1.7,3595,FALSE,TRUE,-0.17
+Will Nabers be ready?,2-for-2,Calvin Ridley + Puka Nacua,Jayden Daniels + D'Andre Swift,9290,9795,5.2,10,-10,2581,FALSE,FALSE,-0.2
+Will Nabers be ready?,2-for-2,Najee Harris + Puka Nacua,Jayden Daniels + D'Andre Swift,8914,9795,9,8.3,-13.3,2720,FALSE,FALSE,-0.24
+Will Nabers be ready?,2-for-2,Jack Bech + Puka Nacua,Jayden Daniels + Travis Etienne,9662,10472,7.7,10,-11.7,2499,FALSE,FALSE,-0.32
+Will Nabers be ready?,2-for-2,Jack Bech + Puka Nacua,Jayden Daniels + 2027 R1 (~1.07),9662,10761,10.2,-1.7,-1.7,3607,FALSE,TRUE,-0.38
+Will Nabers be ready?,2-for-2,Jack Bech + Puka Nacua,Jayden Daniels + 2028 R1 (~1.07),9662,10546,8.4,-1.7,-1.7,3607,FALSE,TRUE,-0.38
+Will Nabers be ready?,2-for-2,Eli Raridon + Puka Nacua,Jayden Daniels + Travis Etienne,9668,10472,7.7,11.7,-11.7,2283,FALSE,FALSE,-0.39
+Will Nabers be ready?,2-for-2,Tahj Brooks + Puka Nacua,Jayden Daniels + D'Andre Swift,8934,9795,8.8,8.3,-10,2454,FALSE,FALSE,-0.6
+Will Nabers be ready?,2-for-2,Isaiah Bond + Puka Nacua,Jayden Daniels + D'Andre Swift,9164,9795,6.4,8.3,-11.7,2431,FALSE,FALSE,-0.63
+Will Nabers be ready?,2-for-2,Taylen Green + Puka Nacua,Jayden Daniels + D'Andre Swift,9059,9795,7.5,10,-13.3,2244,FALSE,FALSE,-0.66
+Will Nabers be ready?,2-for-2,George Kittle + Justin Jefferson,Jayden Daniels + D'Andre Swift,9301,9795,5,11.7,-16.7,2072,FALSE,FALSE,-0.67
+Will Nabers be ready?,2-for-2,Jack Bech + Puka Nacua,Jayden Daniels + 2029 R1 (~1.07),9662,9731,0.7,-1.7,-1.7,3391,FALSE,TRUE,-0.68
+Will Nabers be ready?,2-for-2,Tony Pollard + Justin Jefferson,Jayden Daniels + D'Andre Swift,8719,9795,11,3.3,-11.7,2845,FALSE,FALSE,-0.75
+Will Nabers be ready?,2-for-2,Kaelon Black + Puka Nacua,Jayden Daniels + D'Andre Swift,9576,9795,2.2,10,-6.7,2062,FALSE,FALSE,-0.91
+Will Nabers be ready?,2-for-2,Harold Fannin + Puka Nacua,Jayden Daniels + Jalen Hurts,11850,12885,8,-1.7,-15,3186,FALSE,FALSE,-0.96
+Will Nabers be ready?,2-for-2,Jack Bech + Puka Nacua,Jayden Daniels + D'Andre Swift,9662,9795,1.4,10,-13.3,2028,FALSE,FALSE,-0.96
+Will Nabers be ready?,2-for-2,Tetairoa McMillan + Justin Jefferson,Jayden Daniels + Jalen Hurts,12165,12885,5.6,1.7,-13.3,2828,FALSE,FALSE,-1
+Will Nabers be ready?,2-for-2,Denzel Boston + Justin Jefferson,Jayden Daniels + D'Andre Swift,9111,9795,7,11.7,-16.7,1819,FALSE,FALSE,-1.02
+Will Nabers be ready?,2-for-2,MarShawn Lloyd + Puka Nacua,Jayden Daniels + D'Andre Swift,9596,9795,2,6.7,-13.3,2214,FALSE,FALSE,-1.16
+Will Nabers be ready?,2-for-2,Justin Jefferson + Najee Harris,Jalen Hurts + Travis Etienne,7466,8347,10.6,6.7,-16.7,2160,FALSE,FALSE,-1.23
+Will Nabers be ready?,2-for-2,Jordyn Tyson + Puka Nacua,Jayden Daniels + Jalen Hurts,12286,12885,4.6,-1.7,-23.3,2849,FALSE,FALSE,-1.42
+mjmx3,2-for-2,Najee Harris + Puka Nacua,Dak Prescott + De'Von Achane,8914,9962,10.5,18.3,-21.7,2262,FALSE,FALSE,0.49
+mjmx3,2-for-2,Calvin Ridley + Puka Nacua,Dak Prescott + De'Von Achane,9290,9962,6.7,18.3,-23.3,2123,FALSE,FALSE,0.3
+theKmbl,2-for-2,Najee Harris + Puka Nacua,Caleb Williams + 2029 R1 (~1.05),8914,9832,9.3,3.3,-5,3881,FALSE,TRUE,0.67
+theKmbl,2-for-2,MarShawn Lloyd + Puka Nacua,Caleb Williams + 2028 R1 (~1.05),9596,10788,11,3.3,-3.3,3628,FALSE,TRUE,0.32
+theKmbl,2-for-2,Tahj Brooks + Puka Nacua,Caleb Williams + 2029 R1 (~1.05),8934,9832,9.1,3.3,-6.7,3615,FALSE,TRUE,0.31
+theKmbl,2-for-2,Isaiah Bond + Puka Nacua,Caleb Williams + 2029 R1 (~1.05),9164,9832,6.8,3.3,-10,3593,FALSE,TRUE,0.28
+theKmbl,2-for-2,Calvin Ridley + Puka Nacua,Caleb Williams + 2029 R1 (~1.05),9290,9832,5.5,1.7,-6.7,3742,FALSE,TRUE,0.25
+theKmbl,2-for-2,Chris Rodriguez + Puka Nacua,Caleb Williams + TreVeyon Henderson,9801,11054,11.3,8.3,-15,2972,FALSE,FALSE,0.1
+theKmbl,2-for-2,Jack Bech + Puka Nacua,Jeremiyah Love + Chris Olave,9662,10783,10.4,15,-6.7,2207,FALSE,FALSE,-0.04
+theKmbl,2-for-2,Aaron Jones + Puka Nacua,Caleb Williams + Chris Olave,9844,11040,10.8,6.7,-16.7,2955,FALSE,FALSE,-0.14
+theKmbl,2-for-2,Kaelon Black + Puka Nacua,Jeremiyah Love + Chris Olave,9576,10783,11.2,13.3,-10,2241,FALSE,FALSE,-0.22
+theKmbl,2-for-2,Dallas Goedert + Puka Nacua,Caleb Williams + Chris Olave,9973,11040,9.7,10,-15,2562,FALSE,FALSE,-0.23
+theKmbl,2-for-2,MarShawn Lloyd + Puka Nacua,Jeremiyah Love + Chris Olave,9596,10783,11,11.7,-11.7,2394,FALSE,FALSE,-0.23
+theKmbl,2-for-2,Chris Rodriguez + Puka Nacua,Caleb Williams + Chris Olave,9801,11040,11.2,6.7,-18.3,2856,FALSE,FALSE,-0.28
+theKmbl,2-for-2,Tony Pollard + Justin Jefferson,Caleb Williams + 2029 R1 (~1.05),8719,9832,11.3,-5,-8.3,4006,FALSE,TRUE,-0.29
+theKmbl,2-for-2,Eli Raridon + Puka Nacua,Jeremiyah Love + Chris Olave,9668,10783,10.3,15,-10,1991,FALSE,FALSE,-0.33
+theKmbl,2-for-2,George Kittle + Puka Nacua,Caleb Williams + Chris Olave,10749,11040,2.6,11.7,-10,1992,FALSE,FALSE,-0.78
+theKmbl,2-for-2,Mike Washington + Puka Nacua,Jeremiyah Love + Chris Olave,9561,10783,11.3,6.7,-10,2411,FALSE,FALSE,-0.89
+theKmbl,2-for-2,Denzel Boston + Puka Nacua,Caleb Williams + Chris Olave,10559,11040,4.4,13.3,-18.3,1739,FALSE,FALSE,-0.9
+theKmbl,2-for-2,George Kittle + Justin Jefferson,Caleb Williams + 2029 R1 (~1.05),9301,9832,5.4,-3.3,-10,3233,FALSE,TRUE,-1.12
+theKmbl,2-for-2,Tony Pollard + Puka Nacua,Caleb Williams + Chris Olave,10167,11040,7.9,0,-16.7,2765,FALSE,FALSE,-1.31

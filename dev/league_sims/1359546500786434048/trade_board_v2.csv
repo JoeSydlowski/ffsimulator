@@ -1,0 +1,30 @@
+team,src,shape,send,receive,send_value,recv_value,gap_pct,mine_pl,opp_pl,fut,win_win,uses_pick,score
+Chase'n Purdy Strange,puka,2-for-3,Carnell Tate + Puka Nacua,CeeDee Lamb + Kenneth Walker + 2027 R1 (~1.07),13108,13890,5.6,3.3,-1.7,1191,TRUE,TRUE,-0.67
+Chase'n Purdy Strange,puka,2-for-3,George Kittle + Puka Nacua,Cam Skattebo + Kenneth Walker + 2027 R1 (~1.07),10749,10784,0.3,-1.7,6.7,1976,FALSE,TRUE,-0.76
+Chase'n Purdy Strange,puka,2-for-3,Malik Willis + Puka Nacua,Kenneth Walker + Breece Hall + 2027 R1 (~1.07),11037,11526,4.2,-6.7,1.7,1882,TRUE,TRUE,-1.16
+G baby ladies,puka,2-for-3,Justin Jefferson + Puka Nacua,Ashton Jeanty + Drake London + Kyren Williams,15722,16137,2.6,8.3,-3.3,1876,FALSE,FALSE,0.61
+G baby ladies,puka,2-for-3,Puka Nacua + 2027 R1 (~1.05),Ladd McConkey + Drake London + 2027 R1 (~1.07),12486,12838,2.7,5,-6.7,1499,FALSE,TRUE,-0.45
+G baby ladies,puka,2-for-3,Justin Jefferson + Puka Nacua,Ashton Jeanty + Drake London + 2027 R1 (~1.07),15722,16077,2.2,-6.7,13.3,2578,FALSE,TRUE,-0.62
+G baby ladies,puka,2-for-3,Tetairoa McMillan + Puka Nacua,Ladd McConkey + Ashton Jeanty + 2027 R1 (~1.07),13613,14308,4.9,-6.7,5,2186,TRUE,TRUE,-0.71
+theKmbl,puka,2-for-3,Justin Jefferson + Puka Nacua,Colston Loveland + Jeremiyah Love + Chris Olave,15722,15961,1.5,11.7,-6.7,1943,FALSE,FALSE,1.22
+theKmbl,puka,2-for-3,Ty Simpson + Puka Nacua,TreVeyon Henderson + Chris Olave + 2027 R1 (~1.05),10856,11465,5.3,11.7,-1.7,1837,FALSE,TRUE,1.06
+theKmbl,puka,2-for-3,Daniel Jones + Puka Nacua,TreVeyon Henderson + Chris Olave + 2027 R1 (~1.05),11077,11465,3.4,3.3,5,2244,FALSE,TRUE,0.4
+theKmbl,puka,2-for-2,George Kittle + Puka Nacua,Caleb Williams + 2027 R1 (~1.05),10749,11040,2.6,-1.7,-3.3,2591,FALSE,TRUE,0.16
+theKmbl,puka,2-for-3,Justin Jefferson + Puka Nacua,Caleb Williams + Colston Loveland + 2027 R1 (~1.05),15722,16218,3.1,-11.7,-5,3177,FALSE,TRUE,-0.49
+theKmbl,puka,2-for-3,Malik Willis + Puka Nacua,TreVeyon Henderson + Chris Olave + 2027 R1 (~1.05),11037,11465,3.7,-5,6.7,2029,TRUE,TRUE,-0.69
+MacDaddyNation,puka,2-for-3,Daniel Jones + Puka Nacua,DeVonta Smith + James Cook + 2027 R1 (~1.07),11077,11717,5.5,8.3,-3.3,1108,FALSE,TRUE,-0.53
+nickd1212,puka,2-for-3,George Kittle + Puka Nacua,Bucky Irving + George Pickens + 2027 R1 (~1.07),10749,11145,3.6,1.7,0,2455,TRUE,TRUE,0.96
+nickd1212,puka,2-for-3,Ty Simpson + Puka Nacua,Bucky Irving + George Pickens + 2027 R1 (~1.07),10856,11145,2.6,5,-1.7,1555,TRUE,TRUE,0.13
+nickd1212,puka,2-for-3,Justin Jefferson + Puka Nacua,Bucky Irving + George Pickens + Jaxon Smith-Njigba,15722,16643,5.5,1.7,0,2145,FALSE,FALSE,0
+Will Nabers be ready?,puka,2-for-3,Carnell Tate + Puka Nacua,Jayden Daniels + Travis Etienne + 2027 R1 (~1.07),13108,13728,4.5,6.7,-5,2289,FALSE,TRUE,0.97
+Will Nabers be ready?,puka,2-for-3,Malik Willis + Puka Nacua,Jalen Hurts + Travis Etienne + 2027 R1 (~1.07),11037,11603,4.9,6.7,-6.7,2272,FALSE,TRUE,0.95
+Will Nabers be ready?,puka,2-for-2,George Kittle + Puka Nacua,Jayden Daniels + 2027 R1 (~1.07),10749,10761,0.1,0,-1.7,2756,FALSE,TRUE,0.66
+Will Nabers be ready?,puka,2-for-3,Tetairoa McMillan + Puka Nacua,Jayden Daniels + Travis Etienne + 2027 R1 (~1.07),13613,13728,0.8,-5,-3.3,2133,FALSE,TRUE,-1.03
+theKmbl,qb,2-for-3,Daniel Jones + Puka Nacua,TreVeyon Henderson + Chris Olave + 2027 R1 (~1.05),11077,11465,3.4,3.3,5,2244,FALSE,TRUE,1.25
+theKmbl,qb,2-for-2,Daniel Jones + Puka Nacua,Caleb Williams + 2027 R1 (~1.05),11077,11040,-0.3,-1.7,8.3,2099,FALSE,TRUE,0.52
+theKmbl,qb,2-for-2,Daniel Jones + Puka Nacua,Jeremiyah Love + 2027 R1 (~1.05),11077,10783,-2.7,-10,6.7,1464,FALSE,TRUE,-1.16
+Galletti,qb,2-for-2,Daniel Jones + Puka Nacua,Lamar Jackson + 2027 R1 (~1.06),11077,10867,-1.9,-6.7,3.3,2188,FALSE,TRUE,0.06
+Galletti,qb,2-for-2,Daniel Jones + Puka Nacua,Brock Bowers + A.J. Brown,11077,11560,4.2,5,-1.7,-401,TRUE,FALSE,-1.12
+Galletti,qb,2-for-2,Daniel Jones + Puka Nacua,Brock Bowers + 2027 R1 (~1.06),11077,11268,1.7,-21.7,23.3,217,FALSE,TRUE,-3.91
+nickd1212,qb,2-for-3,Daniel Jones + Puka Nacua,Bucky Irving + George Pickens + 2027 R1 (~1.07),11077,11145,0.6,-5,1.7,1962,FALSE,TRUE,-0.01
+Will Nabers be ready?,qb,2-for-2,Daniel Jones + Puka Nacua,Jayden Daniels + 2027 R1 (~1.07),11077,10761,-2.9,-1.7,3.3,2264,FALSE,TRUE,0.71

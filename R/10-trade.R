@@ -125,6 +125,12 @@ ffs_trade_eval <- function(base_simulation, franchise_a, gives_a, franchise_b, g
   franchise_id <- NULL
 
   rs <- data.table::as.data.table(base_simulation$roster_scores)
+  # draft picks (id like "PICK_...") are value-only assets: they score no wins,
+  # so they are win-neutral in the simulation. Drop them here - their dynasty
+  # value is accounted for by the caller (future_capital_delta) - and keep the
+  # assertion for any genuinely unknown player id.
+  gives_a <- gives_a[!grepl("^PICK_", gives_a)]
+  gives_b <- gives_b[!grepl("^PICK_", gives_b)]
   checkmate::assert_true(all(gives_a %in% rs[rs$franchise_id == franchise_a]$player_id))
   checkmate::assert_true(all(gives_b %in% rs[rs$franchise_id == franchise_b]$player_id))
 
@@ -331,13 +337,73 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20) {
 #' @param must_send optional player_ids that every send package must include -
 #'   the "how do I sell THIS player" mode (default `NULL` = no constraint).
 #'   Shapes smaller than `length(must_send)` produce no packages.
+#' @param even_band gap band for **even** trades expressed on the received value,
+#'   `|send - receive| / receive <= even_band` (default = `value_band`, so
+#'   existing callers are unchanged; set e.g. `0.03` for a tight 3pct even band)
+#' @param uneven_gap optional `c(lo, hi)` gap band for **uneven** trades, applied
+#'   to the package's overpay premium over the single side (both directions), e.g.
+#'   `c(0.02, 0.08)` = a 2-8pct consolidation premium. When `NULL` (default) the
+#'   legacy `consolidation_penalty` / `uneven_shade` band is used instead.
+#' @param max_gap uniform belt-and-suspenders ceiling on `|value_gap| / recv_value`
+#'   applied to every deal after enumeration (default `Inf` = off)
+#' @param min_piece_value minimum `cur_value` a **matched** real player you SEND
+#'   must have - filters throw-in filler so the second send piece is a real player
+#'   (default `0` = no filter). Picks, `must_send` players, and give-back pieces
+#'   are exempt.
+#' @param min_recv_value minimum `cur_value` a **matched** real player you RECEIVE
+#'   must have (default `= min_piece_value`). Set lower than `min_piece_value` for
+#'   fragment shapes (e.g. 1-for-3) so a stud can be split into several real but
+#'   smaller pieces without the filler floor blocking the smallest one. Picks are
+#'   exempt.
+#' @param giveback when `TRUE`, for any deal that lowers the opponent's playoff
+#'   odds below `giveback_trigger` a variant is also generated that appends one of
+#'   your spare players at the position of the top received player to the send
+#'   side (a "send Daniel Jones back" sweetener). The give-back is picked to be
+#'   *useful to the depleted opponent*, not merely your cheapest: the exact eval
+#'   scores the `giveback_try` cheapest candidates at that position and keeps the
+#'   one that lifts the opponent's playoff odds the most. It is exempt from the
+#'   value band, so the variant shows a softer `opp_playoff_delta` (default `FALSE`)
+#' @param giveback_trigger only add a give-back variant when the base deal's
+#'   `opp_playoff_delta` is below this (default `0` = whenever the opponent is hurt)
+#' @param giveback_try how many of your most-useful spare players at the drained
+#'   position to evaluate as the give-back. Candidates are ranked by usefulness to
+#'   the *opponent* (mean weekly points), the top `giveback_try` are valued, and the
+#'   one with the best opponent playoff-lift *per unit of value you give up* is kept
+#'   (default `5`). If none lifts the opponent, no give-back variant is added.
+#' @param giveback_max_value optional ceiling on a give-back piece's `cur_value`, so
+#'   a valuable player is never used as a mere sweetener (default `Inf` = no cap)
+#' @param traj_weight soft down-rank (in `score` std-dev units) applied to deals
+#'   that ship your *appreciating* players or acquire *declining* ones, when the
+#'   `dynasty` table carries a `rel_change` column (value move relative to the
+#'   position's drift). `0` (default) = trajectory-blind, back-compatible. The
+#'   penalty is `Sigma_sent max(0, rel_change - rise_cut) + Sigma_recv max(0,
+#'   fade_cut - rel_change)` over real (non-pick) pieces; a sent riser or received
+#'   decliner is pushed down but never removed.
+#' @param rise_cut,fade_cut the `rel_change` thresholds above/below which a piece
+#'   counts as appreciating / declining for `traj_weight` (defaults `0.075` /
+#'   `-0.075`, matching the trade-intel role cutoffs)
+#' @param posture_rebuild_cut opponents with baseline playoff odds below this are
+#'   treated as rebuilders and gated on future value instead of playoff odds
+#'   (default `0.35`)
+#' @param max_opp_future_drop for **rebuilder** opponents, drop deals that cut
+#'   their future dynasty capital (`-future_capital_delta`) by more than this
+#'   (default `Inf` = rebuilders accept any playoff hit for future value)
+#' @param dedupe when `TRUE`, collapse deals that differ only by throw-in filler
+#'   or draft-pick *year* (same pick slot) to the single highest-scoring
+#'   representative, so near-identical ideas do not flood the board (default `FALSE`)
 #' @param screen_n how many screened packages to value exactly (default 40)
+#' @param screen_per_opp guarantee at least this many of each opponent's
+#'   best-screened packages are valued, so a single team's high-gain deals cannot
+#'   crowd every other team out of the exact-eval budget (default `0` = pure global
+#'   top-`screen_n`). The eval set becomes the union of the global top-`screen_n`
+#'   and each opponent's top-`screen_per_opp`, giving every team coverage.
 #' @param top_n how many ranked deals to return (default 20)
 #'
 #' @return a dataframe of trades: `opponent`, `send`, `receive`, dynasty
 #'   `send_value`/`recv_value`/`value_gap`, re-optimized `my_win_delta`,
 #'   `my_playoff_delta`, `opp_win_delta`, `opp_playoff_delta`, a `win_win` flag,
-#'   `future_capital_delta`, the `score` used to rank them, and list-columns
+#'   `future_capital_delta`, a `give_back` flag (whether a give-back sweetener was
+#'   appended), the `score` used to rank them, and list-columns
 #'   `send_ids`/`recv_ids` so a deal can be re-evaluated (e.g. confirmed on a
 #'   larger simulation with [ffs_trade_eval()])
 #'
@@ -353,16 +419,26 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                              shapes = list(c(1, 1), c(2, 1), c(1, 2)),
                              future_weight = 0, min_future_delta = -Inf,
                              champ_weight = 0, ceiling_weight = 0,
-                             opponents = NULL, must_send = NULL,
-                             screen_n = 40L, top_n = 20L) {
+                             opponents = NULL, must_send = NULL, picks = NULL,
+                             even_band = value_band, uneven_gap = NULL,
+                             max_gap = Inf, min_piece_value = 0,
+                             min_recv_value = min_piece_value,
+                             giveback = FALSE, giveback_trigger = 0, giveback_try = 5L,
+                             giveback_max_value = Inf,
+                             traj_weight = 0, rise_cut = 0.075, fade_cut = -0.075,
+                             posture_rebuild_cut = 0.35, max_opp_future_drop = Inf,
+                             dedupe = FALSE,
+                             screen_n = 40L, screen_per_opp = 0L, top_n = 20L) {
   checkmate::assert_class(base_simulation, "ff_simulation")
 
   fid <- franchise_id
   player_id <- franchise_id <- player_name <- pos <- value_to_you <- owner_id <-
     cur_value <- next_value_mean <- value_to_me <- add_gain <- my_win_delta <-
     my_playoff_delta <- opp_win_delta <- opp_playoff_delta <- h2h_wins_delta <-
-    playoff_pct_delta <- future_capital_delta <- screen <- score <- NULL
+    playoff_pct_delta <- future_capital_delta <- screen <- score <- give_back <- NULL
   send_top <- recv_top <- my_champ_delta <- opp_champ_delta <- champion_pct_delta <- NULL
+  opp_base <- dk <- value_gap <- recv_value <- win_win <- send <- receive <- NULL
+  rel_change <- mps <- traj_bad <- projected_score <- opp_rank <- has_pick <- pick_rank <- NULL
 
   # standard-deviation scaling that is safe when the column is constant/singleton
   z <- function(x) {
@@ -377,37 +453,81 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   if (is.null(targets)) targets <- ffs_trade_targets(base_simulation, fid, top_n = 50)
   targets <- data.table::as.data.table(targets)
   if (is.null(dynasty)) dynasty <- ffs_dynasty_outlook(base_simulation)
-  dyn <- data.table::as.data.table(dynasty)[, list(player_id, cur_value, next_value_mean)]
+  # carry rel_change (value move vs position drift) when present, for the optional
+  # trajectory soft down-rank; absent -> traj penalty is a no-op
+  dyn_cols <- intersect(c("player_id", "cur_value", "next_value_mean", "rel_change"),
+                        names(dynasty))
+  dyn <- data.table::as.data.table(dynasty)[, dyn_cols, with = FALSE]
+  if (!"rel_change" %in% names(dyn)) dyn[, rel_change := NA_real_]
 
   empty <- data.frame(
     opponent = character(), send = character(), receive = character(),
     send_value = numeric(), recv_value = numeric(), value_gap = numeric(),
     my_win_delta = numeric(), my_playoff_delta = numeric(),
     opp_win_delta = numeric(), opp_playoff_delta = numeric(),
-    win_win = logical(), future_capital_delta = numeric(), score = numeric(),
+    win_win = logical(), future_capital_delta = numeric(),
+    give_back = logical(), score = numeric(),
     send_ids = I(list()), recv_ids = I(list())
   )
+
+  # draft picks (ffs_pick_values) are value-only assets: they add no wins, so
+  # value_to_you / value_to_me are 0, but they carry cur_value + next_value_mean.
+  # my picks become sendable, opponents' picks become acquirable store-of-value.
+  my_picks <- opp_picks <- NULL
+  if (!is.null(picks) && nrow(picks)) {
+    pk <- data.table::as.data.table(picks)
+    pk[, franchise_id := as.character(franchise_id)]
+    my_picks  <- pk[franchise_id == fid &  !is.na(cur_value) & cur_value > 0]
+    opp_picks <- pk[franchise_id != fid &  !is.na(cur_value) & cur_value > 0]
+    if (!is.null(opponents)) opp_picks <- opp_picks[franchise_id %in% opponents]
+  }
 
   # incoming candidates: help me, are priced, owned elsewhere
   inc <- merge(targets[value_to_you > 0 & owner_id != fid], dyn, by = "player_id")
   inc <- inc[!is.na(cur_value) & cur_value > 0]
+  # filler filter: a matched received real player must clear min_recv_value
+  # (kept lower than the send floor for fragment shapes)
+  inc <- inc[cur_value >= min_recv_value]
   if (!is.null(opponents)) inc <- inc[owner_id %in% opponents]
+  if (!is.null(opp_picks) && nrow(opp_picks)) {
+    inc <- rbind(inc, opp_picks[, list(
+      player_id, player_name, pos = "PICK", owner_id = franchise_id,
+      value_to_you = 0, cur_value, next_value_mean)], fill = TRUE)
+  }
 
-  # my tradeable roster: name/pos + dynasty value + win value to me (valued once)
-  mine <- unique(rs[franchise_id == fid & !grepl("^(QB|RB|WR|TE|K)_\\d+$", player_id),
-                    list(player_id, player_name, pos)])
-  mine <- merge(mine, dyn, by = "player_id")
-  mine <- mine[!is.na(cur_value) & cur_value > 0]
+  # my full rostered assets (real players + my picks), unrestricted - this is the
+  # pool the give-back sweetener draws from (a cheap filler is a valid give-back).
+  mine_all <- unique(rs[franchise_id == fid & !grepl("^(QB|RB|WR|TE|K)_\\d+$", player_id),
+                        list(player_id, player_name, pos)])
+  mine_all <- merge(mine_all, dyn, by = "player_id")
+  mine_all <- mine_all[!is.na(cur_value) & cur_value > 0]
+  if (!is.null(my_picks) && nrow(my_picks)) {
+    mine_all <- rbind(mine_all, my_picks[, list(
+      player_id, player_name, pos = "PICK", cur_value, next_value_mean)], fill = TRUE)
+  }
   if (!is.null(must_send)) {
-    missing <- setdiff(must_send, mine$player_id)
+    missing <- setdiff(must_send, mine_all$player_id)
     if (length(missing)) {
       cli::cli_abort("must_send player(s) not on franchise {fid}'s priced roster: {missing}")
     }
   }
+  # matched send pieces: filler filtered out, but picks and must_send always kept
+  mine <- mine_all[pos == "PICK" | cur_value >= min_piece_value | player_id %in% must_send]
   if (nrow(inc) == 0 || nrow(mine) == 0) return(empty)
   base_fid_summary <- .ffs_franchise_summary(base_simulation, fid)
-  mine[, value_to_me := vapply(player_id, function(p)
+  # picks contribute 0 win value; only value real players (skip the pick ids)
+  is_pick_id <- grepl("^PICK_", mine$player_id)
+  mine[, value_to_me := 0]
+  mine[!is_pick_id, value_to_me := vapply(player_id, function(p)
     ffs_player_value(base_simulation, p, fid, base_summary = base_fid_summary)$h2h_wins, numeric(1))]
+
+  # opponent baseline playoff odds -> posture. Rebuilders (below
+  # posture_rebuild_cut) will accept a playoff hit for future value; everyone
+  # else is gated on their playoff drop. Computed once per opponent.
+  opp_ids <- unique(inc$owner_id)
+  opp_baseline <- vapply(opp_ids, function(o)
+    .ffs_franchise_summary(base_simulation, o)$playoff_pct, numeric(1))
+  names(opp_baseline) <- as.character(opp_ids)
 
   send_sizes <- unique(vapply(shapes, function(s) as.integer(s[[1]]), integer(1)))
   recv_sizes <- unique(vapply(shapes, function(s) as.integer(s[[2]]), integer(1)))
@@ -452,22 +572,30 @@ ffs_build_trades <- function(base_simulation, franchise_id,
           # value, whether I send the package (consolidate) or receive it
           # (fragment).
           if (sp$n == nr) {
-            if (abs(sp$value - recv_val) / recv_val > value_band) next
+            if (abs(sp$value - recv_val) / recv_val > even_band) next
           } else {
-            floor_prem <- consolidation_penalty * abs(sp$n - nr)
             prem <- if (sp$n > nr) {
               (sp$value - recv_val) / recv_val   # I send the package -> it overpays the target
             } else {
               (recv_val - sp$value) / sp$value   # I receive the package -> it overpays my player
             }
-            if (prem < floor_prem || prem > floor_prem + uneven_shade) next
+            if (!is.null(uneven_gap)) {
+              if (prem < uneven_gap[[1]] || prem > uneven_gap[[2]]) next
+            } else {
+              floor_prem <- consolidation_penalty * abs(sp$n - nr)
+              if (prem < floor_prem || prem > floor_prem + uneven_shade) next
+            }
           }
           gain <- recv_gain - sp$cost_me
           # additive win-gain gate for even/split shapes only. A consolidation
           # (send a package for one better player) trades slot-count for top-end
           # ceiling - a non-additive payoff (convex championship value) the exact
           # eval + champion screen judge downstream - so let it through here.
-          if (sp$n <= nr && gain <= 0) next
+          # Receiving draft picks is a pure store-of-value (future-capital) play
+          # that adds no wins by construction, so exempt it too - it is judged on
+          # future_capital_delta / the future_weight blend downstream.
+          recv_has_pick <- any(grepl("^PICK_", rr$player_id))
+          if (sp$n <= nr && gain <= 0 && !recv_has_pick) next
           deals[[length(deals) + 1L]] <- data.table::data.table(
             opponent = o, send_ids = list(sp$ids), send = sp$names,
             recv_ids = list(rr$player_id), receive = paste(rr$player_name, collapse = " + "),
@@ -483,6 +611,8 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 
   # hard floor: refuse deals that sacrifice too much future value
   deals <- deals[future_capital_delta >= min_future_delta]
+  # uniform fairness ceiling on top of the per-shape bands
+  if (is.finite(max_gap)) deals <- deals[abs(value_gap) / recv_value <= max_gap]
   if (nrow(deals) == 0) return(empty)
 
   # screen down to the exact-eval budget, blending win gain with retention so
@@ -493,7 +623,27 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   deals[, screen := z(add_gain) + future_weight * z(future_capital_delta) +
           ceiling_weight * z(recv_top - send_top)]
   data.table::setorder(deals, -screen)
-  deals <- deals[seq_len(min(screen_n, .N))]
+  if (screen_per_opp > 0L) {
+    # coverage: every opponent's top-screen_per_opp packages are valued, plus the
+    # global top-screen_n, so one team's high-gain deals can't starve the rest
+    deals[, opp_rank := seq_len(.N), by = opponent]
+    # picks add NO win-gain (they are win-neutral), so add_gain systematically
+    # under-ranks any package that includes a pick - exactly the future-banking
+    # deals (e.g. stud+filler for two players + a pick) worth surfacing. Give
+    # pick-carrying packages their own per-opponent quota so the win proxy can't
+    # starve them out of the exact-eval budget.
+    deals[, has_pick := vapply(recv_ids,
+      function(r) any(grepl("^PICK_", r)), logical(1))]
+    deals[, pick_rank := NA_integer_]
+    deals[has_pick == TRUE, pick_rank := seq_len(.N), by = opponent]
+    keep <- deals$opp_rank <= screen_per_opp |
+      (!is.na(deals$pick_rank) & deals$pick_rank <= screen_per_opp) |
+      seq_len(nrow(deals)) <= screen_n
+    deals <- deals[keep]
+    deals[, c("opp_rank", "has_pick", "pick_rank") := NULL]
+  } else {
+    deals <- deals[seq_len(min(screen_n, .N))]
+  }
 
   ev <- data.table::rbindlist(lapply(seq_len(nrow(deals)), function(i) {
     te <- data.table::as.data.table(ffs_trade_eval(
@@ -509,9 +659,83 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   deals <- cbind(deals, ev)
   deals[, win_win := my_win_delta > 0 & opp_win_delta > 0]
 
-  # acceptability: no rational owner takes a deal that tanks their own playoff
-  # odds (e.g. surrendering their only startable QB), however much it helps me
-  deals <- deals[opp_playoff_delta >= -max_opp_drop]
+  # give-back sweetener: for deals that lower the opponent's playoff odds, offer a
+  # variant that sends one of your spare players at the top received player's
+  # position back to the depleted team ("send Daniel Jones back on a QB buy", any
+  # position). The give-back is exempt from the value band. It is picked to be
+  # USEFUL to the opponent, not merely cheap: candidates are ranked by usefulness
+  # to THEM (mean weekly points), the strongest are valued, and the one giving the
+  # most opponent playoff-lift PER unit of value I give up is kept.
+  deals[, give_back := FALSE]
+  if (isTRUE(giveback) && nrow(deals)) {
+    pos_by_id <- stats::setNames(inc$pos, inc$player_id)
+    val_by_id <- stats::setNames(inc$cur_value, inc$player_id)
+    # usefulness proxy: a player's mean weekly points (a startable vet outranks a
+    # deep-bench flier), same signal ffs_trade_targets screens on
+    mps_tbl <- rs[, list(mps = mean(projected_score, na.rm = TRUE)), by = player_id]
+    mps_by_id <- stats::setNames(mps_tbl$mps, mps_tbl$player_id)
+    gb_pool <- mine_all[pos != "PICK" & cur_value <= giveback_max_value]
+    gb_pool[, mps := mps_by_id[player_id]]
+    gb_pool <- gb_pool[order(-mps)]           # most useful to any team first
+    gb_rows <- which(deals$opp_playoff_delta < giveback_trigger)
+    gb_variants <- list()
+    for (i in gb_rows) {
+      rids <- deals$recv_ids[[i]]
+      real <- rids[!grepl("^PICK_", rids)]
+      if (!length(real)) next
+      P <- pos_by_id[[real[which.max(val_by_id[real])]]]
+      # my most-useful spares at the drained position (exclude what I'm already
+      # sending); value the top giveback_try, then choose by lift-per-cost
+      cand <- gb_pool[pos == P & !player_id %in% deals$send_ids[[i]]]
+      if (!nrow(cand)) next
+      cand <- cand[seq_len(min(giveback_try, .N))]
+      base_opp <- deals$opp_playoff_delta[i]   # opponent delta without the give-back
+      best <- NULL
+      for (k in seq_len(nrow(cand))) {
+        gk <- cand[k]
+        ns <- c(deals$send_ids[[i]], gk$player_id)
+        te <- data.table::as.data.table(ffs_trade_eval(
+          base_simulation, fid, ns, deals$opponent[[i]], rids))
+        opk <- te[franchise_id == deals$opponent[[i]]]$playoff_pct_delta
+        lift <- opk - base_opp                 # how much this give-back helps them
+        eff  <- lift / max(gk$cur_value, 1)     # lift per unit of value I give up
+        if (lift > 0 && (is.null(best) || eff > best$eff))
+          best <- list(gk = gk, ns = ns, te = te, eff = eff)
+      }
+      if (is.null(best)) next                  # nothing actually helps them -> skip
+      m <- best$te[franchise_id == fid]
+      op <- best$te[franchise_id == deals$opponent[[i]]]
+      row <- data.table::copy(deals[i])
+      # give-back is a sweetener, exempt from the value band: keep it OUT of
+      # send_value/gap (so the deal still reads as fair on the matched pieces) but
+      # show it in the send string and charge its future value to the deal
+      row[, `:=`(
+        send = paste0(send, " + ", best$gk$player_name),
+        send_ids = list(best$ns),
+        future_capital_delta = future_capital_delta - best$gk$next_value_mean,
+        my_win_delta = m$h2h_wins_delta, my_playoff_delta = m$playoff_pct_delta,
+        my_champ_delta = m$champion_pct_delta,
+        opp_win_delta = op$h2h_wins_delta, opp_playoff_delta = op$playoff_pct_delta,
+        opp_champ_delta = op$champion_pct_delta,
+        win_win = m$h2h_wins_delta > 0 & op$h2h_wins_delta > 0, give_back = TRUE)]
+      gb_variants[[length(gb_variants) + 1L]] <- row
+    }
+    if (length(gb_variants))
+      deals <- data.table::rbindlist(c(list(deals), gb_variants), use.names = TRUE)
+  }
+
+  # acceptability, posture-aware: contenders/bubble refuse a big playoff hit
+  # (e.g. surrendering their only startable QB); rebuilders (baseline playoff
+  # below posture_rebuild_cut) instead accept a playoff hit but refuse bleeding
+  # future value (their future delta = -future_capital_delta). The rebuilder
+  # branch is OPT-IN via a finite max_opp_future_drop, so the default (Inf) keeps
+  # the old uniform max_opp_drop gate for every opponent.
+  deals[, opp_base := opp_baseline[as.character(opponent)]]
+  is_rebuilder <- is.finite(max_opp_future_drop) &
+    !is.na(deals$opp_base) & deals$opp_base < posture_rebuild_cut
+  deals <- deals[data.table::fifelse(is_rebuilder,
+    (-future_capital_delta) >= -max_opp_future_drop,
+    opp_playoff_delta >= -max_opp_drop)]
   if (nrow(deals) == 0) return(empty)
 
   # consolidation realism: an uneven trade forces one side to fragment its
@@ -522,18 +746,44 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     if (nrow(deals) == 0) return(empty)
   }
 
+  # trajectory conscience (opt-in, traj_weight > 0 and dynasty carries rel_change):
+  # softly down-rank deals that ship my APPRECIATING players or acquire DECLINING
+  # ones, measured vs the position's drift. A sweetener/decliner sinks but is never
+  # removed. Picks (not in dyn) read NA -> 0 (neutral store of value).
+  rel_by_id <- stats::setNames(dyn$rel_change, dyn$player_id)
+  traj_of <- function(send_ids, recv_ids) {
+    sr <- rel_by_id[send_ids]; rr <- rel_by_id[recv_ids]
+    sum(pmax(0, sr - rise_cut), na.rm = TRUE) + sum(pmax(0, fade_cut - rr), na.rm = TRUE)
+  }
+  deals[, traj_bad := vapply(seq_len(.N),
+    function(i) traj_of(send_ids[[i]], recv_ids[[i]]), numeric(1))]
+
   # final ranking: win-now gain traded off against future value by future_weight,
-  # with a soft lean toward deals that help both sides
+  # with a soft lean toward deals that help both sides and away from ones that ship
+  # my risers / acquire decliners
   deals[, score := z(my_playoff_delta) + champ_weight * z(my_champ_delta) +
           future_weight * z(future_capital_delta) +
-          winwin_bonus * as.numeric(win_win %in% TRUE)]
+          winwin_bonus * as.numeric(win_win %in% TRUE) -
+          traj_weight * z(traj_bad)]
   data.table::setorder(deals, -score, -my_win_delta)
+
+  # dedup: collapse deals that differ only by throw-in filler or draft-pick YEAR
+  # (same pick slot) to the best-scoring representative, so near-identical ideas
+  # do not flood the board. Pick ids "PICK_<season>_<round>_<of>" -> "PICK_R<round>_<of>".
+  if (isTRUE(dedupe) && nrow(deals) > 1) {
+    norm_ids <- function(ids) paste(sort(sub("^PICK_[0-9]+_", "PICK_R", ids)), collapse = "|")
+    deals[, dk := paste(opponent, vapply(send_ids, norm_ids, character(1)),
+                        vapply(recv_ids, norm_ids, character(1)), sep = "#")]
+    deals <- deals[, .SD[1], by = dk]
+    deals[, dk := NULL]
+    data.table::setorder(deals, -score, -my_win_delta)
+  }
 
   out <- deals[seq_len(min(top_n, .N)), list(
     opponent, send, receive, send_value, recv_value, value_gap,
     my_win_delta, my_playoff_delta, my_champ_delta,
     opp_win_delta, opp_playoff_delta, opp_champ_delta,
-    win_win, future_capital_delta, score, send_ids, recv_ids)]
+    win_win, future_capital_delta, give_back, score, send_ids, recv_ids)]
   return(as.data.frame(out))
 }
 

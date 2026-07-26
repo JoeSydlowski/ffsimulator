@@ -18,9 +18,28 @@ ffs_build_trades(
   shapes = list(c(1, 1), c(2, 1), c(1, 2)),
   future_weight = 0,
   min_future_delta = -Inf,
+  champ_weight = 0,
+  ceiling_weight = 0,
   opponents = NULL,
   must_send = NULL,
+  picks = NULL,
+  even_band = value_band,
+  uneven_gap = NULL,
+  max_gap = Inf,
+  min_piece_value = 0,
+  min_recv_value = min_piece_value,
+  giveback = FALSE,
+  giveback_trigger = 0,
+  giveback_try = 5L,
+  giveback_max_value = Inf,
+  traj_weight = 0,
+  rise_cut = 0.075,
+  fade_cut = -0.075,
+  posture_rebuild_cut = 0.35,
+  max_opp_future_drop = Inf,
+  dedupe = FALSE,
   screen_n = 40L,
+  screen_per_opp = 0L,
   top_n = 20L
 )
 }
@@ -84,7 +103,80 @@ player is worth the most to.}
 the "how do I sell THIS player" mode (default \code{NULL} = no constraint).
 Shapes smaller than \code{length(must_send)} produce no packages.}
 
+\item{even_band}{gap band for \strong{even} trades expressed on the received value,
+\verb{|send - receive| / receive <= even_band} (default = \code{value_band}, so
+existing callers are unchanged; set e.g. \code{0.03} for a tight 3pct even band)}
+
+\item{uneven_gap}{optional \code{c(lo, hi)} gap band for \strong{uneven} trades, applied
+to the package's overpay premium over the single side (both directions), e.g.
+\code{c(0.02, 0.08)} = a 2-8pct consolidation premium. When \code{NULL} (default) the
+legacy \code{consolidation_penalty} / \code{uneven_shade} band is used instead.}
+
+\item{max_gap}{uniform belt-and-suspenders ceiling on \verb{|value_gap| / recv_value}
+applied to every deal after enumeration (default \code{Inf} = off)}
+
+\item{min_piece_value}{minimum \code{cur_value} a \strong{matched} real player you SEND
+must have - filters throw-in filler so the second send piece is a real player
+(default \code{0} = no filter). Picks, \code{must_send} players, and give-back pieces
+are exempt.}
+
+\item{min_recv_value}{minimum \code{cur_value} a \strong{matched} real player you RECEIVE
+must have (default \verb{= min_piece_value}). Set lower than \code{min_piece_value} for
+fragment shapes (e.g. 1-for-3) so a stud can be split into several real but
+smaller pieces without the filler floor blocking the smallest one. Picks are
+exempt.}
+
+\item{giveback}{when \code{TRUE}, for any deal that lowers the opponent's playoff
+odds below \code{giveback_trigger} a variant is also generated that appends one of
+your spare players at the position of the top received player to the send
+side (a "send Daniel Jones back" sweetener). The give-back is picked to be
+\emph{useful to the depleted opponent}, not merely your cheapest: the exact eval
+scores the \code{giveback_try} cheapest candidates at that position and keeps the
+one that lifts the opponent's playoff odds the most. It is exempt from the
+value band, so the variant shows a softer \code{opp_playoff_delta} (default \code{FALSE})}
+
+\item{giveback_trigger}{only add a give-back variant when the base deal's
+\code{opp_playoff_delta} is below this (default \code{0} = whenever the opponent is hurt)}
+
+\item{giveback_try}{how many of your most-useful spare players at the drained
+position to evaluate as the give-back. Candidates are ranked by usefulness to
+the \emph{opponent} (mean weekly points), the top \code{giveback_try} are valued, and the
+one with the best opponent playoff-lift \emph{per unit of value you give up} is kept
+(default \code{5}). If none lifts the opponent, no give-back variant is added.}
+
+\item{giveback_max_value}{optional ceiling on a give-back piece's \code{cur_value}, so
+a valuable player is never used as a mere sweetener (default \code{Inf} = no cap)}
+
+\item{traj_weight}{soft down-rank (in \code{score} std-dev units) applied to deals
+that ship your \emph{appreciating} players or acquire \emph{declining} ones, when the
+\code{dynasty} table carries a \code{rel_change} column (value move relative to the
+position's drift). \code{0} (default) = trajectory-blind, back-compatible. The
+penalty is \verb{Sigma_sent max(0, rel_change - rise_cut) + Sigma_recv max(0, fade_cut - rel_change)} over real (non-pick) pieces; a sent riser or received
+decliner is pushed down but never removed.}
+
+\item{rise_cut, fade_cut}{the \code{rel_change} thresholds above/below which a piece
+counts as appreciating / declining for \code{traj_weight} (defaults \code{0.075} /
+\code{-0.075}, matching the trade-intel role cutoffs)}
+
+\item{posture_rebuild_cut}{opponents with baseline playoff odds below this are
+treated as rebuilders and gated on future value instead of playoff odds
+(default \code{0.35})}
+
+\item{max_opp_future_drop}{for \strong{rebuilder} opponents, drop deals that cut
+their future dynasty capital (\code{-future_capital_delta}) by more than this
+(default \code{Inf} = rebuilders accept any playoff hit for future value)}
+
+\item{dedupe}{when \code{TRUE}, collapse deals that differ only by throw-in filler
+or draft-pick \emph{year} (same pick slot) to the single highest-scoring
+representative, so near-identical ideas do not flood the board (default \code{FALSE})}
+
 \item{screen_n}{how many screened packages to value exactly (default 40)}
+
+\item{screen_per_opp}{guarantee at least this many of each opponent's
+best-screened packages are valued, so a single team's high-gain deals cannot
+crowd every other team out of the exact-eval budget (default \code{0} = pure global
+top-\code{screen_n}). The eval set becomes the union of the global top-\code{screen_n}
+and each opponent's top-\code{screen_per_opp}, giving every team coverage.}
 
 \item{top_n}{how many ranked deals to return (default 20)}
 }
@@ -92,7 +184,8 @@ Shapes smaller than \code{length(must_send)} produce no packages.}
 a dataframe of trades: \code{opponent}, \code{send}, \code{receive}, dynasty
 \code{send_value}/\code{recv_value}/\code{value_gap}, re-optimized \code{my_win_delta},
 \code{my_playoff_delta}, \code{opp_win_delta}, \code{opp_playoff_delta}, a \code{win_win} flag,
-\code{future_capital_delta}, the \code{score} used to rank them, and list-columns
+\code{future_capital_delta}, a \code{give_back} flag (whether a give-back sweetener was
+appended), the \code{score} used to rank them, and list-columns
 \code{send_ids}/\code{recv_ids} so a deal can be re-evaluated (e.g. confirmed on a
 larger simulation with \code{\link[=ffs_trade_eval]{ffs_trade_eval()}})
 }

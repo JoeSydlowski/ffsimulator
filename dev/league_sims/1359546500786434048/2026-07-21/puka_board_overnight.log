@@ -1,0 +1,135 @@
+Warning messages:
+1: package 'data.table' was built under R version 4.3.2 
+2: package 'testthat' was built under R version 4.3.2 
+skipping C:/Github/ffsimulator/dev/league_sims/1359546500786434048/2026-07-21/dynasty_outlook.csv (merge-conflict markers)
+dynasty outlook: C:/Github/ffsimulator/dev/league_sims/1359546500786434048/2026-07-20/dynasty_outlook.csv
+search sim: C:/Github/ffsimulator/dev-scratch/jon_n60.rds
+ffs_draftpicks unavailable (ℹ In argument: `.data$season %in% seasons`.
+Caused by error in `.data$season`:
+! Column `season` not found in `.data`.); using each team's own R1 2027
+scanning 160 targets @ 2026-07-25 00:01:32.79404
+building board: move Puka Nacua across all teams @ 2026-07-25 00:10:07.922881
+wrote 240 deals to C:/Github/ffsimulator/dev/league_sims/1359546500786434048/2026-07-21/Puka_Nacua_trade_board.csv
+
+== options per team: each TARGET with its SEND variations (best first) ==
+
+[Chase'n Purdy Strange]
+  ► get: Terry McLaurin + CeeDee Lamb + 2027 R1 (~1.07)
+     2-for-3  George Kittle + Puka Nacua                     gap+8.6% you+11.7% opp-5.0% fut+2142
+     3-for-3  George Kittle + Puka Nacua + Justin Jefferson  gap+8.6% you-5.0% opp+13.3% fut-2884 +gb
+  ► get: Terry McLaurin + Brock Purdy + 2027 R1 (~1.07)
+     2-for-3  Eli Raridon + Puka Nacua                       gap+3.0% you+5.0% opp-6.7% fut+2762
+     3-for-3  Eli Raridon + Puka Nacua + Malik Willis        gap+3.0% you+3.3% opp+8.3% fut+343 WW +gb
+     3-for-3  Jack Bech + Puka Nacua + Malik Willis          gap+3.0% you-3.3% opp+10.0% fut+560 WW +gb
+  ► get: Breece Hall + Brock Purdy + 2027 R1 (~1.07)
+     2-for-3  George Kittle + Puka Nacua                     gap+8.2% you+1.7% opp-1.7% fut+3543
+     3-for-3  George Kittle + Puka Nacua + Daniel Jones      gap+8.2% you-6.7% opp+13.3% fut+1339 WW +gb
+
+[CrashOutChris'Kickoff]
+  ► get: Luther Burden + Christian McCaffrey + 2027 R1 (~1.07)
+     2-for-3  Dallas Goedert + Puka Nacua                    gap+8.1% you+13.3% opp-6.7% fut+2093
+     2-for-3  Tony Pollard + Puka Nacua                      gap+6.3% you+5.0% opp-1.7% fut+2296
+     3-for-3  Dallas Goedert + Puka Nacua + Aaron Jones      gap+8.1% you+5.0% opp+1.7% fut+1345 +gb
+  ► get: Luther Burden + Patrick Mahomes + Jordan Addison
+     3-for-3  George Kittle + Puka Nacua + Daniel Jones      gap+6.6% you-1.7% opp-1.7% fut+645 +gb
+     3-for-3  Denzel Boston + Puka Nacua + Daniel Jones      gap+8.3% you-5.0% opp-3.3% fut+391 +gb
+  ► get: Luther Burden + Joe Burrow + 2027 R1 (~1.07)
+     3-for-3  Puka Nacua + 2027 R1 (~1.05) + Malik Willis    gap+5.4% you+0.0% opp+1.7% fut+38 +gb
+     3-for-3  Jordyn Tyson + Puka Nacua + Daniel Jones       gap+6.9% you-1.7% opp+5.0% fut+590 +gb
+
+[G baby ladies]
+  ► get: Jordan Love + Kyren Williams + 2027 R1 (~1.07)
+     2-for-3  Chris Rodriguez + Puka Nacua                   gap+8.2% you+6.7% opp-5.0% fut+2956
+     2-for-3  Aaron Jones + Puka Nacua                       gap+7.8% you-1.7% opp+0.0% fut+3055 WW
+  ► get: Ladd McConkey + Kyren Williams + 2027 R1 (~1.07)
+     2-for-3  Jack Bech + Puka Nacua                         gap+7.7% you-1.7% opp-3.3% fut+2587 WW
+     2-for-3  MarShawn Lloyd + Puka Nacua                    gap+8.4% you+0.0% opp-3.3% fut+2774
+     2-for-3  Eli Raridon + Puka Nacua                       gap+7.7% you-1.7% opp-5.0% fut+2371
+  ► get: Ashton Jeanty + Jordan Love + Drake London
+     3-for-3  Justin Jefferson + Puka Nacua + Aaron Jones    gap+7.2% you+1.7% opp-6.7% fut+2504 +gb
+
+[Galletti]
+  ► get: Kenyon Sadiq + A.J. Brown + 2027 R1 (~1.06)
+     2-for-3  MarShawn Lloyd + Puka Nacua                    gap+4.5% you+3.3% opp-3.3% fut+2768 WW
+     2-for-3  Jack Bech + Puka Nacua                         gap+3.8% you+3.3% opp+1.7% fut+2582 WW
+  ► get: Lamar Jackson + A.J. Brown + 2027 R1 (~1.06)
+     3-for-3  Tetairoa McMillan + Puka Nacua + Malik Willis  gap+7.8% you-6.7% opp-3.3% fut+477 WW +gb
+  ► get: Kenyon Sadiq + Lamar Jackson + DJ Moore
+     3-for-3  Malik Willis + Puka Nacua + Daniel Jones       gap+8.5% you-6.7% opp+0.0% fut+994 +gb
+
+[MacDaddyNation]
+  ► get: DeVonta Smith + James Cook + 2027 R1 (~1.07)
+     3-for-3  George Kittle + Puka Nacua + Aaron Jones       gap+8.3% you+10.0% opp-3.3% fut+856 +gb
+  ► get: Bo Nix + DeVonta Smith + Zay Flowers
+     3-for-3  George Kittle + Puka Nacua + Malik Willis      gap+8.4% you+13.3% opp-3.3% fut-127 +gb
+  ► get: DeVonta Smith + Zay Flowers + 2027 R1 (~1.07)
+     2-for-3  Jack Bech + Puka Nacua                         gap+5.0% you+5.0% opp-1.7% fut+1728
+     2-for-3  MarShawn Lloyd + Puka Nacua                    gap+5.6% you+0.0% opp+0.0% fut+1915
+
+[mjmx3]
+  ► get: Emeka Egbuka + Dak Prescott + 2027 R1 (~1.07)
+     2-for-3  Malik Willis + Puka Nacua                      gap+7.4% you+1.7% opp-5.0% fut+2936
+     2-for-3  Daniel Jones + Puka Nacua                      gap+7.1% you+0.0% opp+0.0% fut+3151
+  ► get: Marvin Harrison + Dak Prescott + Kyle Pitts
+     3-for-3  Jack Bech + Puka Nacua + Daniel Jones          gap+7.3% you+5.0% opp-6.7% fut+388 +gb
+     3-for-3  MarShawn Lloyd + Puka Nacua + Daniel Jones     gap+7.9% you+1.7% opp-6.7% fut+575 +gb
+  ► get: Marvin Harrison + Dak Prescott + 2027 R1 (~1.07)
+     3-for-3  Aaron Jones + Puka Nacua + Daniel Jones        gap+7.8% you-3.3% opp+6.7% fut+1102 +gb
+     3-for-3  Chris Rodriguez + Puka Nacua + Daniel Jones    gap+8.2% you+0.0% opp+6.7% fut+1002 +gb
+
+[mkbarz]
+  ► get: Rashee Rice + Bhayshul Tuten + Trevor Lawrence
+     3-for-3  George Kittle + Puka Nacua + Daniel Jones      gap+2.3% you+16.7% opp+0.0% fut+108 +gb
+  ► get: Rashee Rice + Jadarian Price + Trevor Lawrence
+     3-for-3  George Kittle + Puka Nacua + Malik Willis      gap+8.3% you+10.0% opp+1.7% fut+385 +gb
+  ► get: Rashee Rice + Trevor Lawrence + 2027 R1 (~1.04)
+     3-for-3  Puka Nacua + 2027 R1 (~1.05) + Malik Willis    gap+6.3% you+1.7% opp+0.0% fut+210 WW +gb
+     3-for-3  Jordyn Tyson + Puka Nacua + Malik Willis       gap+7.8% you+0.0% opp+8.3% fut+547 WW +gb
+
+[NFC Nostalgia]
+  ► get: Jared Goff + Nico Collins + 2027 R1 (~1.08)
+     2-for-3  Tony Pollard + Puka Nacua                      gap+5.5% you+5.0% opp+0.0% fut+3011
+     2-for-3  Aaron Jones + Puka Nacua                       gap+8.5% you+1.7% opp+1.7% fut+3201
+     3-for-3  Dallas Goedert + Puka Nacua + Carnell Tate     gap+7.3% you-5.0% opp+6.7% fut-1520 +gb
+  ► get: Omarion Hampton + Nico Collins + 2027 R1 (~1.08)
+     3-for-3  Puka Nacua + 2027 R1 (~1.05) + Chris Rodriguez gap+6.5% you+3.3% opp-6.7% fut+793 +gb
+     2-for-3  Jordyn Tyson + Puka Nacua                      gap+8.0% you+1.7% opp-1.7% fut+1978
+     3-for-3  Jordyn Tyson + Puka Nacua + Chris Rodriguez    gap+8.0% you-3.3% opp+5.0% fut+1130 +gb
+  ► get: Tee Higgins + Nico Collins + 2027 R1 (~1.08)
+     3-for-3  MarShawn Lloyd + Puka Nacua + Tetairoa McMillan gap+8.7% you+0.0% opp+1.7% fut-2299 WW +gb
+     3-for-3  Eli Raridon + Puka Nacua + Tetairoa McMillan   gap+8.0% you+1.7% opp+1.7% fut-2702 WW +gb
+     3-for-3  Jack Bech + Puka Nacua + Justin Jefferson      gap+8.1% you-6.7% opp+6.7% fut-3028 +gb
+
+[nickd1212]
+  ► get: Quinshon Judkins + DK Metcalf + George Pickens
+     2-for-3  Jack Bech + Puka Nacua                         gap+8.7% you+10.0% opp-1.7% fut+2388
+  ► get: Quinshon Judkins + Justin Herbert + George Pickens
+     2-for-3  Tetairoa McMillan + Puka Nacua                 gap+6.7% you+6.7% opp-6.7% fut+2753
+     3-for-3  Tetairoa McMillan + Puka Nacua + Malik Willis  gap+6.7% you+1.7% opp+8.3% fut+334 WW +gb
+  ► get: Bucky Irving + George Pickens + 2027 R1 (~1.07)
+     2-for-3  George Kittle + Puka Nacua                     gap+3.6% you+1.7% opp+0.0% fut+2458 WW
+
+[theKmbl]
+  ► get: TreVeyon Henderson + Chris Olave + 2027 R1 (~1.05)
+     2-for-3  George Kittle + Puka Nacua                     gap+6.3% you+5.0% opp+3.3% fut+2741
+     2-for-3  Denzel Boston + Puka Nacua                     gap+7.9% you+8.3% opp-3.3% fut+2488
+     3-for-3  Denzel Boston + Puka Nacua + Tony Pollard      gap+7.9% you+0.0% opp+10.0% fut+1550 WW +gb
+  ► get: Baker Mayfield + Chris Olave + 2027 R1 (~1.05)
+     2-for-3  Tony Pollard + Puka Nacua                      gap+6.8% you-1.7% opp+0.0% fut+3072
+     2-for-3  Dallas Goedert + Puka Nacua                    gap+8.6% you-5.0% opp-3.3% fut+2869
+  ► get: Sam LaPorta + Chris Olave + 2027 R1 (~1.05)
+     2-for-3  Aaron Jones + Puka Nacua                       gap+7.6% you-3.3% opp-1.7% fut+3218
+     2-for-3  Chris Rodriguez + Puka Nacua                   gap+8.0% you-1.7% opp+3.3% fut+3118
+
+[Will Nabers be ready?]
+  ► get: Jayden Daniels + Davante Adams + 2027 R1 (~1.07)
+     2-for-3  Harold Fannin + Puka Nacua                     gap+8.2% you+6.7% opp+0.0% fut+3044
+     3-for-3  Puka Nacua + 2027 R1 (~1.05) + Malik Willis    gap+3.2% you+5.0% opp+1.7% fut-49 +gb
+  ► get: Davante Adams + Jalen Hurts + 2027 R1 (~1.07)
+     2-for-3  Chris Rodriguez + Puka Nacua                   gap+9.1% you+3.3% opp-5.0% fut+3502
+     3-for-3  Aaron Jones + Puka Nacua + Tyler Shough        gap+8.7% you-5.0% opp+0.0% fut+308 +gb
+     3-for-3  Chris Rodriguez + Puka Nacua + Tyler Shough    gap+9.1% you-1.7% opp+0.0% fut+209 +gb
+  ► get: Jayden Daniels + D'Andre Swift + 2027 R1 (~1.07)
+     3-for-3  Puka Nacua + 2027 R1 (~1.05) + Daniel Jones    gap+4.3% you+13.3% opp-5.0% fut+40 +gb
+     3-for-3  Jordyn Tyson + Puka Nacua + Malik Willis       gap+5.9% you+6.7% opp+1.7% fut+162 WW +gb
+wrote plot C:/Github/ffsimulator/dev/league_sims/1359546500786434048/2026-07-21/Puka_Nacua_trade_plot.png (163 fair points, 22 labelled)

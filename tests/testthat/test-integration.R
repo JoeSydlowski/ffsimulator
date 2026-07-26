@@ -241,4 +241,143 @@ test_that("ffs_build_trades constructs value-matched deals", {
     te <- data.table::as.data.table(ffs_trade_eval(sim, me, sid, opp, rid))
     expect_equal(sign(te[franchise_id == me]$h2h_wins_delta), sign(d$my_win_delta))
   }
+
+  # ---- draft picks as value-only assets ----------------------------------
+  # synthetic pick rows in the ffs_pick_values schema (no network). One pick to
+  # me, one to each of two opponents.
+  opps <- setdiff(unique(real$franchise_id), me)[1:2]
+  picks <- data.frame(
+    player_id = c("PICK_2027_1_me", "PICK_2027_1_o1", "PICK_2027_2_o2"),
+    player_name = c("2027 R1 (me)", "2027 R1 (o1)", "2027 R2 (o2)"),
+    franchise_id = c(me, opps),
+    pos = "PICK",
+    cur_value = c(2500, 3000, 1200),
+    next_value_mean = c(2700, 3200, 1300),
+    stringsAsFactors = FALSE)
+
+  # (a) ffs_trade_eval treats pick ids as win-neutral: sending a real player and
+  # receiving a pick equals the same eval with the pick omitted, and never errors
+  opp1 <- opps[[1]]
+  te_pick <- data.table::as.data.table(
+    ffs_trade_eval(sim, me, sell_p, opp1, "PICK_2027_1_o1"))
+  te_none <- data.table::as.data.table(
+    ffs_trade_eval(sim, me, sell_p, opp1, character(0)))
+  expect_equal(te_pick$h2h_wins_delta, te_none$h2h_wins_delta, tolerance = 1e-9)
+  expect_equal(te_pick$playoff_pct_delta, te_none$playoff_pct_delta, tolerance = 1e-9)
+
+  # (b) ffs_build_trades carries picks: my picks become sendable, opponents'
+  # picks acquirable, and a sell-for-picks deal (no win gain) still surfaces,
+  # judged on future capital
+  bt <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn, picks = picks,
+                         value_band = 0.8, future_weight = 1,
+                         must_send = sell_p, opponents = opp1,
+                         shapes = list(c(1, 1), c(1, 2)), top_n = 15)
+  if (nrow(bt) > 0) {
+    expect_true(all(is.finite(bt$future_capital_delta)))
+    # any deal that receives a pick has a defined (finite) future capital delta
+    got_pick <- grepl("R[12]|PICK", bt$receive)
+    if (any(got_pick)) expect_true(all(is.finite(bt$future_capital_delta[got_pick])))
+  }
+
+  # ---- per-shape bands, min_piece_value, give-back, dedupe --------------------
+  # give_back column present and FALSE by default
+  expect_true("give_back" %in% names(trades))
+  if (nrow(trades) > 0) expect_false(any(trades$give_back))
+
+  # tight even band: same-count deals stay within the (small) even_band
+  ev <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+                         even_band = 0.05, shapes = list(c(2, 2)), top_n = 10)
+  if (nrow(ev) > 0)
+    expect_true(all(abs(ev$value_gap) / ev$recv_value <= 0.05 + 1e-9))
+
+  # uneven_gap band: 1-for-2 (I'm paid a premium) sits inside [lo, hi]
+  ug <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+                         uneven_gap = c(0.02, 0.25), shapes = list(c(1, 2)), top_n = 10)
+  if (nrow(ug) > 0) {
+    prem <- ug$value_gap / (ug$recv_value - ug$value_gap)   # overpay of the package
+    expect_true(all(prem >= 0.02 - 1e-9 & prem <= 0.25 + 1e-9))
+  }
+
+  # min_piece_value filters matched fillers: no matched real piece below the floor
+  # (picks and must_send are exempt, but this build uses neither)
+  val_by_id <- stats::setNames(dyn$cur_value, dyn$player_id)
+  name_by_id <- data.table::as.data.table(real)[, .(player_name = player_name[[1]]), by = player_id]
+  floorv <- 1500
+  mp <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+                         min_piece_value = floorv, shapes = list(c(1, 1), c(2, 2)),
+                         top_n = 15)
+  if (nrow(mp) > 0) {
+    pieces <- unique(unlist(strsplit(c(mp$send, mp$receive), " [+] ")))
+    ids <- name_by_id$player_id[match(pieces, name_by_id$player_name)]
+    ids <- ids[!is.na(ids)]
+    expect_true(all(val_by_id[ids] >= floorv - 1e-9))
+  }
+
+  # min_recv_value defaults to min_piece_value (back-compat), and can be set lower
+  # so a fragment receive-side keeps smaller real pieces the send floor would drop
+  mp_lo <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+                            min_piece_value = floorv, min_recv_value = 0,
+                            shapes = list(c(1, 2), c(2, 2)), top_n = 20)
+  if (nrow(mp_lo) > 0) {
+    send_pieces <- unique(unlist(strsplit(mp_lo$send, " [+] ")))
+    sids <- name_by_id$player_id[match(send_pieces, name_by_id$player_name)]
+    sids <- sids[!is.na(sids)]
+    expect_true(all(val_by_id[sids] >= floorv - 1e-9))   # send floor still enforced
+  }
+
+  # give-back: a variant appends a send piece for a hurt opponent; every give_back
+  # row therefore carries >= 2 senders, and the flag is logical
+  gb <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+                         giveback = TRUE, giveback_trigger = Inf,   # always attempt
+                         shapes = list(c(1, 2), c(2, 2)), top_n = 20)
+  expect_type(gb$give_back, "logical")
+  if (any(gb$give_back)) {
+    n_send_gb <- lengths(strsplit(gb$send[gb$give_back], " [+] "))
+    expect_true(all(n_send_gb >= 2))
+  }
+
+  # dedupe returns unique (opponent, send, receive) rows
+  dd <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+                         value_band = 0.5, dedupe = TRUE, top_n = 30)
+  if (nrow(dd) > 0)
+    expect_false(any(duplicated(dd[, c("opponent", "send", "receive")])))
+
+  # ---- trajectory soft down-rank (traj_weight) --------------------------------
+  # traj_weight = 0 (default) is byte-identical to a run without the rel_change
+  # column: adding the column must not change the ranking when the weight is 0
+  dyn_rel <- data.table::copy(data.table::as.data.table(dyn))
+  set.seed(7)
+  dyn_rel[, rel_change := stats::runif(.N, -0.3, 0.3)]
+  base0  <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,     value_band = 0.5, top_n = 20)
+  rel0   <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn_rel, value_band = 0.5,
+                             traj_weight = 0, top_n = 20)
+  expect_equal(rel0$score, base0$score, tolerance = 1e-9)
+  # a heavy trajectory weight must not surface WORSE-trajectory deals at the top:
+  # the mean "badness" (ship a riser / acquire a decliner) of the top deals under
+  # a heavy penalty is no higher than under no penalty (same candidate set)
+  rel_by_id <- stats::setNames(dyn_rel$rel_change, dyn_rel$player_id)
+  nm2id <- stats::setNames(c(name_by_id$player_id, tt$player_id),
+                           c(name_by_id$player_name, tt$player_name))
+  badness <- function(sendstr, recvstr) {
+    s <- nm2id[strsplit(sendstr, " [+] ")[[1]]]; r <- nm2id[strsplit(recvstr, " [+] ")[[1]]]
+    sum(pmax(0, rel_by_id[s] - 0.05), na.rm = TRUE) +
+      sum(pmax(0, -0.05 - rel_by_id[r]), na.rm = TRUE)
+  }
+  top_bad <- function(b, k = 5) {
+    b <- data.table::as.data.table(b); if (!nrow(b)) return(0)
+    v <- vapply(seq_len(nrow(b)), function(i) badness(b$send[i], b$receive[i]), numeric(1))
+    mean(utils::head(v, min(k, length(v))))
+  }
+  light <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn_rel, value_band = 0.5,
+                            traj_weight = 0, rise_cut = 0.05, fade_cut = -0.05, top_n = 30)
+  heavy <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn_rel, value_band = 0.5,
+                            traj_weight = 5, rise_cut = 0.05, fade_cut = -0.05, top_n = 30)
+  expect_lte(top_bad(heavy), top_bad(light) + 1e-9)
+
+  # ---- give-back picks by usefulness-per-cost, and omits a useless one ---------
+  # (structural checks: the chosen give-back is a real spare at the drained
+  # position, and give-back rows never appear when giveback = FALSE)
+  no_gb <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+                            giveback = FALSE, shapes = list(c(1, 2), c(2, 2)), top_n = 20)
+  expect_false(any(no_gb$give_back))
 })

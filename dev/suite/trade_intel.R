@@ -170,6 +170,22 @@ if (!is.null(dyn_vals)) {
 } else {
   d[, `:=`(redraft_value = NA_real_, trend_30day = NA_real_, tier = NA_integer_)]
 }
+
+# draft picks as value-only assets (slot from projected finish x hit-rate curve).
+# Guarded: needs the empirical curve + a live connection; skip with FFS_PICKS=0.
+pv <- NULL
+pick_curve_path <- here::here("dev", "data", "pick_value_curve.csv")
+if (Sys.getenv("FFS_PICKS", "1") != "0" && exists("conn") && file.exists(pick_curve_path)) {
+  pv <- tryCatch(
+    data.table::as.data.table(ffs_pick_values(
+      sim, conn = conn, pick_curve = pick_curve_path,
+      fc_pick_values = if (!is.null(dyn_vals))
+        data.table::as.data.table(dyn_vals)[format == fmt] else NULL,
+      format = fmt)),
+    error = function(e) { message("pick values unavailable: ", conditionMessage(e)); NULL })
+  if (!is.null(pv)) message("priced ", nrow(pv), " draft picks")
+}
+
 # trajectory reads use the MEDIAN simulated next value: the rank->value curve
 # is convex, so the mean is Jensen-inflated by the draw spread (backtest: mean
 # exp_change overstates realized change, QB worst ~+50pts, while the value
@@ -511,7 +527,7 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
 ## ---- 3. trades.csv ----------------------------------------------------------------
 message("building buy-side trades @ ", Sys.time())
 trades_buy <- data.table::as.data.table(ffs_build_trades(
-  vsim, me, targets = targets, dynasty = dyn, value_band = value_band,
+  vsim, me, targets = targets, dynasty = dyn, picks = pv, value_band = value_band,
   uneven_shade = uneven_shade, consolidation_penalty = consolidation,
   max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
   uneven_require_winwin = uneven_winwin,
@@ -550,7 +566,7 @@ if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
                   value_to_you = vapply(player_id, value_to_me_of, numeric(1)))]
     ), by = "player_id")
     deal <- data.table::as.data.table(ffs_build_trades(
-      vsim, me, targets = tmini, dynasty = dyn, value_band = value_band,
+      vsim, me, targets = tmini, dynasty = dyn, picks = pv, value_band = value_band,
       uneven_shade = uneven_shade, consolidation_penalty = consolidation,
       max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
       uneven_require_winwin = uneven_winwin,
@@ -638,6 +654,12 @@ posture <- if (my_playoff >= 0.55) "contend" else if (my_playoff >= 0.35) "bubbl
 mine_d <- d[franchise_id == me & !is.na(cur_value)]
 cap <- sum(mine_d$cur_value)
 top3 <- sum(utils::head(sort(mine_d$cur_value, decreasing = TRUE), 3))
+
+# pick capital (value-only, win_now_value = 0 by construction - a pure store of
+# value that appreciates toward its draft)
+my_picks_d <- if (!is.null(pv)) pv[as.character(franchise_id) == me & !is.na(cur_value)] else NULL
+pick_cap      <- if (!is.null(my_picks_d)) sum(my_picks_d$cur_value) else 0
+pick_cap_next <- if (!is.null(my_picks_d)) sum(my_picks_d$next_value_mean) else 0
 verdict_cap <- merge(
   roster[!is.na(cur_value), list(player_id, verdict, cur_value)],
   data.table::data.table(player_id = mine_d$player_id), by = "player_id"
@@ -653,9 +675,12 @@ my_alloc <- merge(pos_alloc[franchise_id == me, list(pos, my_share = share)],
 
 portfolio <- data.table::rbindlist(list(
   data.table::data.table(metric = "posture", group = posture, value = round(my_playoff, 3)),
-  data.table::data.table(metric = "capital_now", group = "total", value = round(cap)),
+  data.table::data.table(metric = "capital_now", group = "players", value = round(cap)),
+  data.table::data.table(metric = "capital_now", group = "picks", value = round(pick_cap)),
+  data.table::data.table(metric = "capital_now", group = "total",
+                         value = round(cap + pick_cap)),
   data.table::data.table(metric = "capital_next_mean", group = "total",
-                         value = round(sum(mine_d$next_value_mean))),
+                         value = round(sum(mine_d$next_value_mean) + pick_cap_next)),
   data.table::data.table(metric = "capital_next_p10", group = "downside",
                          value = round(sum(mine_d$next_value_p10))),
   data.table::data.table(metric = "capital_next_p90", group = "upside",
