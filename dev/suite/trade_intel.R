@@ -89,10 +89,15 @@ n_trade      <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "60"))
 # breadth for time: 100 ~= +6 min over 50, 200 ~= +17 min. Frontier wants breadth.
 trade_top_n  <- as.integer(Sys.getenv("FFS_TRADE_TOP_N", "200"))
 confirm_n    <- as.integer(Sys.getenv("FFS_TRADE_CONFIRM_N", "15"))
-# deal-shape defaults per Joe: weigh next-year value equally with win-now
-# (future_weight=1), refuse deals bleeding >500 of future capital, and match
-# values within 10% - pure win-now surfaced aging-star consolidations (CMC
-# for young WRs) he would never accept
+# deal-shape defaults per Joe: future_weight=3 (2026-07-27) weights next-year value
+# ABOVE win-now in the z-scored deal score. Calibrated to ~100 future-value points
+# per +1% playoff = the win-now price line (~50-100 value pts/1% playoff on Joe's
+# roster, R2=0.71) divided by a ~0.55 certainty discount on projected future value
+# (his next-year capital 80% band spans 53%-155% of mean). fw=1 implicitly priced
+# 1% playoff at ~320 future pts - far too generous to win-now. Also: refuse deals
+# bleeding >750 of future capital, and match values within 10%. NB the z-scoring
+# makes the effective rate deal-set-dependent, so 3 encodes ~100/1% only near this
+# board's spread (SD_fut~2100, SD_playoff~6.6%).
 value_band   <- as.numeric(Sys.getenv("FFS_TRADE_VALUE_BAND", "0.10"))
 uneven_shade <- as.numeric(Sys.getenv("FFS_TRADE_UNEVEN_SHADE", as.character(value_band)))
 # consolidation realism: in an uneven trade the package (multi-player) side must
@@ -107,7 +112,14 @@ consolidation <- as.numeric(Sys.getenv("FFS_TRADE_CONSOLIDATION", "0.05"))
 winwin_bonus  <- as.numeric(Sys.getenv("FFS_TRADE_WINWIN_BONUS", "0.5"))
 uneven_winwin <- as.logical(as.integer(Sys.getenv("FFS_TRADE_UNEVEN_WINWIN", "0")))
 max_opp_drop <- as.numeric(Sys.getenv("FFS_TRADE_MAX_OPP_DROP", "0.20"))
-future_weight <- as.numeric(Sys.getenv("FFS_TRADE_FUTURE_WEIGHT", "1"))
+future_weight <- as.numeric(Sys.getenv("FFS_TRADE_FUTURE_WEIGHT", "3"))
+# fixed-rate scoring (default): rank deals in equivalent playoff % on raw points
+# against a stable exchange rate, instead of the legacy z-scored blend whose
+# effective rate drifts with the deal spread. Rates from dev/suite/exchange_rate_study.R.
+score_mode       <- Sys.getenv("FFS_TRADE_SCORE_MODE", "rate")   # "rate" | "zscore"
+playoff_value    <- as.numeric(Sys.getenv("FFS_TRADE_PLAYOFF_VALUE", "68"))     # k_P: value pts / 1% playoff
+future_certainty <- as.numeric(Sys.getenv("FFS_TRADE_FUTURE_CERTAINTY", "0.905")) # delta_stat
+win_to_playoff   <- as.numeric(Sys.getenv("FFS_TRADE_WIN_TO_PLAYOFF", "17.8"))  # playoff % per win (screen)
 min_future   <- as.numeric(Sys.getenv("FFS_TRADE_MIN_FUTURE", "-750"))
 # championship-odds weighting in the trade score. OFF by default: champ_delta
 # tested ~0.98 collinear with playoff_delta at every level (splits AND
@@ -532,6 +544,8 @@ trades_buy <- data.table::as.data.table(ffs_build_trades(
   max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
   uneven_require_winwin = uneven_winwin,
   champ_weight = champ_weight, ceiling_weight = ceiling_weight,
+  score_mode = score_mode, playoff_value = playoff_value,
+  future_certainty = future_certainty, win_to_playoff = win_to_playoff,
   future_weight = future_weight, min_future_delta = min_future))
 if (nrow(trades_buy)) trades_buy[, motive := "buy"]
 
@@ -571,6 +585,8 @@ if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
       max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
       uneven_require_winwin = uneven_winwin,
       champ_weight = champ_weight, ceiling_weight = ceiling_weight,
+      score_mode = score_mode, playoff_value = playoff_value,
+      future_certainty = future_certainty, win_to_playoff = win_to_playoff,
       future_weight = future_weight, min_future_delta = min_future,
       must_send = p, opponents = buyers, screen_n = 15L, top_n = 5))
     if (nrow(deal)) {
@@ -622,15 +638,44 @@ if (nrow(trades)) {
   # a deal that squeaked past the noisy search-sim value can confirm past the
   # threshold once the standings sim re-prices the other side's downside
   trades <- trades[is.na(opp_playoff_delta) | opp_playoff_delta >= -max_opp_drop]
-  # final ranking re-blends win-now and future value from the CONFIRMED deltas
+  # final ranking from the CONFIRMED deltas: fixed-rate equivalent-playoff-%
+  # (default) - 100*playoff + future/future_rate - or the legacy z-blend. Same
+  # exchange rate as ffs_build_trades; posture from my baseline playoff odds.
   zt <- function(x) {
     s <- stats::sd(x, na.rm = TRUE)
     if (is.na(s) || s == 0) return(rep(0, length(x)))
     (x - mean(x, na.rm = TRUE)) / s
   }
-  trades[, score := zt(my_playoff_delta) + champ_weight * zt(my_champ_delta) +
-           future_weight * zt(future_capital_delta) +
-           winwin_bonus * as.numeric(win_win %in% TRUE)]
+  # per-position reliability + smooth win-now haircut (matches ffs_build_trades)
+  nv_by_id  <- stats::setNames(d$next_value_mean, as.character(d$player_id))
+  cur_by_id <- stats::setNames(d$cur_value, as.character(d$player_id))
+  pos_by_id <- stats::setNames(d$pos, as.character(d$player_id))
+  # value-space calibration slopes capped into [0,1] - keep in sync with
+  # ffs_build_trades()'s future_reliability default (refit 2026-07-28 against the
+  # log-space transition model; the old set was fit pre-1bc4128 and went stale)
+  rel_pos <- if (identical(as.character(fmt), "1qb")) c(QB=0.651,RB=0.679,TE=1.000,WR=1.000) else
+                                                      c(QB=0.551,RB=1.000,TE=0.835,WR=1.000)
+  rel_ids <- function(ids) { r <- rel_pos[pos_by_id[ids]]; r[is.na(r)] <- future_certainty; r }
+  # reliability discounts the projected MOVE (next-cur), not the known current level
+  reliable_next <- function(ids) { ids <- ids[!grepl("^PICK_", ids)]; if (!length(ids)) return(0)
+    cu <- cur_by_id[ids]; nx <- nv_by_id[ids]; rl <- rel_ids(ids); cu[is.na(cu)] <- 0; nx[is.na(nx)] <- 0
+    sum(cu + rl * (nx - cu)) }
+  adj_future <- function(sids, rids, fcd) {
+    praw <- sum(nv_by_id[rids[!grepl("^PICK_",rids)]], na.rm=TRUE) - sum(nv_by_id[sids[!grepl("^PICK_",sids)]], na.rm=TRUE)
+    (reliable_next(rids) - reliable_next(sids)) + 0.55 * (fcd - praw)
+  }
+  my_hc <- pmin(pmax(1.30 - base_me[["playoff_pct"]][1], 0.60), 1.00)
+  trades[, adj_future_capital := vapply(seq_len(.N),
+    function(i) adj_future(send_ids[[i]], recv_ids[[i]], future_capital_delta[i]), numeric(1))]
+  if (score_mode == "rate") {
+    trades[, score := 100 * my_playoff_delta + adj_future_capital * my_hc / playoff_value +
+             champ_weight * 100 * my_champ_delta +
+             winwin_bonus * as.numeric(win_win %in% TRUE)]
+  } else {
+    trades[, score := zt(my_playoff_delta) + champ_weight * zt(my_champ_delta) +
+             future_weight * zt(future_capital_delta) +
+             winwin_bonus * as.numeric(win_win %in% TRUE)]
+  }
   data.table::setorder(trades, -confirmed, -score)
   trades[, rid := NULL]
 }

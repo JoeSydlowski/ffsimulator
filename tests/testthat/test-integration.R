@@ -202,9 +202,11 @@ test_that("ffs_build_trades constructs value-matched deals", {
                               value_band = band, min_future_delta = 0, top_n = 10)
   if (nrow(floored) > 0) expect_true(all(floored$future_capital_delta >= 0))
 
-  win_now <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+  # future_weight is a legacy z-score-mode lever (inert in the default "rate" mode,
+  # where the fixed exchange rate governs the future trade-off), so test it there
+  win_now <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn, score_mode = "zscore",
                               value_band = band, future_weight = 0, top_n = 5)
-  future_first <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn,
+  future_first <- ffs_build_trades(sim, me, targets = tt, dynasty = dyn, score_mode = "zscore",
                                    value_band = band, future_weight = 3, top_n = 5)
   if (nrow(win_now) > 0 && nrow(future_first) > 0) {
     expect_gte(mean(future_first$future_capital_delta),

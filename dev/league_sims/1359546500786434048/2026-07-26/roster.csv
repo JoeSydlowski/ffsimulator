@@ -1,0 +1,28 @@
+player_name,pos,age,cur_value,win_now_value,win_now_edge,playoff_add,champ_add,growth_abs,exp_change,rel_change,p_rise,p_exit,my_pos_rank,mean_weeks_started,trajectory,verdict,bust_flag,best_buyers,player_id
+Puka Nacua,WR,25.2,8709,1601,-538,0.194,0.046,98,-0.184,0.014,0.098,0,1,11.018,holding,SELL HIGH,FALSE,theKmbl (+1.10w/+24%); mkbarz (+0.92w/+15%); MacDaddyNation (+0.90w/+20%),9493
+Justin Jefferson,WR,27.1,7046,1439,-413,0.184,0.043,-64,-0.204,-0.011,0.246,0,2,10.775,holding,SELL HIGH,FALSE,theKmbl (+1.05w/+24%); mkbarz (+0.83w/+16%); mjmx3 (+0.79w/+17%),6794
+Daniel Jones,QB,29.2,2445,750,-203,0.073,0.02,-378,-0.307,-0.182,0.29,0.015,3,6.791,declining,CASH RENTAL,FALSE,MacDaddyNation (+0.40w/+10%); theKmbl (+0.38w/+6%); Chase'n Purdy Strange (+0.36w/+6%),5870
+George Kittle,TE,32.8,2185,556,-177,0.033,0.01,-138,-0.255,-0.078,0.081,0.082,3,6.986,declining,CASH RENTAL,FALSE,,4217
+Malik Willis,QB,27.2,2430,897,-214,0.104,0.027,-528,-0.369,-0.256,0.332,0.009,2,8.306,declining,CASH RENTAL,FALSE,MacDaddyNation (+0.56w/+11%); Chase'n Purdy Strange (+0.42w/+5%); theKmbl (+0.42w/+8%),8161
+Aaron Jones,RB,31.7,1270,620,-166,0.051,0.014,-359,-0.488,-0.356,0.151,0.013,2,7.229,declining,SWEETENER,FALSE,,4199
+MarShawn Lloyd,RB,25.6,1029,536,-255,0.011,0.002,-324,-0.521,-0.396,0.288,0.014,6,1.784,declining,SWEETENER,FALSE,,11581
+Mike Washington,RB,23.1,955,418,-115,0.015,0.005,-221,-0.437,-0.291,0.301,0.01,5,2.961,declining,SWEETENER,FALSE,,13305
+Calvin Ridley,WR,31.6,799,559,-270,0.013,0.003,-403,-0.7,-0.627,0.039,0.134,7,2.855,declining,SWEETENER,FALSE,,4981
+Isaiah Bond,WR,22.4,520,255,-10,0.002,0.001,-153,-0.49,-0.366,0.193,0.018,9,1.141,declining,SWEETENER,FALSE,,12503
+Emanuel Wilson,RB,27.2,495,314,-14,0.015,0.005,-212,-0.635,-0.54,0.286,0.048,4,2.882,declining,SWEETENER,FALSE,,11435
+Najee Harris,RB,28.4,294,164,100,0.007,0.003,-103,-0.557,-0.442,0.074,0.144,7,1.307,declining,SWEETENER,FALSE,,7528
+Taylen Green,QB,23.8,255,114,122,0,0,-75,-0.447,-0.348,0.32,0.354,5,0.308,declining,SWEETENER,TRUE,,13306
+Tetairoa McMillan,WR,23.3,4906,372,337,0.11,0.03,585,-0.076,0.148,0.363,0,3,10.561,appreciating,CORE,FALSE,,12526
+Jordyn Tyson,WR,22,3646,19,442,0.052,0.014,693,-0.005,0.236,0.458,0.001,5,8.408,appreciating,CORE,FALSE,,13281
+Tyler Shough,QB,26.8,3446,621,86,0.11,0.03,-98,-0.18,-0.033,0.281,0.002,1,8.876,holding,CORE,FALSE,,12545
+Harold Fannin,TE,22,3213,326,154,0.057,0.016,290,-0.101,0.112,0.378,0,1,8.579,appreciating,CORE,FALSE,,12506
+Denzel Boston,WR,22.6,1996,226,106,0.022,0.006,163,-0.113,0.102,0.342,0.012,6,4.053,appreciating,CORE,FALSE,,13346
+Ty Simpson,QB,23.6,1911,78,212,0.013,0.004,213,-0.041,0.131,0.491,0.01,4,1.436,appreciating,CORE,FALSE,,13275
+Tony Pollard,RB,29.3,1609,438,128,0.077,0.021,-107,-0.272,-0.083,0.069,0.002,1,8.32,declining,CORE,FALSE,,5967
+Dallas Goedert,TE,31.6,1495,357,45,0.039,0.01,-71,-0.239,-0.059,0.262,0.03,2,5.81,holding,CORE,FALSE,,5022
+Chris Rodriguez,RB,26.8,1227,181,247,0.045,0.011,71,-0.148,0.073,0.324,0.03,3,5.158,holding,CORE,FALSE,,10219
+Jack Bech,WR,23.6,1011,184,84,0.008,0.003,14,-0.182,0.017,0.41,0.026,8,1.895,holding,CORE,FALSE,,12483
+Eli Raridon,TE,22.5,966,60,185,0.002,0.001,126,-0.062,0.161,0.402,0.004,4,0.646,appreciating,CORE,FALSE,,13421
+Kaelon Black,RB,24.8,896,122,144,0.007,0.003,62,-0.136,0.088,0.452,0.005,8,1.232,appreciating,CORE,FALSE,,13414
+Tahj Brooks,RB,24.2,371,43,221,0.007,0.002,34,-0.115,0.114,0.448,0.047,9,1.14,appreciating,CORE,FALSE,,12543
+Carnell Tate,WR,21.5,4489,-157,,0.085,0.021,1033,0.035,0.286,0.607,0,4,9.376,appreciating,STASH (appreciating),FALSE,,13279

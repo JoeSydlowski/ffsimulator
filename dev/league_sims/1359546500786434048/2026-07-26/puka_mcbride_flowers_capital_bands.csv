@@ -1,0 +1,5 @@
+band,capital_after,capital_before,n_after,n_before,d_capital
+core starter (>=8 wk),33919,39494,8,9,-5575
+fill-in (1-4 wk),9757,8281,10,10,1476
+never starts (<1 wk),1741,1221,3,2,520
+rotation (4-8 wk),15481,10618,7,6,4863

@@ -1,0 +1,30 @@
+player_name,pos,age,role,weeks_before,weeks_after,d_weeks,pts_before,pts_after,d_pts,player_id
+Zay Flowers,WR,25.9,IN (received),0,10.56,10.56,0,142.4,142.4,9997
+Trey McBride,TE,26.7,IN (received),0,10.14,10.14,0,131.7,131.7,8130
+Taylen Green,QB,23.8,stays,0.31,0.3,-0.01,3.9,3.9,0,13306
+Malik Willis,QB,27.2,stays,8.31,8.3,-0.01,143.5,143.4,-0.1,8161
+Tyler Shough,QB,26.8,stays,8.88,8.87,-0.01,155.9,155.8,-0.1,12545
+Ty Simpson,QB,23.6,stays,1.44,1.41,-0.02,21.5,21.3,-0.2,13275
+Daniel Jones,QB,29.2,stays,6.79,6.76,-0.03,111.4,111.2,-0.2,5870
+Justin Jefferson,WR,27.1,stays,10.78,10.75,-0.02,169.8,169.6,-0.2,6794
+Tahj Brooks,RB,24.2,stays,1.14,1.06,-0.08,10.1,9.6,-0.5,12543
+Kaelon Black,RB,24.8,stays,1.23,1.15,-0.08,11.2,10.7,-0.5,13414
+Najee Harris,RB,28.4,stays,1.31,1.23,-0.08,11.6,10.9,-0.6,7528
+MarShawn Lloyd,RB,25.6,stays,1.78,1.68,-0.11,15.3,14.6,-0.7,11581
+Tetairoa McMillan,WR,23.3,stays,10.56,10.45,-0.11,141.3,140.2,-1.1,12526
+Tony Pollard,RB,29.2,stays,8.32,8.2,-0.12,89,87.9,-1.1,5967
+Mike Washington,RB,23.1,stays,2.96,2.81,-0.15,26.4,25.4,-1.1,13305
+Emanuel Wilson,RB,27.2,stays,2.88,2.73,-0.15,26.5,25.3,-1.2,11435
+Chris Rodriguez,RB,26.8,stays,5.16,4.96,-0.2,47.9,46.6,-1.2,10219
+Aaron Jones,RB,31.6,stays,7.23,7.04,-0.18,70.6,69.2,-1.4,4199
+Eli Raridon,TE,22.5,stays,0.65,0.38,-0.27,4.5,2.9,-1.6,13421
+Isaiah Bond,WR,22.4,stays,1.14,0.87,-0.27,9.9,7.9,-2,12503
+Jack Bech,WR,23.6,stays,1.9,1.52,-0.37,17.1,14.1,-3.1,12483
+Calvin Ridley,WR,31.6,stays,2.86,2.26,-0.6,25.5,20.8,-4.7,4981
+Carnell Tate,WR,21.5,stays,9.38,8.91,-0.47,111.9,107.2,-4.7,13279
+Denzel Boston,WR,22.6,stays,4.05,3.25,-0.81,38.9,32,-6.9,13346
+Jordyn Tyson,WR,22,stays,8.41,7.49,-0.92,92.4,83.3,-9.1,13281
+Harold Fannin,TE,22,stays,8.58,7.25,-1.33,90.6,78.3,-12.3,12506
+Dallas Goedert,TE,31.6,stays,5.81,4.24,-1.57,54.9,41.3,-13.6,5022
+George Kittle,TE,32.8,stays,6.99,5.25,-1.73,67.3,52.6,-14.7,4217
+Puka Nacua,WR,25.2,OUT (sent),11.02,0,-11.02,183.8,0,-183.8,9493

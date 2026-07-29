@@ -324,10 +324,37 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20) {
 #'   for a soft lean; this is the strict version.
 #' @param shapes list of `c(n_send, n_receive)` package sizes to enumerate
 #'   (default 1-for-1, 2-for-1, 1-for-2)
-#' @param future_weight how heavily to weigh keeping/gaining future dynasty value
-#'   against win-now gain, in standard-deviation units: the screen and final
-#'   ranking use `z(win) + future_weight * z(future_capital_delta)`. `0` (default)
-#'   is pure win-now; `1` weighs future value equally; `2`+ favours retention.
+#' @param future_weight LEGACY (`score_mode = "zscore"` only) how heavily to weigh
+#'   future dynasty value against win-now gain in standard-deviation units:
+#'   `z(win) + future_weight * z(future_capital_delta)`. Inert in the default
+#'   `"rate"` mode, where the fixed exchange rate governs the trade-off instead.
+#' @param score_mode `"rate"` (default) scores deals in a deal-set-INDEPENDENT
+#'   common currency of equivalent playoff %:
+#'   `100*playoff_delta + adj_future_capital * my_haircut / playoff_value + ...`,
+#'   where `adj_future_capital` is the reliability-adjusted future value and
+#'   `my_haircut` the smooth win-now discount. `"zscore"` reproduces the legacy
+#'   z-scored blend (weights in per-deal-set SD units, so the effective exchange
+#'   rate silently drifts with the deal spread).
+#' @param playoff_value value points per +1% playoff (`k_P`, default 68 from
+#'   `dev/suite/exchange_rate_study.R`: win-now price line over both leagues).
+#' @param future_certainty blended future-value reliability used only for the
+#'   pre-eval screen and as the fallback for unknown positions (default 0.905).
+#'   Final scoring uses per-position `future_reliability` instead.
+#' @param win_to_playoff +playoff percentage points per +1 h2h win (default 17.8),
+#'   used to convert the pre-eval screen's win proxy into playoff-% currency.
+#' @param future_reliability named vector of per-position future-value reliability
+#'   (fraction of a projected future move that realizes; `NULL` (default)
+#'   auto-selects by league format - superflex QB 0.25 / RB 0.94 / WR 0.76 /
+#'   TE 0.42). Applied per-deal to the actual players moving, so acquiring
+#'   unreliable-future QBs is discounted vs reliable RB/WR future.
+#' @param pick_reliability future-value reliability for draft picks (default 0.55).
+#' @param haircut_intercept,haircut_floor,haircut_cap smooth win-now haircut
+#'   `clamp(haircut_intercept - baseline_playoff, floor, cap)` (default 1.30 /
+#'   0.60 / 1.00): a contender (high playoff odds) discounts future most. The
+#'   opponent's own haircut (their baseline) drives the `gettable` flag.
+#' @param gettable_cut `gettable = opp_score >= gettable_cut` (default -3): the
+#'   opponent's OWN score of the deal (their playoff delta + their mirror future at
+#'   their haircut); >= this means the other side plausibly accepts.
 #' @param min_future_delta hard floor on `future_capital_delta` - drop any deal
 #'   that bleeds more future value than this (default `-Inf` = no floor; e.g.
 #'   `-500` refuses deals losing more than 500 units of next-year market value)
@@ -419,6 +446,12 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                              shapes = list(c(1, 1), c(2, 1), c(1, 2)),
                              future_weight = 0, min_future_delta = -Inf,
                              champ_weight = 0, ceiling_weight = 0,
+                             score_mode = c("rate", "zscore"),
+                             playoff_value = 68, future_certainty = 0.905,
+                             win_to_playoff = 17.8,
+                             future_reliability = NULL, pick_reliability = 0.55,
+                             haircut_intercept = 1.30, haircut_floor = 0.60, haircut_cap = 1.00,
+                             gettable_cut = -3,
                              opponents = NULL, must_send = NULL, picks = NULL,
                              even_band = value_band, uneven_gap = NULL,
                              max_gap = Inf, min_piece_value = 0,
@@ -439,6 +472,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   send_top <- recv_top <- my_champ_delta <- opp_champ_delta <- champion_pct_delta <- NULL
   opp_base <- dk <- value_gap <- recv_value <- win_win <- send <- receive <- NULL
   rel_change <- mps <- traj_bad <- projected_score <- opp_rank <- has_pick <- pick_rank <- NULL
+  adj_future_capital <- opp_score <- gettable <- opp_playoff_before <- NULL
 
   # standard-deviation scaling that is safe when the column is constant/singleton
   z <- function(x) {
@@ -449,6 +483,49 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 
   rs <- data.table::as.data.table(base_simulation$roster_scores)
   checkmate::assert_true(fid %in% rs$franchise_id)
+
+  # --- fixed-rate scoring config (see dev/suite/exchange_rate_study.R) ---------
+  # "rate" mode scores in EQUIVALENT PLAYOFF % on raw points:
+  #   score = 100*playoff_delta + future_capital_delta/future_rate + ...
+  # future_rate (R_eff) = future-value pts per +1% playoff = playoff_value /
+  # (future_certainty * risk[posture]) - a deal-set-INDEPENDENT exchange rate,
+  # unlike the legacy z-scored blend. posture (contend/bubble/rebuild) sets the
+  # win-now time-preference haircut; auto-derived from fid's baseline playoff odds
+  # if not supplied. "zscore" mode reproduces the pre-2026-07 blend.
+  score_mode <- match.arg(score_mode)
+  # smooth win-now haircut from baseline playoff odds (a contender values future
+  # least): haircut = clamp(haircut_intercept - playoff, floor, cap) - ~0.82 at a
+  # 48% bubble, ~0.65 near a 68% contender, 1.00 for a deep rebuilder.
+  base_pl <- tryCatch(.ffs_franchise_summary(base_simulation, fid)[["playoff_pct"]][1],
+                      error = function(e) NA_real_)
+  if (is.na(base_pl)) base_pl <- 0.5
+  hc <- function(p) pmin(pmax(haircut_intercept - p, haircut_floor), haircut_cap)
+  my_haircut <- hc(base_pl)
+  # per-position future-value reliability (auto by format unless supplied): the
+  # value-space calibration slope lm(actual_move ~ predicted_move) from
+  # dev/suite/dynasty_calibration.R, capped into [0, 1] the same way
+  # exchange_rate_study.R derives `future_certainty`. A projected future gain in
+  # QBs (~0.55 realized in superflex) is worth far less than one in WRs (~1.0).
+  # Picks -> pick_reliability; unknown pos -> future_certainty. Applied per-deal
+  # at final scoring; the coarse pre-eval screen uses the blend below.
+  #
+  # REFIT 2026-07-28 against the log-space transition model (commit 1bc4128). The
+  # previous set was fit to the pre-log-space model and became badly stale when
+  # that landed - superflex TE 0.423 -> 0.835, WR 0.761 -> 1.046 (capped 1.0) -
+  # which systematically over-credited future value in any deal that swapped a WR
+  # for a TE. Raw slopes: 1qb QB .651 RB .679 TE 1.362 WR 1.218;
+  # superflex QB .551 RB 1.105 TE .835 WR 1.046. Values above 1 are within ~1 se
+  # of 1 (except 1qb TE) and would AMPLIFY projected moves, so they are capped.
+  if (is.null(future_reliability)) {
+    fmt <- tryCatch(as.character(.ffs_detect_qb_format(base_simulation$lineup_constraints)),
+                    error = function(e) "superflex")
+    future_reliability <- if (identical(fmt, "1qb"))
+      c(QB = 0.651, RB = 0.679, TE = 1.000, WR = 1.000) else
+      c(QB = 0.551, RB = 1.000, TE = 0.835, WR = 1.000)
+  }
+  # blended-reliability rate for the screen only (smoothed haircut folded in)
+  future_rate <- playoff_value / (future_certainty * my_haircut)
+  if (!is.finite(future_rate) || future_rate <= 0) future_rate <- 130
 
   if (is.null(targets)) targets <- ffs_trade_targets(base_simulation, fid, top_n = 50)
   targets <- data.table::as.data.table(targets)
@@ -466,7 +543,8 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     my_win_delta = numeric(), my_playoff_delta = numeric(),
     opp_win_delta = numeric(), opp_playoff_delta = numeric(),
     win_win = logical(), future_capital_delta = numeric(),
-    give_back = logical(), score = numeric(),
+    adj_future_capital = numeric(), give_back = logical(), score = numeric(),
+    opp_score = numeric(), gettable = logical(),
     send_ids = I(list()), recv_ids = I(list())
   )
 
@@ -620,8 +698,16 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   # adds a top-end proxy (best player received minus best player sent) so
   # consolidations - which lose additive win-gain but raise your ceiling - are
   # not pruned before the exact eval can price their championship value.
-  deals[, screen := z(add_gain) + future_weight * z(future_capital_delta) +
-          ceiling_weight * z(recv_top - send_top)]
+  if (score_mode == "rate") {
+    # common currency = equivalent playoff %. add_gain is a WIN delta -> * the
+    # win->playoff rate; future value and the ceiling proxy -> / future_rate.
+    deals[, screen := add_gain * win_to_playoff +
+            future_capital_delta / future_rate +
+            ceiling_weight * (recv_top - send_top) / future_rate]
+  } else {
+    deals[, screen := z(add_gain) + future_weight * z(future_capital_delta) +
+            ceiling_weight * z(recv_top - send_top)]
+  }
   data.table::setorder(deals, -screen)
   if (screen_per_opp > 0L) {
     # coverage: every opponent's top-screen_per_opp packages are valued, plus the
@@ -654,7 +740,8 @@ ffs_build_trades <- function(base_simulation, franchise_id,
       my_win_delta = m$h2h_wins_delta, my_playoff_delta = m$playoff_pct_delta,
       my_champ_delta = m$champion_pct_delta,
       opp_win_delta = op$h2h_wins_delta, opp_playoff_delta = op$playoff_pct_delta,
-      opp_champ_delta = op$champion_pct_delta)
+      opp_champ_delta = op$champion_pct_delta,
+      opp_playoff_before = op$playoff_pct_before)   # opponent baseline, for gettability
   }))
   deals <- cbind(deals, ev)
   deals[, win_win := my_win_delta > 0 & opp_win_delta > 0]
@@ -758,13 +845,52 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   deals[, traj_bad := vapply(seq_len(.N),
     function(i) traj_of(send_ids[[i]], recv_ids[[i]]), numeric(1))]
 
-  # final ranking: win-now gain traded off against future value by future_weight,
-  # with a soft lean toward deals that help both sides and away from ones that ship
-  # my risers / acquire decliners
-  deals[, score := z(my_playoff_delta) + champ_weight * z(my_champ_delta) +
-          future_weight * z(future_capital_delta) +
-          winwin_bonus * as.numeric(win_win %in% TRUE) -
-          traj_weight * z(traj_bad)]
+  # per-position reliability-adjusted future value, and the opponent's OWN
+  # valuation (their playoff delta + their mirror future at THEIR haircut) for
+  # gettability. Residual method keeps picks: real players carry their position
+  # reliability, the pick remainder carries pick_reliability.
+  nv_by_id   <- stats::setNames(dyn$next_value_mean, dyn$player_id)
+  cur_by_id  <- stats::setNames(dyn$cur_value, dyn$player_id)
+  pos_lu     <- rs[, list(pos = pos[1]), by = player_id]
+  pos_by_id2 <- stats::setNames(pos_lu$pos, pos_lu$player_id)
+  rel_ids <- function(ids) { r <- future_reliability[pos_by_id2[ids]]; r[is.na(r)] <- future_certainty; r }
+  # reliability discounts the projected MOVE (next - cur), NOT the whole level:
+  # a player's current market value is known; only next year's CHANGE is a
+  # projection (QB move projections attenuate hardest, ~0.25 - a scarce, sticky,
+  # long-career position the rank-transition model over-swings). Picks are pure
+  # speculation, so their future value is level-discounted at pick_reliability.
+  reliable_next <- function(ids) {
+    ids <- ids[!grepl("^PICK_", ids)]; if (!length(ids)) return(0)
+    cu <- cur_by_id[ids]; nx <- nv_by_id[ids]; rl <- rel_ids(ids)
+    cu[is.na(cu)] <- 0; nx[is.na(nx)] <- 0
+    sum(cu + rl * (nx - cu))
+  }
+  players_next <- function(ids) { ids <- ids[!grepl("^PICK_", ids)]; sum(nv_by_id[ids], na.rm = TRUE) }
+  adj_one <- function(sids, rids, fcd) {
+    praw <- players_next(rids) - players_next(sids)                 # players-only raw next
+    (reliable_next(rids) - reliable_next(sids)) + pick_reliability * (fcd - praw)
+  }
+  deals[, adj_future_capital := vapply(seq_len(.N),
+    function(i) adj_one(send_ids[[i]], recv_ids[[i]], future_capital_delta[i]), numeric(1))]
+  deals[, opp_score := 100 * opp_playoff_delta +
+          (-adj_future_capital) * hc(opp_playoff_before) / playoff_value]
+  deals[, gettable := opp_score >= gettable_cut]
+
+  # final ranking. rate mode = equivalent playoff %: 100*playoff_delta +
+  # reliability-adjusted future * my haircut / price of a playoff point (+winwin
+  # bonus, -traj penalty in equiv-% units). future_weight is inert here.
+  if (score_mode == "rate") {
+    deals[, score := 100 * my_playoff_delta +
+            adj_future_capital * my_haircut / playoff_value +
+            champ_weight * 100 * my_champ_delta +
+            winwin_bonus * as.numeric(win_win %in% TRUE) -
+            traj_weight * traj_bad]
+  } else {
+    deals[, score := z(my_playoff_delta) + champ_weight * z(my_champ_delta) +
+            future_weight * z(future_capital_delta) +
+            winwin_bonus * as.numeric(win_win %in% TRUE) -
+            traj_weight * z(traj_bad)]
+  }
   data.table::setorder(deals, -score, -my_win_delta)
 
   # dedup: collapse deals that differ only by throw-in filler or draft-pick YEAR
@@ -783,7 +909,8 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     opponent, send, receive, send_value, recv_value, value_gap,
     my_win_delta, my_playoff_delta, my_champ_delta,
     opp_win_delta, opp_playoff_delta, opp_champ_delta,
-    win_win, future_capital_delta, give_back, score, send_ids, recv_ids)]
+    win_win, future_capital_delta, adj_future_capital, give_back, score,
+    opp_score, gettable, send_ids, recv_ids)]
   return(as.data.frame(out))
 }
 

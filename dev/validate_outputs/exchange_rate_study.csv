@@ -1,0 +1,11 @@
+metric,value,note
+k_P_per1pct,68.4,95% CI 59-78; r2=0.37; n=342
+win_to_playoff_pct,17.8,+playoff% per +1 h2h win (screen)
+champ_per_playoff,0.312,title equity per berth equity
+delta_stat_blend,0.905,roster-value-weighted future reliability (SF)
+delta_risk_contend,0.65,stated
+delta_risk_bubble,0.8,stated
+delta_risk_rebuild,1,stated
+R_contend,116,future pts per +1% playoff
+R_bubble,94,future pts per +1% playoff
+R_rebuild,76,future pts per +1% playoff

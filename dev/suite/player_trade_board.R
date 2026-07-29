@@ -148,19 +148,27 @@ top_n    <- as.integer(Sys.getenv("FFS_TRADE_TOP_N", "400"))
 # win target but ranks #76 on the proxy because my WR room is stacked, so top_n=50
 # would drop him. A deep scan exact-values him and lets Egbuka+Barkley+pick build.
 target_n <- as.integer(Sys.getenv("FFS_TARGET_N", "160"))
+# package shapes to enumerate, e.g. FFS_BOARD_SHAPES="1,2;2,2" for send-1/2 only
+board_shapes <- lapply(strsplit(Sys.getenv("FFS_BOARD_SHAPES", "1,2;2,2;2,3"), ";")[[1]],
+                       function(s) as.integer(strsplit(trimws(s), ",")[[1]]))
 message("scanning ", target_n, " targets @ ", Sys.time())
 targets <- data.table::as.data.table(ffs_trade_targets(sim, me, top_n = target_n))
 
 message("building board: move ", move_name, " across all teams @ ", Sys.time())
 board <- as.data.table(ffs_build_trades(
   sim, me, dynasty = dyn, picks = pv, must_send = move_id, targets = targets,
-  shapes = list(c(1, 2), c(2, 2), c(2, 3)),
+  shapes = board_shapes,
   even_band = even_band, uneven_gap = ug, max_gap = ug[2],
   min_piece_value = min_piece, min_recv_value = min_recv,
   giveback = TRUE, giveback_trigger = 0, giveback_try = 3L,
   max_opp_drop = max_opp_drop, max_opp_future_drop = max_opp_future,
   traj_weight = traj_weight, rise_cut = rise_cut, fade_cut = fade_cut,
-  future_weight = 1, min_future_delta = -750, winwin_bonus = 0.5,
+  score_mode = Sys.getenv("FFS_TRADE_SCORE_MODE", "rate"),
+  playoff_value = as.numeric(Sys.getenv("FFS_TRADE_PLAYOFF_VALUE", "68")),
+  future_certainty = as.numeric(Sys.getenv("FFS_TRADE_FUTURE_CERTAINTY", "0.905")),
+  win_to_playoff = as.numeric(Sys.getenv("FFS_TRADE_WIN_TO_PLAYOFF", "17.8")),
+  future_weight = as.numeric(Sys.getenv("FFS_TRADE_FUTURE_WEIGHT", "3")),
+  min_future_delta = -750, winwin_bonus = 0.5,
   dedupe = TRUE, screen_n = screen_n, screen_per_opp = screen_per_opp, top_n = top_n))
 
 ## ---- format + write the ranked board --------------------------------------------
@@ -177,13 +185,24 @@ board[, shape := paste0(nS, "-for-", nR)]
 board[, headliner := tstrsplit(receive, " \\+ ", keep = 1)]
 setorder(board, -score)
 
+board[, grade := data.table::fcase(score>=18,"A", score>=10,"B", score>=4,"C",
+                                   score>=0,"D", default="F")]
 outb <- board[, .(team = franchise_name, shape, send, receive,
   send_value = round(send_value), recv_value = round(recv_value),
-  gap_pct, mine_pl, opp_pl, fut, win_win, give_back, uses_pick, score = round(score, 2))]
+  gap_pct, mine_pl, opp_pl, fut, adj_fut = round(adj_future_capital),
+  score = round(score, 1), grade, opp_score = round(opp_score, 1), gettable,
+  win_win, give_back, uses_pick)]
 safe <- gsub("[^A-Za-z0-9]+", "_", move_name)
 board_csv <- file.path(out, paste0(safe, "_trade_board.csv"))
 fwrite(outb, board_csv)
 message("wrote ", nrow(outb), " deals to ", board_csv)
+
+# also persist the full board object (with send_ids/recv_ids/opponent list-cols and
+# the search-sim deltas) so the confirm step can re-price a chosen subset on the
+# n=2000 standings sim via ffs_trade_eval - the readable CSV drops the id columns.
+board_rds <- file.path(out, paste0(safe, "_board.rds"))
+saveRDS(board, board_rds)
+message("wrote board object ", board_rds)
 
 ## ---- per-team options: TARGETS, each with its SEND variations --------------------
 # For each team show its best received-package TARGETS (Henderson+Olave+pick,

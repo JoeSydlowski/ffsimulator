@@ -1,0 +1,56 @@
+player_name,pos,cur_value,win_now_value,win_now_edge,pd,panel,role,cat
+Puka Nacua,WR,8709,1601,-534.765397778935,0.194,BEFORE (today's roster),OUT (sent),win-now priced-rich
+Justin Jefferson,WR,7046,1439,-415.57708115516,0.184,BEFORE (today's roster),stays,win-now priced-rich
+Daniel Jones,QB,2445,750,-201.786766631255,0.073,BEFORE (today's roster),stays,win-now priced-rich
+George Kittle,TE,2185,556,-179.033500136154,0.033,BEFORE (today's roster),stays,win-now priced-rich
+Malik Willis,QB,2430,897,-216.070548164958,0.104,BEFORE (today's roster),stays,win-now priced-rich
+Aaron Jones,RB,1270,620,-165.97247005895,0.051,BEFORE (today's roster),stays,win-now priced-rich
+MarShawn Lloyd,RB,1029,536,-253.219203563849,0.011,BEFORE (today's roster),stays,win-now priced-rich
+Mike Washington,RB,955,418,-118.094530213359,0.015,BEFORE (today's roster),stays,win-now priced-rich
+Calvin Ridley,WR,799,559,-267.656866888604,0.013,BEFORE (today's roster),stays,win-now priced-rich
+Isaiah Bond,WR,520,255,-10.7497186024514,0.002,BEFORE (today's roster),stays,win-now priced-rich
+Emanuel Wilson,RB,495,314,-14.0945302133591,0.015,BEFORE (today's roster),stays,win-now priced-rich
+Najee Harris,RB,294,164,101.656123085661,0.007,BEFORE (today's roster),stays,win-now bargain (edge)
+Taylen Green,QB,255,114,121.687944722304,0,BEFORE (today's roster),stays,win-now bargain (edge)
+Tetairoa McMillan,WR,4906,372,334.616461860777,0.11,BEFORE (today's roster),stays,win-now bargain (edge)
+Jordyn Tyson,WR,3646,19,439.308698278673,0.052,BEFORE (today's roster),stays,win-now bargain (edge)
+Tyler Shough,QB,3446,621,85.6164618607768,0.11,BEFORE (today's roster),stays,win-now bargain (edge)
+Harold Fannin,TE,3213,326,153.714539966785,0.057,BEFORE (today's roster),stays,win-now bargain (edge)
+Denzel Boston,WR,1996,226,103.873648149998,0.022,BEFORE (today's roster),stays,win-now bargain (edge)
+Ty Simpson,QB,1911,78,213.343133111396,0.013,BEFORE (today's roster),stays,win-now bargain (edge)
+Tony Pollard,RB,1609,438,127.337906719235,0.077,BEFORE (today's roster),stays,win-now bargain (edge)
+Dallas Goedert,TE,1495,357,45.6535098895805,0.039,BEFORE (today's roster),stays,win-now bargain (edge)
+Chris Rodriguez,RB,1227,181,247.340519915315,0.045,BEFORE (today's roster),stays,win-now bargain (edge)
+Jack Bech,WR,1011,184,85.9372914232835,0.008,BEFORE (today's roster),stays,win-now bargain (edge)
+Eli Raridon,TE,966,60,184.250281397549,0.002,BEFORE (today's roster),stays,win-now bargain (edge)
+Kaelon Black,RB,896,122,143.656123085661,0.007,BEFORE (today's roster),stays,win-now bargain (edge)
+Tahj Brooks,RB,371,43,222.656123085661,0.007,BEFORE (today's roster),stays,win-now bargain (edge)
+Carnell Tate,WR,4489,-157,,0.085,BEFORE (today's roster),stays,future (judge on trajectory)
+Chris Rodriguez,RB,1227,181.09554351657,217.276798035388,0.038,AFTER (post-trade roster),stays,win-now bargain (edge)
+Emanuel Wilson,RB,495,314.116322983764,22.179077672668,0.0235,AFTER (post-trade roster),stays,win-now bargain (edge)
+MarShawn Lloyd,RB,1029,535.629043159476,-250.707662554514,0.0115,AFTER (post-trade roster),stays,win-now priced-rich
+Jack Bech,WR,1011,183.552984093319,92.8060598363983,0.00950000000000001,AFTER (post-trade roster),stays,win-now bargain (edge)
+Isaiah Bond,WR,520,254.725249997522,-8.33438443116216,0.0025,AFTER (post-trade roster),stays,win-now priced-rich
+Harold Fannin,TE,3213,325.7552138963,68.3359593180353,0.037,AFTER (post-trade roster),stays,win-now bargain (edge)
+Tetairoa McMillan,WR,4906,372.06538649099,300.301728668807,0.102,AFTER (post-trade roster),stays,win-now bargain (edge)
+Tahj Brooks,RB,371,42.691865980457,222.964257105204,0.00700000000000001,AFTER (post-trade roster),stays,win-now bargain (edge)
+Tyler Shough,QB,3446,620.89213122978,77.161993955752,0.108,AFTER (post-trade roster),stays,win-now bargain (edge)
+Ty Simpson,QB,1911,77.6765602108501,211.525988731735,0.0125,AFTER (post-trade roster),stays,win-now bargain (edge)
+Carnell Tate,WR,4489,-156.54668156489,,0.061,AFTER (post-trade roster),stays,future (judge on trajectory)
+Jordyn Tyson,WR,3646,18.80600792726,441.643274520224,0.0525,AFTER (post-trade roster),stays,win-now bargain (edge)
+Mike Washington,RB,955,417.586664851588,-91.9941850392122,0.021,AFTER (post-trade roster),stays,win-now priced-rich
+Taylen Green,QB,255,113.932107972214,130.318173425335,0.002,AFTER (post-trade roster),stays,win-now bargain (edge)
+Denzel Boston,WR,1996,226.24646401669,67.2372532635172,0.0135,AFTER (post-trade roster),stays,win-now bargain (edge)
+Kaelon Black,RB,896,121.939374183439,139.4355805646,0.00600000000000001,AFTER (post-trade roster),stays,win-now bargain (edge)
+Eli Raridon,TE,966,59.522494356606,184.727787040943,0.002,AFTER (post-trade roster),stays,win-now bargain (edge)
+Aaron Jones,RB,1270,620.229429712997,-134.093137239778,0.0585,AFTER (post-trade roster),stays,win-now priced-rich
+George Kittle,TE,2185,556.28319959114,-219.987798934708,0.0235,AFTER (post-trade roster),stays,win-now priced-rich
+Calvin Ridley,WR,799,559.096384441165,-263.472082992147,0.014,AFTER (post-trade roster),stays,win-now priced-rich
+Dallas Goedert,TE,1495,357.2457455471,9.01783347268935,0.0305,AFTER (post-trade roster),stays,win-now bargain (edge)
+Daniel Jones,QB,2445,749.52966686366,-203.457017663726,0.0725,AFTER (post-trade roster),stays,win-now priced-rich
+Tony Pollard,RB,1609,437.72705260903,125.470269941394,0.0765,AFTER (post-trade roster),stays,win-now bargain (edge)
+Justin Jefferson,WR,7046,1438.75034295634,-511.653711708006,0.1615,AFTER (post-trade roster),stays,win-now priced-rich
+Najee Harris,RB,294,163.62925996226,95.6051106169673,0.00550000000000001,AFTER (post-trade roster),stays,win-now bargain (edge)
+Trey McBride,TE,6373,743.78482203694,-73.5582910459541,0.1015,AFTER (post-trade roster),IN (received),win-now priced-rich
+Malik Willis,QB,2430,896.7798183969,-205.147445717802,0.1065,AFTER (post-trade roster),stays,win-now priced-rich
+Zay Flowers,WR,3620,445.51896806634,310.330929677095,0.1215,AFTER (post-trade roster),IN (received),win-now bargain (edge)

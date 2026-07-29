@@ -88,7 +88,11 @@ for (nm in c("SLOPE", "BIAS")) {
 move_space_env <- Sys.getenv("FFS_MOVE_SPACE", "")
 if (nzchar(move_space_env)) options(ffsimulator.dyn_move_space = move_space_env)
 if (nzchar(feat)) cat("feature variant:", feat, "\n")
-cat("move_space:", getOption("ffsimulator.dyn_move_space", "rank"), "\n")
+# the fallback here must track .ffs_draw_transition's own default ("log" since
+# the 2026-07-25 latent-coordinate gate) - it reported "rank" while the run was
+# actually in log space, which is exactly backwards in a script whose job is to
+# validate the shipped defaults
+cat("move_space:", getOption("ffsimulator.dyn_move_space", "log"), "\n")
 
 scoring_history <- readRDS(file.path(out_dir, "scoring_history_2012_2025.rds"))
 dp_id <- as.data.table(ffscrapr::dp_playerids())[
