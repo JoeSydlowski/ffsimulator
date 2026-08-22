@@ -12,17 +12,32 @@ ffs_build_trades(
   value_band = 0.15,
   uneven_shade = value_band,
   consolidation_penalty = 0,
-  max_opp_drop = Inf,
+  max_opp_drop = 0.15,
   winwin_bonus = 0,
   uneven_require_winwin = FALSE,
+  fair_premium = 0.05,
+  fair_band = NULL,
+  opp_edge_tol = 0.05,
+  opp_mode = c("market", "mirror"),
   shapes = list(c(1, 1), c(2, 1), c(1, 2)),
   future_weight = 0,
   min_future_delta = -Inf,
   champ_weight = 0,
   ceiling_weight = 0,
+  score_mode = c("rate", "zscore"),
+  playoff_value = 68,
+  future_certainty = 0.905,
+  win_to_playoff = 17.8,
+  future_reliability = NULL,
+  pick_reliability = 0.55,
+  haircut_intercept = 1.3,
+  haircut_floor = 0.6,
+  haircut_cap = 1,
+  gettable_cut = -3,
   opponents = NULL,
   must_send = NULL,
   picks = NULL,
+  require_positive_target = TRUE,
   even_band = value_band,
   uneven_gap = NULL,
   max_gap = Inf,
@@ -31,6 +46,7 @@ ffs_build_trades(
   giveback = FALSE,
   giveback_trigger = 0,
   giveback_try = 5L,
+  giveback_trigger_edge = 0,
   giveback_max_value = Inf,
   traj_weight = 0,
   rise_cut = 0.075,
@@ -40,6 +56,12 @@ ffs_build_trades(
   dedupe = FALSE,
   screen_n = 40L,
   screen_per_opp = 0L,
+  eval_max = Inf,
+  engine = NULL,
+  workers = 1L,
+  verbose = FALSE,
+  core_n = Inf,
+  dry_run = FALSE,
   top_n = 20L
 )
 }
@@ -71,9 +93,11 @@ package) the package must be worth this much more than him. \code{0} (default) =
 the package need only match the single side; e.g. \code{0.05} = package must be
 5-15pct more than the single side (with \code{uneven_shade = 0.10})}
 
-\item{max_opp_drop}{drop any deal that cuts the \emph{other} side's playoff odds by
-more than this (default \code{Inf} = no filter; e.g. \code{0.20} refuses deals no
-rational opponent would accept, like giving up their only startable QB)}
+\item{max_opp_drop}{veto any deal that cuts the \emph{other} side's playoff odds by
+more than this (default \code{0.15}). Deliberately loose: a real owner does not
+refuse an ordinary deal over a couple of points of playoff odds, so this
+fires only where a trade genuinely guts them - giving up their only startable
+QB. The everyday acceptance test is the market one (\code{opp_edge_tol}).}
 
 \item{winwin_bonus}{ranking bump (in \code{score} std-dev units) added to deals
 that help both sides (\code{win_win}) - a soft lean toward mutually beneficial
@@ -83,17 +107,72 @@ deals rather than a hard filter (default \code{0})}
 drop deals that are not \code{win_win} (default \code{FALSE}). Prefer \code{winwin_bonus}
 for a soft lean; this is the strict version.}
 
+\item{fair_premium}{the overpay a multi-player package must carry per extra
+piece, as a fraction of the single side's value (default \code{0.05}). A premium
+player is worth more than a package of equal summed value, so a 1-for-2 is
+\emph{fair} at a +5pct gap, not at 0. See \code{\link[=.ffs_market_edge]{.ffs_market_edge()}}.}
+
+\item{fair_band}{optional \code{c(lo, hi)} band on \code{my_edge} (the deal's gap
+relative to the shape-fair price) applied at enumeration, e.g. \code{c(-0.05, 0.05)}. One interpretable parameter in place of \code{even_band}/\code{uneven_gap}:
+the upper edge is how much over fair I am willing to try to take, the lower
+edge stops enumerating deals where I overpay. \code{NULL} (default) keeps the
+legacy per-shape bands.}
+
+\item{opp_edge_tol}{how far below the shape-fair price the other owner will
+still deal (default \code{0.05} = I may take up to 5pct over fair). This is a
+sim-free test on current market value, so it prunes before the exact eval.}
+
+\item{opp_mode}{how the opponent's side is scored. \code{"market"} (default) prices
+their side off the current market value they net, with their playoff odds
+vetoing only a large drop (\code{max_opp_drop}). \code{"mirror"} restores the previous
+behaviour - their playoff delta plus the negated mirror of \emph{my}
+reliability-adjusted future at their haircut - for A/B comparison.}
+
 \item{shapes}{list of \code{c(n_send, n_receive)} package sizes to enumerate
 (default 1-for-1, 2-for-1, 1-for-2)}
 
-\item{future_weight}{how heavily to weigh keeping/gaining future dynasty value
-against win-now gain, in standard-deviation units: the screen and final
-ranking use \code{z(win) + future_weight * z(future_capital_delta)}. \code{0} (default)
-is pure win-now; \code{1} weighs future value equally; \code{2}+ favours retention.}
+\item{future_weight}{LEGACY (\code{score_mode = "zscore"} only) how heavily to weigh
+future dynasty value against win-now gain in standard-deviation units:
+\code{z(win) + future_weight * z(future_capital_delta)}. Inert in the default
+\code{"rate"} mode, where the fixed exchange rate governs the trade-off instead.}
 
 \item{min_future_delta}{hard floor on \code{future_capital_delta} - drop any deal
 that bleeds more future value than this (default \code{-Inf} = no floor; e.g.
 \code{-500} refuses deals losing more than 500 units of next-year market value)}
+
+\item{score_mode}{\code{"rate"} (default) scores deals in a deal-set-INDEPENDENT
+common currency of equivalent playoff \%:
+\code{100*playoff_delta + adj_future_capital * my_haircut / playoff_value + ...},
+where \code{adj_future_capital} is the reliability-adjusted future value and
+\code{my_haircut} the smooth win-now discount. \code{"zscore"} reproduces the legacy
+z-scored blend (weights in per-deal-set SD units, so the effective exchange
+rate silently drifts with the deal spread).}
+
+\item{playoff_value}{value points per +1\% playoff (\code{k_P}, default 68 from
+\code{dev/suite/exchange_rate_study.R}: win-now price line over both leagues).}
+
+\item{future_certainty}{blended future-value reliability used only for the
+pre-eval screen and as the fallback for unknown positions (default 0.905).
+Final scoring uses per-position \code{future_reliability} instead.}
+
+\item{win_to_playoff}{+playoff percentage points per +1 h2h win (default 17.8),
+used to convert the pre-eval screen's win proxy into playoff-\% currency.}
+
+\item{future_reliability}{named vector of per-position future-value reliability
+(fraction of a projected future move that realizes; \code{NULL} (default)
+auto-selects by league format - superflex QB 0.25 / RB 0.94 / WR 0.76 /
+TE 0.42). Applied per-deal to the actual players moving, so acquiring
+unreliable-future QBs is discounted vs reliable RB/WR future.}
+
+\item{pick_reliability}{future-value reliability for draft picks (default 0.55).}
+
+\item{haircut_intercept, haircut_floor, haircut_cap}{smooth win-now haircut
+\code{clamp(haircut_intercept - baseline_playoff, floor, cap)} (default 1.30 /
+0.60 / 1.00): a contender (high playoff odds) discounts future most. The
+opponent's own haircut (their baseline) drives the \code{gettable} flag.}
+
+\item{gettable_cut}{deprecated, and ignored unless \code{opp_mode = "mirror"}.
+Gettability is now the market test described under \code{opp_edge_tol}.}
 
 \item{opponents}{optional franchise_ids: only build deals with these
 franchises (default \code{NULL} = anyone). Useful to target the teams a specific
@@ -102,6 +181,12 @@ player is worth the most to.}
 \item{must_send}{optional player_ids that every send package must include -
 the "how do I sell THIS player" mode (default \code{NULL} = no constraint).
 Shapes smaller than \code{length(must_send)} produce no packages.}
+
+\item{require_positive_target}{when \code{TRUE} (default) only players who add wins
+on their own (\code{value_to_you > 0}) can be received. Set \code{FALSE} for an
+exhaustive scan: a player who adds no starts by himself can still be the
+right \emph{value} piece in a package, and the exact evaluation will judge that.
+\code{min_recv_value} remains the junk filter either way.}
 
 \item{even_band}{gap band for \strong{even} trades expressed on the received value,
 \verb{|send - receive| / receive <= even_band} (default = \code{value_band}, so
@@ -135,14 +220,19 @@ scores the \code{giveback_try} cheapest candidates at that position and keeps th
 one that lifts the opponent's playoff odds the most. It is exempt from the
 value band, so the variant shows a softer \code{opp_playoff_delta} (default \code{FALSE})}
 
-\item{giveback_trigger}{only add a give-back variant when the base deal's
-\code{opp_playoff_delta} is below this (default \code{0} = whenever the opponent is hurt)}
+\item{giveback_trigger}{legacy, unused: the give-back now triggers on
+\code{giveback_trigger_edge}.}
 
 \item{giveback_try}{how many of your most-useful spare players at the drained
 position to evaluate as the give-back. Candidates are ranked by usefulness to
 the \emph{opponent} (mean weekly points), the top \code{giveback_try} are valued, and the
 one with the best opponent playoff-lift \emph{per unit of value you give up} is kept
 (default \code{5}). If none lifts the opponent, no give-back variant is added.}
+
+\item{giveback_trigger_edge}{only add a give-back variant when the base deal's
+\code{opp_edge} is below this (default \code{0} = whenever the other side is coming up
+short of the shape-fair price). A give-back is real value handed over, so it
+counts toward \code{send_value} and therefore improves their market edge.}
 
 \item{giveback_max_value}{optional ceiling on a give-back piece's \code{cur_value}, so
 a valuable player is never used as a mere sweetener (default \code{Inf} = no cap)}
@@ -159,24 +249,56 @@ counts as appreciating / declining for \code{traj_weight} (defaults \code{0.075}
 \code{-0.075}, matching the trade-intel role cutoffs)}
 
 \item{posture_rebuild_cut}{opponents with baseline playoff odds below this are
-treated as rebuilders and gated on future value instead of playoff odds
-(default \code{0.35})}
+treated as rebuilders (default \code{0.35}); only consulted when
+\code{max_opp_future_drop} is finite}
 
-\item{max_opp_future_drop}{for \strong{rebuilder} opponents, drop deals that cut
-their future dynasty capital (\code{-future_capital_delta}) by more than this
-(default \code{Inf} = rebuilders accept any playoff hit for future value)}
+\item{max_opp_future_drop}{legacy opt-in: for \strong{rebuilder} opponents, also
+drop deals that cut their future dynasty capital by more than this. Largely
+redundant under \code{opp_mode = "market"} - a rebuilder's appetite for youth and
+picks is already priced into \code{cur_value} - so it defaults to \code{Inf} (off).}
 
 \item{dedupe}{when \code{TRUE}, collapse deals that differ only by throw-in filler
 or draft-pick \emph{year} (same pick slot) to the single highest-scoring
 representative, so near-identical ideas do not flood the board (default \code{FALSE})}
 
-\item{screen_n}{how many screened packages to value exactly (default 40)}
+\item{screen_n}{how many screened packages to value exactly (default 40).
+\code{Inf} evaluates every banded deal - the exhaustive mode.}
 
 \item{screen_per_opp}{guarantee at least this many of each opponent's
 best-screened packages are valued, so a single team's high-gain deals cannot
 crowd every other team out of the exact-eval budget (default \code{0} = pure global
 top-\code{screen_n}). The eval set becomes the union of the global top-\code{screen_n}
-and each opponent's top-\code{screen_per_opp}, giving every team coverage.}
+and each opponent's top-\code{screen_per_opp}, giving every team coverage. \code{Inf}
+drops the per-team cap entirely (exhaustive), which with \code{screen_n = Inf}
+leaves the screen serving only as eval ordering.}
+
+\item{eval_max}{hard ceiling on how many deals get the exact evaluation
+(default \code{Inf}). A safety net for exhaustive scans: deals beyond the cap are
+dropped in screen order, with a warning, so a mis-set band cannot silently
+launch a multi-day run.}
+
+\item{engine}{an optional pre-built \code{\link[=ffs_trade_engine]{ffs_trade_engine()}} for the exact
+evaluations (see \code{\link[=ffs_trade_eval_many]{ffs_trade_eval_many()}})}
+
+\item{workers}{number of parallel workers for the exact evaluations (default
+\code{1} = in-process). Per-deal cost is dominated by re-solving both franchises'
+weekly lineups, which parallelises cleanly across deals.}
+
+\item{verbose}{report progress through the expensive stages (default \code{FALSE})}
+
+\item{core_n}{cap the number of deals evaluated per trade \strong{idea} - a
+\verb{(opponent, best piece sent, best piece received)} core - keeping the
+best-screening ones (default \code{Inf} = no cap). This is the effective lever on
+an exhaustive scan: measured on a full Puka board, ~19,400 banded deals
+collapse to only ~64 distinct cores, so ~300 of every 301 evaluations are
+spent re-pricing the same idea with different throw-ins. \code{screen_per_opp}
+cannot substitute - it caps per team, which is far coarser than per idea.}
+
+\item{dry_run}{return the banded, screened candidate set \strong{without} running
+the exact evaluation (default \code{FALSE}). Use it to size a scan - how many
+deals a band admits, and of what shape - before committing to hours of
+evaluation. The returned frame carries \code{n_send}/\code{n_recv}/\code{shape}, the market
+edges and the \code{screen} ordering, but no simulated deltas or \code{score}.}
 
 \item{top_n}{how many ranked deals to return (default 20)}
 }
@@ -185,9 +307,10 @@ a dataframe of trades: \code{opponent}, \code{send}, \code{receive}, dynasty
 \code{send_value}/\code{recv_value}/\code{value_gap}, re-optimized \code{my_win_delta},
 \code{my_playoff_delta}, \code{opp_win_delta}, \code{opp_playoff_delta}, a \code{win_win} flag,
 \code{future_capital_delta}, a \code{give_back} flag (whether a give-back sweetener was
-appended), the \code{score} used to rank them, and list-columns
-\code{send_ids}/\code{recv_ids} so a deal can be re-evaluated (e.g. confirmed on a
-larger simulation with \code{\link[=ffs_trade_eval]{ffs_trade_eval()}})
+appended), the \code{score} used to rank them and its letter \code{grade}, the market
+view of the other side (\code{my_edge}, \code{opp_edge}, \code{opp_value_gain}, \code{opp_score},
+\code{gettable}), and list-columns \code{send_ids}/\code{recv_ids} so a deal can be
+re-evaluated (e.g. confirmed on a larger simulation with \code{\link[=ffs_trade_eval]{ffs_trade_eval()}})
 }
 \description{
 (EXPERIMENTAL) Assembles complete, plausible trades for a franchise. For

@@ -9,7 +9,8 @@ ffs_player_value(
   player_id,
   franchise_id,
   base_summary = NULL,
-  fast = TRUE
+  fast = TRUE,
+  engine = NULL
 )
 }
 \arguments{
@@ -27,6 +28,11 @@ same franchise to avoid recomputing it each time}
 used \code{lineup_method = "rank"} (default \code{TRUE}); \code{FALSE} forces the full
 whole-franchise re-optimisation (identical result, slower) and is mainly for
 validation. The full path is always used for efficiency/best-ball sims.}
+
+\item{engine}{an optional pre-built \code{\link[=ffs_trade_engine]{ffs_trade_engine()}}. A deep target scan
+calls this thousands of times, and without an engine every call
+re-summarises the whole league and re-copies \code{roster_scores}. Results are
+identical.}
 }
 \value{
 a one-row dataframe: franchise_id, player_id, player_name, owner_id,

@@ -10,7 +10,8 @@ ffs_trade_eval(
   gives_a,
   franchise_b,
   gives_b,
-  fast = TRUE
+  fast = TRUE,
+  engine = NULL
 )
 }
 \arguments{
@@ -26,6 +27,11 @@ ffs_trade_eval(
 used \code{lineup_method = "rank"} (default \code{TRUE}); \code{FALSE} forces the full
 re-optimisation (identical result, slower). The full path is always used for
 efficiency/best-ball sims.}
+
+\item{engine}{an optional pre-built \code{\link[=ffs_trade_engine]{ffs_trade_engine()}}. Evaluating many
+deals against one simulation repeats an identical league-wide summary every
+call; an engine hoists that invariant work out of the loop and is one to two
+orders of magnitude faster per deal. Results are identical.}
 }
 \value{
 a two-row dataframe (one per franchise) with before/after and delta

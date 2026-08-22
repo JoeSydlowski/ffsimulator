@@ -26,12 +26,10 @@
   exit_broad_rank = getOption("ffsimulator.dyn_exit_broad_rank", 3),
   exit_broad_age = getOption("ffsimulator.dyn_exit_broad_age", 3),
   exit_transitions = NULL,
-  disp_factor = getOption("ffsimulator.dyn_disp_factor", c(QB = 1.68, TE = 1.43, WR =
-    1.2, RB = 1.11)),
-  move_slope = getOption("ffsimulator.dyn_move_slope", c(QB = 0.48, RB = 0.76, WR = 0.64,
-    TE = 0.51)),
-  move_bias = getOption("ffsimulator.dyn_move_bias", c(QB = 1.7, RB = 2.4, WR = 4.1, TE =
-    2.5))
+  disp_factor = NULL,
+  move_slope = NULL,
+  move_bias = NULL,
+  move_space = getOption("ffsimulator.dyn_move_space", "log")
 )
 }
 \value{
@@ -91,22 +89,23 @@ The multi-holdout backtest finds the regression slope of actual on
 predicted rank move < 1 at every position (predicted move magnitudes too
 extreme - regression to the mean not fully captured by the kernel
 resample). The correction shifts each draw's CENTER: the kernel-weighted
-mean move \code{dbar} becomes \code{move_slope * dbar + move_bias} (delta space,
-positive = rank number grows = decline) while the dispersion around it is
-left to \code{disp_factor}. Enabled by default with constants fit on material
-players (value >= 150) across all 11 holdouts, leave-one-holdout-out
-stable: \code{move_slope = c(QB = .48, RB = .76, WR = .64, TE = .51)},
-\code{move_bias = c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5)}. On the
-confirmation backtest this lifts the material actual~predicted move slope
-from 0.48-0.76 to 0.56-0.89, cuts the user-facing exp_change optimism
-(WR +22\% -> +6\% predicted vs -5\% realized; TE +32\% -> +8\%), improves or
-holds MAE, and moves material cover80 from over-coverage (0.84-0.91)
-toward nominal (0.81-0.91) - see
-dev/validate_outputs/dynasty_point_calibration.txt. Stronger constants
-saturate (the summarized median stops responding under the rank-1
-truncation) and degrade value-space slope, so this is the calibrated
-dose, not a partial one. Pass \code{NULL} to disable; positions absent from
-the vector get slope 1 / bias 0.
+mean move \code{dbar} becomes \code{move_slope * dbar + move_bias} (in the active
+\code{move_space}'s units, positive = decline) while the dispersion around it is
+left to \code{disp_factor}. The defaults are COUPLED to \code{move_space} (see there);
+both sets are fit on material players (value >= 150) across all 11 holdouts,
+leave-one-holdout-out stable. The shipped LOG set is
+\code{move_slope = c(QB = .639, RB = .852, TE = .734, WR = .860)},
+\code{move_bias = c(QB = .002, RB = -.027, TE = .055, WR = .016)} - the biases are
+~0 because the log coordinate removes the systematic level shift the rank set
+had to patch. The RANK set, used when \code{move_space = "rank"}, is
+\code{move_slope = c(QB = .48, RB = .76, WR = .64, TE = .51)},
+\code{move_bias = c(QB = 1.7, RB = 2.4, WR = 4.1, TE = 2.5)}; it lifts the material
+actual~predicted slope toward 1 and cuts exp_change optimism, but its +4.1 WR
+bias SATURATES at the apex (over-corrects elite ranks, cover80 0.41) - the
+reason log became the default. See
+dev/validate_outputs/dynasty_point_calibration.txt (sections 3 and 7). Set the
+option to \code{numeric(0)} to disable; positions absent from the vector get
+slope 1 / bias 0.
 
 \code{disp_factor} (optional named per-position vector, e.g.
 \code{c(QB = 1.7, TE = 1.4, WR = 1.2, RB = 1.1)}): widens each survivor's rank
@@ -116,10 +115,29 @@ interval under-dispersion of positions with compressed positional scales
 conditional resample under-states their value volatility; effective sample
 size is ~flat across positions, so this is a per-position, not n_eff-driven,
 correction). The mean is preserved, so medians/\code{p_rise} are unchanged - only
-the interval widens. Enabled by default with backtest-calibrated factors
-\code{c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)}, which lift survivor
-\code{cover80} from ~0.60-0.73 to ~0.75-0.82 across both formats (shallower
-rankings need more widening). Pass \code{NULL}, or a vector with no matching
-positions, to disable.
+the interval widens. Defaults are COUPLED to \code{move_space}: the shipped LOG set
+is \code{c(QB = 1.20, TE = 1.13, WR = 1.06, RB = 1.03)} - the log coordinate is
+already near-homoscedastic, so it needs less widening than the RANK set
+(\code{c(QB = 1.68, TE = 1.43, WR = 1.20, RB = 1.11)}, used when
+\code{move_space = "rank"}). Both lift survivor \code{cover80} toward ~0.80. Set the
+option to \code{numeric(0)}, or pass a vector with no matching positions, to disable.
+
+\code{move_space} (\code{"log"} default as of 2026-07-25, or \code{"rank"} / \code{"probit"}): the
+coordinate the survivor rank move is recentered/widened and transported in.
+\code{"rank"} is the original behavior - byte-identical RNG stream and results (the
+additive positional-rank delta clipped at rank 1). The latent options instead apply
+the move in a monotone, unbounded, RANK-ONLY transform \code{T} (\code{"log"}:
+\verb{T(r)=log r}; \code{"probit"}: \code{T(r)=qnorm(r/(pool_depth+1))}), so the rank-1
+reflecting boundary softens and the move is homoscedastic across the board:
+\verb{next = Tinv(T(target) + [ms*Tbar + mb] + fp*(T(pick_move) - Tbar))}. This
+targets the apex-truncation artifact the pass-2 rank-space correction
+saturates against (elite ranks can't rise above 1, so their move center
+stops responding to \code{move_slope}); moving in \code{T} lets the shrinkage reach the
+summarized median and narrows the mean/median gap that inflates the
+mean-based capital columns downstream. \code{move_slope}/\code{move_bias}/\code{disp_factor}
+are in the units of the active space and default to the space-appropriate
+shipped set; a non-default latent run can refit them via
+\code{dev/suite/dynasty_latent_gate.R}. Value-free by construction: the transform
+touches rank only, never the value curve.
 }
 \keyword{internal}

@@ -4,7 +4,13 @@
 \alias{ffs_trade_targets}
 \title{Scan the league for trade fits}
 \usage{
-ffs_trade_targets(base_simulation, franchise_id, top_n = 20)
+ffs_trade_targets(
+  base_simulation,
+  franchise_id,
+  top_n = 20,
+  engine = NULL,
+  sides = c("both", "you")
+)
 }
 \arguments{
 \item{base_simulation}{an \code{ff_simulation} object from \code{ff_simulate(..., return = "all")}}
@@ -12,11 +18,19 @@ ffs_trade_targets(base_simulation, franchise_id, top_n = 20)
 \item{franchise_id}{the acquiring franchise}
 
 \item{top_n}{how many screened candidates to value exactly (default 20)}
+
+\item{engine}{an optional pre-built \code{\link[=ffs_trade_engine]{ffs_trade_engine()}}, shared with the
+\code{\link[=ffs_player_value]{ffs_player_value()}} calls underneath}
+
+\item{sides}{\code{"both"} (default) values each candidate for you \emph{and} his owner,
+which is what \code{surplus} needs. \code{"you"} skips the owner side and so halves
+the cost of a deep scan - \code{\link[=ffs_build_trades]{ffs_build_trades()}} only ever reads
+\code{value_to_you}, so a package builder should pass \code{"you"}.}
 }
 \value{
 a dataframe of candidates: screen proxy, value_to_you +
-playoff_delta_you (impact on YOUR team), value_to_owner +
-playoff_delta_owner (impact on the OWNER's team), and
+playoff_delta_you (impact on YOUR team) and, when \code{sides = "both"},
+value_to_owner + playoff_delta_owner (impact on the OWNER's team) and
 surplus = value_to_you - value_to_owner
 }
 \description{
