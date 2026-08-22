@@ -20,6 +20,16 @@ ffs_build_trades(
   min_future_delta = -Inf,
   champ_weight = 0,
   ceiling_weight = 0,
+  score_mode = c("rate", "zscore"),
+  playoff_value = 68,
+  future_certainty = 0.905,
+  win_to_playoff = 17.8,
+  future_reliability = NULL,
+  pick_reliability = 0.55,
+  haircut_intercept = 1.3,
+  haircut_floor = 0.6,
+  haircut_cap = 1,
+  gettable_cut = -3,
   opponents = NULL,
   must_send = NULL,
   picks = NULL,
@@ -86,14 +96,49 @@ for a soft lean; this is the strict version.}
 \item{shapes}{list of \code{c(n_send, n_receive)} package sizes to enumerate
 (default 1-for-1, 2-for-1, 1-for-2)}
 
-\item{future_weight}{how heavily to weigh keeping/gaining future dynasty value
-against win-now gain, in standard-deviation units: the screen and final
-ranking use \code{z(win) + future_weight * z(future_capital_delta)}. \code{0} (default)
-is pure win-now; \code{1} weighs future value equally; \code{2}+ favours retention.}
+\item{future_weight}{LEGACY (\code{score_mode = "zscore"} only) how heavily to weigh
+future dynasty value against win-now gain in standard-deviation units:
+\code{z(win) + future_weight * z(future_capital_delta)}. Inert in the default
+\code{"rate"} mode, where the fixed exchange rate governs the trade-off instead.}
 
 \item{min_future_delta}{hard floor on \code{future_capital_delta} - drop any deal
 that bleeds more future value than this (default \code{-Inf} = no floor; e.g.
 \code{-500} refuses deals losing more than 500 units of next-year market value)}
+
+\item{score_mode}{\code{"rate"} (default) scores deals in a deal-set-INDEPENDENT
+common currency of equivalent playoff \%:
+\code{100*playoff_delta + adj_future_capital * my_haircut / playoff_value + ...},
+where \code{adj_future_capital} is the reliability-adjusted future value and
+\code{my_haircut} the smooth win-now discount. \code{"zscore"} reproduces the legacy
+z-scored blend (weights in per-deal-set SD units, so the effective exchange
+rate silently drifts with the deal spread).}
+
+\item{playoff_value}{value points per +1\% playoff (\code{k_P}, default 68 from
+\code{dev/suite/exchange_rate_study.R}: win-now price line over both leagues).}
+
+\item{future_certainty}{blended future-value reliability used only for the
+pre-eval screen and as the fallback for unknown positions (default 0.905).
+Final scoring uses per-position \code{future_reliability} instead.}
+
+\item{win_to_playoff}{+playoff percentage points per +1 h2h win (default 17.8),
+used to convert the pre-eval screen's win proxy into playoff-\% currency.}
+
+\item{future_reliability}{named vector of per-position future-value reliability
+(fraction of a projected future move that realizes; \code{NULL} (default)
+auto-selects by league format - superflex QB 0.25 / RB 0.94 / WR 0.76 /
+TE 0.42). Applied per-deal to the actual players moving, so acquiring
+unreliable-future QBs is discounted vs reliable RB/WR future.}
+
+\item{pick_reliability}{future-value reliability for draft picks (default 0.55).}
+
+\item{haircut_intercept, haircut_floor, haircut_cap}{smooth win-now haircut
+\code{clamp(haircut_intercept - baseline_playoff, floor, cap)} (default 1.30 /
+0.60 / 1.00): a contender (high playoff odds) discounts future most. The
+opponent's own haircut (their baseline) drives the \code{gettable} flag.}
+
+\item{gettable_cut}{\code{gettable = opp_score >= gettable_cut} (default -3): the
+opponent's OWN score of the deal (their playoff delta + their mirror future at
+their haircut); >= this means the other side plausibly accepts.}
 
 \item{opponents}{optional franchise_ids: only build deals with these
 franchises (default \code{NULL} = anyone). Useful to target the teams a specific
