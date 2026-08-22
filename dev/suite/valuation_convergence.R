@@ -18,6 +18,9 @@
 
 library(data.table)
 devtools::load_all(here::here(), quiet = TRUE)
+# ffscrapr reads a dead nflverse asset, so ff_scoringhistory() returns ZERO rows
+# for 2025+ and every simulation silently loses its most recent season.
+source(here::here("dev", "suite", "scoring_history_shim.R")); install_shim()
 options(ffsimulator.verbose = FALSE)
 
 league_id <- Sys.getenv("FFS_LEAGUE_ID", "1326464763936403456")

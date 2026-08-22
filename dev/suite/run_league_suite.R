@@ -9,6 +9,9 @@
 library(data.table)
 library(ggplot2)
 devtools::load_all(here::here(), quiet = TRUE)
+# ffscrapr reads a dead nflverse asset, so ff_scoringhistory() returns ZERO rows
+# for 2025+ and every simulation silently loses its most recent season.
+source(here::here("dev", "suite", "scoring_history_shim.R")); install_shim()
 
 ## ---- CONFIG -----------------------------------------------------------------
 # JML 1326464763936403456
@@ -28,6 +31,15 @@ config <- list(
   # random schedules (use when the schedule isn't released yet)
   actual_schedule = as.logical(Sys.getenv("FFS_ACTUAL_SCHEDULE", "TRUE")),
   playoff_slots = 6L,
+  # Positions the simulation starts. K is EXCLUDED by default: a league that
+  # requires a K slot but has managers carrying no kicker in the offseason gets
+  # a badly asymmetric sim - the LP simply leaves that slot empty all season, so
+  # those teams are modelled as punting a starter every week. Measured on the
+  # Goofball league (2 of 10 teams kicker-less at the time): including K moved
+  # their playoff odds by -51 and -42 points and inflated everyone else by 3-18.
+  # DEF is never simulable (no rows in scoring history), so it drops out for all
+  # teams regardless; dropping K too leaves both non-skill slots uniform.
+  pos_filter = strsplit(Sys.getenv("FFS_POS_FILTER", "QB,RB,WR,TE"), ",")[[1]],
   run_dynasty = TRUE,
   run_trade_intel = TRUE,
   # generic owner-context WAR for every rostered player (ff_wins_added).
@@ -72,6 +84,7 @@ sim <- ff_simulate(
   lineup_method = config$lineup_method,
   replacement_level = config$replacement_level,
   actual_schedule = config$actual_schedule,
+  pos_filter = config$pos_filter,
   return = "all"
 )
 if (is.null(sim$summary_season)) {

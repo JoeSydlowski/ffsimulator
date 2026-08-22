@@ -44,6 +44,9 @@ suppressMessages({
   devtools::load_all(here::here(), quiet = TRUE)
   library(ffscrapr)
 })
+# ffscrapr reads a dead nflverse asset, so ff_scoringhistory() returns ZERO rows
+# for 2025+ and every simulation silently loses its most recent season.
+source(here::here("dev", "suite", "scoring_history_shim.R")); install_shim()
 options(ffsimulator.verbose = FALSE)
 
 ## ---- config: newest saved report for the league --------------------------------

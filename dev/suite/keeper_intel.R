@@ -31,6 +31,9 @@ suppressPackageStartupMessages({
 if (!"ffsimulator" %in% loadedNamespaces()) {
   suppressMessages(devtools::load_all(rprojroot::find_root(rprojroot::has_file("DESCRIPTION")), quiet = TRUE))
 }
+# ffscrapr reads a dead nflverse asset, so ff_scoringhistory() returns ZERO rows
+# for 2025+ and every simulation silently loses its most recent season.
+source(here::here("dev", "suite", "scoring_history_shim.R")); install_shim()
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
