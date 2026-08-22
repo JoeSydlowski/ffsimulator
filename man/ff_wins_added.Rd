@@ -25,6 +25,11 @@ leave-one-out cost scales with the number of players evaluated.}
     \item{\code{base_seasons}}{a numeric vector that selects seasons as base data, earliest available is 2012}
     \item{\code{actual_schedule}}{a logical: use actual ff_schedule? default is FALSE}
     \item{\code{replacement_level}}{a logical: use best available on waiver as  replacement level? defaults to TRUE}
+    \item{\code{fill_missing_starters}}{a logical: top up any franchise that cannot field a
+required starter (typically K) with the best unrostered player at that position?
+The optimiser cannot stream, so an unfilled slot is left empty every week and the
+franchise is modelled as punting a starter all season. Defaults to FALSE, which
+is a no-op for leagues whose starting slots are all QB/RB/WR/TE.}
     \item{\code{pos_filter}}{a character vector of positions to filter/run, default is c("QB","RB","WR","TE","K")}
     \item{\code{verbose}}{a logical: print status messages? default is TRUE, configure with options(ffsimulator.verbose)}
     \item{\code{version}}{projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation}

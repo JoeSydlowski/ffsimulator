@@ -11,6 +11,11 @@
 #' @param base_seasons a numeric vector that selects seasons as base data, earliest available is 2012
 #' @param actual_schedule a logical: use actual ff_schedule? default is FALSE
 #' @param replacement_level a logical: use best available on waiver as  replacement level? defaults to TRUE
+#' @param fill_missing_starters a logical: top up any franchise that cannot field a
+#'   required starter (typically K) with the best unrostered player at that position?
+#'   The optimiser cannot stream, so an unfilled slot is left empty every week and the
+#'   franchise is modelled as punting a starter all season. Defaults to FALSE, which
+#'   is a no-op for leagues whose starting slots are all QB/RB/WR/TE.
 #' @param pos_filter a character vector of positions to filter/run, default is c("QB","RB","WR","TE","K")
 #' @param verbose a logical: print status messages? default is TRUE, configure with options(ffsimulator.verbose)
 #' @param version projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation
@@ -41,6 +46,7 @@ ff_simulate <- function(conn,
                         base_seasons = 2012:nflreadr::most_recent_season(),
                         actual_schedule = FALSE,
                         replacement_level = TRUE,
+                        fill_missing_starters = FALSE,
                         pos_filter = c("QB", "RB", "WR", "TE", "K"),
                         verbose = NULL,
                         version = c("v2", "v1", "v3"),
@@ -90,6 +96,7 @@ ff_simulate <- function(conn,
   if (!is.null(verbose)) set_verbose(verbose)
   checkmate::assert_flag(actual_schedule)
   checkmate::assert_flag(replacement_level)
+  checkmate::assert_flag(fill_missing_starters)
 
   #### Import Data ####
 
@@ -157,6 +164,18 @@ ff_simulate <- function(conn,
   if (replacement_level) {
     rosters_rl <- ffs_add_replacement_level(
       rosters = rosters,
+      latest_rankings = latest_rankings,
+      franchises = franchises,
+      lineup_constraints = lineup_constraints,
+      pos_filter = pos_filter
+    )
+  }
+
+  # a required slot nobody is rostering (typically K) would otherwise be left empty
+  # every week for that franchise - see ffs_fill_missing_starters()
+  if (fill_missing_starters) {
+    rosters_rl <- ffs_fill_missing_starters(
+      rosters = rosters_rl,
       latest_rankings = latest_rankings,
       franchises = franchises,
       lineup_constraints = lineup_constraints,

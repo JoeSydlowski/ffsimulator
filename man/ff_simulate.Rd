@@ -14,6 +14,7 @@ ff_simulate(
   base_seasons = 2012:nflreadr::most_recent_season(),
   actual_schedule = FALSE,
   replacement_level = TRUE,
+  fill_missing_starters = FALSE,
   pos_filter = c("QB", "RB", "WR", "TE", "K"),
   verbose = NULL,
   version = c("v2", "v1", "v3"),
@@ -40,6 +41,12 @@ ff_simulate(
 \item{actual_schedule}{a logical: use actual ff_schedule? default is FALSE}
 
 \item{replacement_level}{a logical: use best available on waiver as  replacement level? defaults to TRUE}
+
+\item{fill_missing_starters}{a logical: top up any franchise that cannot field a
+required starter (typically K) with the best unrostered player at that position?
+The optimiser cannot stream, so an unfilled slot is left empty every week and the
+franchise is modelled as punting a starter all season. Defaults to FALSE, which
+is a no-op for leagues whose starting slots are all QB/RB/WR/TE.}
 
 \item{pos_filter}{a character vector of positions to filter/run, default is c("QB","RB","WR","TE","K")}
 

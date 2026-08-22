@@ -31,15 +31,19 @@ config <- list(
   # random schedules (use when the schedule isn't released yet)
   actual_schedule = as.logical(Sys.getenv("FFS_ACTUAL_SCHEDULE", "TRUE")),
   playoff_slots = 6L,
-  # Positions the simulation starts. K is EXCLUDED by default: a league that
-  # requires a K slot but has managers carrying no kicker in the offseason gets
-  # a badly asymmetric sim - the LP simply leaves that slot empty all season, so
-  # those teams are modelled as punting a starter every week. Measured on the
-  # Goofball league (2 of 10 teams kicker-less at the time): including K moved
-  # their playoff odds by -51 and -42 points and inflated everyone else by 3-18.
-  # DEF is never simulable (no rows in scoring history), so it drops out for all
-  # teams regardless; dropping K too leaves both non-skill slots uniform.
-  pos_filter = strsplit(Sys.getenv("FFS_POS_FILTER", "QB,RB,WR,TE"), ",")[[1]],
+  # Positions the simulation starts. DEF is never simulable (no DEF rows exist in
+  # scoring history, and pos_filter is arg_match-capped), so a DEF slot drops out
+  # for every franchise alike - uniform, and harmless. K is kept, but only because
+  # fill_missing_starters repairs it: the optimiser cannot stream, so a manager
+  # carrying no kicker would otherwise have that slot left EMPTY every week and be
+  # modelled as punting a starter all season. Measured on the Goofball league with
+  # 2 of 10 franchises kicker-less, leaving it unrepaired cost them 51 and 42 points
+  # of playoff odds and inflated the other eight by 3-18.
+  pos_filter = strsplit(Sys.getenv("FFS_POS_FILTER", "QB,RB,WR,TE,K"), ",")[[1]],
+  # Top up any franchise that cannot field a required starter with the best
+  # unrostered player there. Verified a no-op for JML and Jon (zero franchises
+  # short at any position); it only bites in leagues with a K or DEF slot.
+  fill_missing_starters = as.logical(Sys.getenv("FFS_FILL_STARTERS", "TRUE")),
   run_dynasty = TRUE,
   run_trade_intel = TRUE,
   # generic owner-context WAR for every rostered player (ff_wins_added).
@@ -85,6 +89,7 @@ sim <- ff_simulate(
   replacement_level = config$replacement_level,
   actual_schedule = config$actual_schedule,
   pos_filter = config$pos_filter,
+  fill_missing_starters = config$fill_missing_starters,
   return = "all"
 )
 if (is.null(sim$summary_season)) {
@@ -131,10 +136,14 @@ if (config$run_dynasty) {
   # real FantasyCalc market values anchor dynasty values (both formats scraped;
   # ffs_dynasty_outlook filters to the league's). Set FFS_FANTASYCALC=0 to skip
   # and fall back to the synthetic rank-decay curve.
+  # FantasyCalc prices by league size; defaulting to 12 in a 10-team league shifts
+  # QB values ~3%. Correlation is 0.9998 either way, so this is a refinement.
+  n_teams <- as.integer(ffscrapr::ff_league(conn)$franchise_count)
   dyn_vals <- NULL
   if (Sys.getenv("FFS_FANTASYCALC", "1") != "0") {
     dyn_vals <- tryCatch(
-      rbind(fc_dynasty_values(num_qbs = 1), fc_dynasty_values(num_qbs = 2)),
+      rbind(fc_dynasty_values(num_qbs = 1, num_teams = n_teams),
+            fc_dynasty_values(num_qbs = 2, num_teams = n_teams)),
       error = function(e) { message("FantasyCalc unavailable: ", conditionMessage(e)); NULL })
     db_path <- here::here("dev", "data", "fantasycalc_values.parquet")
     if (!is.null(dyn_vals) && requireNamespace("arrow", quietly = TRUE)) {
