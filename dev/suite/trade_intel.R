@@ -65,7 +65,12 @@ if (standalone) {
   dyn_vals <- NULL
   if (Sys.getenv("FFS_FANTASYCALC", "1") != "0") {
     dyn_vals <- tryCatch(
-      rbind(fc_dynasty_values(num_qbs = 1), fc_dynasty_values(num_qbs = 2)),
+      {
+        # price at the league's own size; the 12-team default shifts QB values ~3%
+        nt <- as.integer(ffscrapr::ff_league(conn)$franchise_count)
+        rbind(fc_dynasty_values(num_qbs = 1, num_teams = nt),
+              fc_dynasty_values(num_qbs = 2, num_teams = nt))
+      },
       error = function(e) { message("FantasyCalc unavailable: ", conditionMessage(e)); NULL })
   }
 }
@@ -126,6 +131,13 @@ playoff_value    <- as.numeric(Sys.getenv("FFS_TRADE_PLAYOFF_VALUE", "68"))     
 future_certainty <- as.numeric(Sys.getenv("FFS_TRADE_FUTURE_CERTAINTY", "0.905")) # delta_stat
 win_to_playoff   <- as.numeric(Sys.getenv("FFS_TRADE_WIN_TO_PLAYOFF", "17.8"))  # playoff % per win (screen)
 min_future   <- as.numeric(Sys.getenv("FFS_TRADE_MIN_FUTURE", "-750"))
+# Trajectory: soft down-rank (in score SD units) for shipping appreciating players
+# or acquiring declining ones - the "realign without sacrificing win-now" lever.
+# Needs a dynasty table carrying rel_change, which only the enriched `d` has (dyn
+# is deliberately left unmutated), so the builder gets `d` when this is on. 0 =
+# trajectory-blind, which is the historical behaviour.
+traj_weight  <- as.numeric(Sys.getenv("FFS_TRADE_TRAJ_WEIGHT", "0"))
+pick_for_pick <- as.logical(as.integer(Sys.getenv("FFS_TRADE_PICK_FOR_PICK", "0")))
 # championship-odds weighting in the trade score. OFF by default: champ_delta
 # tested ~0.98 collinear with playoff_delta at every level (splits AND
 # consolidations), so it re-ranks nothing - the berth-negative/champ-positive
@@ -543,15 +555,24 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
 
 ## ---- 3. trades.csv ----------------------------------------------------------------
 message("building buy-side trades @ ", Sys.time())
+# `d` is a row-preserving superset of `dyn` (copy + all.x merges), so it is a safe
+# substitute - but assert that rather than trust it, since a duplicate merge key
+# would silently expand the asset universe the builder enumerates over.
+dyn_tbl <- dyn
+if (traj_weight > 0) {
+  stopifnot("enriched dynasty table changed row count" = nrow(d) == nrow(dyn))
+  dyn_tbl <- d
+}
 trades_buy <- data.table::as.data.table(ffs_build_trades(
-  vsim, me, targets = targets, dynasty = dyn, picks = pv, value_band = value_band,
+  vsim, me, targets = targets, dynasty = dyn_tbl, picks = pv, value_band = value_band,
   uneven_shade = uneven_shade, consolidation_penalty = consolidation,
   max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
   uneven_require_winwin = uneven_winwin,
   champ_weight = champ_weight, ceiling_weight = ceiling_weight,
   score_mode = score_mode, playoff_value = playoff_value,
   future_certainty = future_certainty, win_to_playoff = win_to_playoff,
-  future_weight = future_weight, min_future_delta = min_future))
+  future_weight = future_weight, min_future_delta = min_future,
+  traj_weight = traj_weight, pick_for_pick = pick_for_pick))
 if (nrow(trades_buy)) trades_buy[, motive := "buy"]
 
 # sell matchmaker: for each SELL, deals that send HIM to his best buyers and
@@ -585,7 +606,7 @@ if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
                   value_to_you = vapply(player_id, value_to_me_of, numeric(1)))]
     ), by = "player_id")
     deal <- data.table::as.data.table(ffs_build_trades(
-      vsim, me, targets = tmini, dynasty = dyn, picks = pv, value_band = value_band,
+      vsim, me, targets = tmini, dynasty = dyn_tbl, picks = pv, value_band = value_band,
       uneven_shade = uneven_shade, consolidation_penalty = consolidation,
       max_opp_drop = max_opp_drop, winwin_bonus = winwin_bonus,
       uneven_require_winwin = uneven_winwin,
@@ -593,6 +614,7 @@ if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
       score_mode = score_mode, playoff_value = playoff_value,
       future_certainty = future_certainty, win_to_playoff = win_to_playoff,
       future_weight = future_weight, min_future_delta = min_future,
+      traj_weight = traj_weight, pick_for_pick = pick_for_pick,
       must_send = p, opponents = buyers, screen_n = 15L, top_n = 5))
     if (nrow(deal)) {
       deal[, motive := paste0("sell ", p_name)]

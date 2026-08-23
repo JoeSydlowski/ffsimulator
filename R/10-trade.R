@@ -395,6 +395,12 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20,
 #'   TE 0.42). Applied per-deal to the actual players moving, so acquiring
 #'   unreliable-future QBs is discounted vs reliable RB/WR future.
 #' @param pick_reliability future-value reliability for draft picks (default 0.55).
+#' @param pick_for_pick allow deals that are draft picks on BOTH sides (default
+#'   `FALSE`). Such deals have no roster impact at all - `my_win_delta` is
+#'   identically 0 - and their pricing leans entirely on projecting a future
+#'   draft slot from this season's simulated standings, so they tend to crowd a
+#'   contender's board with arbitrage rather than actionable moves. Player-for-
+#'   picks and picks-for-player deals are unaffected either way.
 #' @param haircut_intercept,haircut_floor,haircut_cap smooth win-now haircut
 #'   `clamp(haircut_intercept - baseline_playoff, floor, cap)` (default 1.30 /
 #'   0.60 / 1.00): a contender (high playoff odds) discounts future most. The
@@ -555,6 +561,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                              haircut_intercept = 1.30, haircut_floor = 0.60, haircut_cap = 1.00,
                              gettable_cut = -3,
                              opponents = NULL, must_send = NULL, picks = NULL,
+                             pick_for_pick = FALSE,
                              require_positive_target = TRUE,
                              even_band = value_band, uneven_gap = NULL,
                              max_gap = Inf, min_piece_value = 0,
@@ -794,6 +801,20 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   }
   if (length(deals) == 0) return(empty)
   deals <- data.table::rbindlist(deals)
+
+  # drop deals that are picks on BOTH sides. The win-gain gate above exempts any
+  # receive package containing a pick (future-banking is win-neutral by
+  # construction), which also lets through pure pick-for-pick swaps - zero roster
+  # impact, my_win_delta identically 0, and priced off .ffs_finish_distribution()
+  # applying this season's standings to every future draft year alike. On a
+  # contender's board they crowd out real deals: 25 of 26 top Goofball deals were
+  # "send 2027 R1, get 2029 R1 + change". Sending picks FOR a player stays legal -
+  # that is a real buy-now move - as does sending a player for picks.
+  if (!pick_for_pick) {
+    all_picks <- function(x) vapply(x, function(i) all(grepl("^PICK_", i)), logical(1))
+    deals <- deals[!(all_picks(send_ids) & all_picks(recv_ids))]
+    if (nrow(deals) == 0) return(empty)
+  }
 
   # hard floor: refuse deals that sacrifice too much future value
   deals <- deals[future_capital_delta >= min_future_delta]

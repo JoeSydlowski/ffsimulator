@@ -37,6 +37,7 @@ ffs_build_trades(
   opponents = NULL,
   must_send = NULL,
   picks = NULL,
+  pick_for_pick = FALSE,
   require_positive_target = TRUE,
   even_band = value_band,
   uneven_gap = NULL,
@@ -181,6 +182,13 @@ player is worth the most to.}
 \item{must_send}{optional player_ids that every send package must include -
 the "how do I sell THIS player" mode (default \code{NULL} = no constraint).
 Shapes smaller than \code{length(must_send)} produce no packages.}
+
+\item{pick_for_pick}{allow deals that are draft picks on BOTH sides (default
+\code{FALSE}). Such deals have no roster impact at all - \code{my_win_delta} is
+identically 0 - and their pricing leans entirely on projecting a future
+draft slot from this season's simulated standings, so they tend to crowd a
+contender's board with arbitrage rather than actionable moves. Player-for-
+picks and picks-for-player deals are unaffected either way.}
 
 \item{require_positive_target}{when \code{TRUE} (default) only players who add wins
 on their own (\code{value_to_you > 0}) can be received. Set \code{FALSE} for an
