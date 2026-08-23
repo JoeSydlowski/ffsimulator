@@ -179,11 +179,20 @@ ffs_pick_values <- function(base_simulation, picks = NULL, conn = NULL,
 
   # year discount: disc(k) = value of a mid-first k years out / one year out.
   # disc(1) = 1 (soonest future draft). Falls back to a mild 0.9/yr decay.
+  #
+  # Anchor on sim_season + 1 - the soonest draft this league can actually trade -
+  # NOT on min(names(fut)). FantasyCalc keeps quoting the current year's first
+  # after that rookie draft has already happened, so in-season the market series
+  # starts a year before the league's earliest tradeable pick. Taking min() then
+  # prices every pick one year early: reading 2026's anchor for a 2027 pick and
+  # 2028's for a 2029 pick, which flatters the far picks relative to the near
+  # ones and makes "swap my next 1st for their 1st two years out" look free.
   disc <- function(k) {
     k <- pmax(k, 1L)
     if (!is.null(fcpc) && length(fcpc$fut) >= 2) {
       yrs <- as.integer(names(fcpc$fut))
-      base_yr <- min(yrs)                       # soonest future first (~sim+1)
+      base_yr <- sim_season + 1L
+      if (!as.character(base_yr) %in% names(fcpc$fut)) base_yr <- min(yrs)
       v_base  <- fcpc$fut[[as.character(base_yr)]]
       vapply(k, function(kk) {
         y <- base_yr + (kk - 1L)
