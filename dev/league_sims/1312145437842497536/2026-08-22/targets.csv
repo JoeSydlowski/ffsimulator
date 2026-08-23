@@ -1,0 +1,192 @@
+player_name,pos,age,owner,cur_value,confirmed,win_now_value,win_now_edge,playoff_delta_you,champ_delta_you,growth_abs,exp_change,rel_change,p_rise,p_exit,player_id,owner_id
+Baker Mayfield,QB,31.4,That's so Ravens ,3275,TRUE,91,575,-0.469,-0.196,372,-0.028,0.132,0.413,0.019,4892,3
+Fernando Mendoza,QB,22.9,Full Time Dick Sucker,4009,TRUE,5,557,-0.365,-0.169,561,-0.001,0.163,0.495,0,13269,4
+Jaxson Dart,QB,23.3,K Stafford isn't Worthy,5063,TRUE,175,490,-0.469,-0.197,540,-0.035,0.124,0.454,0,12508,5
+Caleb Williams,QB,24.8,Full Time Dick Sucker,6868,TRUE,190,483,-0.477,-0.197,780,-0.028,0.132,0.254,0,11560,4
+Luther Burden,WR,22.7,Beef Blitzkrieg,3688,TRUE,196,454,-0.453,-0.194,541,-0.053,0.183,0.392,0.001,12519,2
+Cam Ward,QB,24.3,Galletti,3404,TRUE,201,433,-0.437,-0.189,280,-0.059,0.096,0.386,0,12522,6
+Josh Allen,QB,30.3,glamgoblin,10326,TRUE,245,415,-0.463,-0.195,1214,-0.024,0.137,0,0,4984,10
+Ashton Jeanty,RB,22.7,JTNoel,6863,TRUE,141,402,-0.347,-0.169,1349,-0.021,0.251,0.439,0,12527,8
+Harold Fannin,TE,22.1,Full Time Dick Sucker,3245,TRUE,216,387,-0.406,-0.184,440,-0.066,0.17,0.334,0,12506,4
+Travis Kelce,TE,36.9,Beef Blitzkrieg,1645,TRUE,212,384,-0.399,-0.18,120,-0.129,0.091,0,0.035,1466,2
+Tua Tagovailoa,QB,28.5,Goofball 3 Tokyo Drift ,1579,TRUE,186,376,-0.365,-0.166,37,-0.118,0.027,0.406,0.02,6768,7
+Bijan Robinson,RB,24.6,Galletti,10300,TRUE,119,371,-0.293,-0.155,2118,-0.012,0.263,0,0,9509,6
+AJ Barner,TE,24.3,That's so Ravens ,1479,TRUE,65,339,-0.207,-0.115,234,-0.044,0.198,0.336,0.002,11603,3
+Chig Okonkwo,TE,27,JTNoel,1575,TRUE,151,336,-0.29,-0.149,167,-0.096,0.133,0.242,0.005,8210,8
+Matthew Golden,WR,23.1,Galletti,1986,TRUE,186,332,-0.321,-0.158,211,-0.094,0.133,0.333,0.012,12501,6
+Travis Hunter,WR,23.3,Full Time Dick Sucker,1696,TRUE,101,324,-0.228,-0.126,238,-0.059,0.175,0.412,0.021,12530,4
+Tetairoa McMillan,WR,23.4,glamgoblin,4708,TRUE,348,322,-0.473,-0.195,593,-0.074,0.157,0.341,0,12526,10
+Jared Goff,QB,31.9,Galletti,3549,TRUE,339,322,-0.464,-0.195,163,-0.095,0.053,0.385,0.018,3163,6
+Terry McLaurin,WR,31,That's so Ravens ,2139,TRUE,334,321,-0.458,-0.194,94,-0.156,0.055,0.134,0.004,5927,3
+Jalen Coker,WR,24.8,JTNoel,1557,TRUE,212,319,-0.334,-0.163,99,-0.136,0.08,0.351,0.007,11646,8
+Lamar Jackson,QB,29.6,That's so Ravens ,7246,TRUE,368,309,-0.48,-0.198,656,-0.051,0.105,0.199,0,4881,3
+Wan'Dale Robinson,WR,25.6,Full Time Dick Sucker,1693,TRUE,318,303,-0.424,-0.187,21,-0.188,0.015,0.308,0.004,8126,4
+Jake Ferguson,TE,27.6,Goofball 3 Tokyo Drift ,1732,TRUE,254,300,-0.357,-0.17,96,-0.147,0.069,0.234,0.002,8110,7
+Omar Cooper,WR,22.7,Lubed up Johnsons,1806,TRUE,124,296,-0.223,-0.124,236,-0.069,0.164,0.414,0.006,13276,1
+Dak Prescott,QB,33.1,Beef Blitzkrieg,4096,TRUE,371,293,-0.467,-0.196,208,-0.091,0.059,0.279,0.013,3294,2
+Tank Bigsby,RB,24,Full Time Dick Sucker,1311,TRUE,87,292,-0.182,-0.108,197,-0.066,0.192,0.352,0.008,9225,4
+Davante Adams,WR,33.7,Beef Blitzkrieg,2164,TRUE,364,289,-0.456,-0.193,68,-0.168,0.039,0.21,0,2133,2
+DK Metcalf,WR,28.7,Lubed up Johnsons,1943,TRUE,341,288,-0.432,-0.19,47,-0.176,0.03,0.15,0.002,5846,1
+Xavier Worthy,WR,23.3,K Stafford isn't Worthy,1669,TRUE,243,280,-0.326,-0.161,91,-0.146,0.068,0.322,0.032,11624,5
+Tucker Kraft,TE,25.8,Lubed up Johnsons,3434,TRUE,319,279,-0.4,-0.182,375,-0.093,0.137,0.263,0.002,9484,1
+Jordan Addison,WR,24.6,Galletti,2098,TRUE,305,274,-0.382,-0.174,115,-0.145,0.068,0.324,0.026,9756,6
+Jadarian Price,RB,22.9,Beef Blitzkrieg,3372,TRUE,284,273,-0.36,-0.171,448,-0.084,0.17,0.416,0,13286,2
+Patrick Mahomes,QB,31,JTNoel,5239,TRUE,407,268,-0.478,-0.197,333,-0.078,0.074,0.254,0,4046,8
+Jaxon Smith-Njigba,WR,24.5,Goofball 3 Tokyo Drift ,8769,TRUE,326,266,-0.394,-0.181,1427,-0.037,0.203,0.318,0,9488,7
+Jonathon Brooks,RB,23.1,Lubed up Johnsons,1981,TRUE,259,264,-0.326,-0.163,171,-0.131,0.11,0.334,0,11583,1
+Quentin Johnston,WR,25,Full Time Dick Sucker,1905,TRUE,341,258,-0.402,-0.18,40,-0.179,0.026,0.332,0.002,9754,4
+Brenton Strange,TE,25.7,glamgoblin,1477,TRUE,231,254,-0.288,-0.147,67,-0.157,0.057,0.282,0.002,9480,10
+Antonio Williams,WR,22.1,Lubed up Johnsons,1415,TRUE,131,254,-0.188,-0.106,152,-0.093,0.134,0.378,0.003,13301,1
+Josh Downs,WR,25,Full Time Dick Sucker,1971,TRUE,370,248,-0.421,-0.186,24,-0.187,0.015,0.262,0.012,9500,4
+Ja'Kobi Lane,WR,22.3,JTNoel,1727,TRUE,115,248,-0.166,-0.096,230,-0.067,0.166,0.414,0.03,13293,8
+Jam Miller,RB,22,JTNoel,106,TRUE,54,241,-0.098,-0.062,-31,-0.513,-0.377,0.372,0.266,13403,8
+Tyler Allgeier,RB,26.4,Beef Blitzkrieg,1485,TRUE,175,239,-0.217,-0.121,148,-0.118,0.127,0.377,0.012,8132,2
+Mike Evans,WR,33,glamgoblin,1845,TRUE,414,239,-0.456,-0.193,-45,-0.224,-0.031,0.046,0,2216,10
+Eli Heidenreich,RB,23.2,That's so Ravens ,299,TRUE,58,239,-0.1,-0.064,7,-0.194,0.029,0.419,0.083,13423,3
+Christian Watson,WR,27.3,glamgoblin,2201,TRUE,403,238,-0.444,-0.191,37,-0.183,0.021,0.176,0.004,8167,10
+Germie Bernard,WR,22.7,K Stafford isn't Worthy,1322,TRUE,119,236,-0.158,-0.096,145,-0.09,0.137,0.348,0.014,13274,5
+Tre' Harris,WR,24.5,Beef Blitzkrieg,1369,TRUE,192,235,-0.23,-0.127,81,-0.14,0.074,0.288,0.007,12509,2
+TreVeyon Henderson,RB,23.9,That's so Ravens ,3391,TRUE,328,232,-0.364,-0.173,408,-0.097,0.154,0.356,0,12529,3
+Jayden Reed,WR,26.3,JTNoel,1780,TRUE,357,232,-0.392,-0.177,-1,-0.2,-0.001,0.315,0.003,10222,8
+Mason Taylor,TE,22.3,Beef Blitzkrieg,729,TRUE,98,229,-0.131,-0.08,49,-0.135,0.084,0.349,0.007,12498,2
+Romeo Doubs,WR,26.4,Full Time Dick Sucker,1609,TRUE,287,227,-0.316,-0.158,35,-0.178,0.027,0.294,0.004,8121,4
+Nicholas Singleton,RB,22.6,Beef Blitzkrieg,1539,TRUE,113,224,-0.14,-0.087,221,-0.074,0.183,0.389,0,13288,2
+Kaleb Johnson,RB,23,Full Time Dick Sucker,930,TRUE,77,223,-0.103,-0.066,125,-0.083,0.172,0.458,0.01,12504,4
+Chris Godwin,WR,30.5,glamgoblin,1629,TRUE,420,221,-0.444,-0.191,-94,-0.258,-0.072,0.141,0.005,4037,10
+Quinshon Judkins,RB,22.8,That's so Ravens ,3740,TRUE,351,221,-0.375,-0.175,461,-0.094,0.158,0.401,0,12512,3
+Bucky Irving,RB,24,K Stafford isn't Worthy,3175,TRUE,365,221,-0.388,-0.177,324,-0.115,0.131,0.363,0,11584,5
+Justin Herbert,QB,28.5,Lubed up Johnsons,5652,TRUE,457,220,-0.48,-0.197,341,-0.081,0.07,0.237,0,6797,1
+Kyler Murray,QB,29.1,That's so Ravens ,2905,TRUE,453,213,-0.469,-0.195,-43,-0.156,-0.017,0.346,0.014,5849,3
+J'Mari Taylor,RB,24.5,Galletti,164,TRUE,83,211,-0.097,-0.06,-47,-0.505,-0.367,0.156,0.117,13348,6
+Kyle Monangai,RB,24.2,JTNoel,1725,TRUE,270,206,-0.279,-0.146,105,-0.156,0.077,0.278,0.002,12534,8
+Demond Claiborne,RB,22.9,Lubed up Johnsons,997,TRUE,119,202,-0.124,-0.073,97,-0.119,0.125,0.438,0.007,13347,1
+Michael Pittman,WR,28.9,glamgoblin,1796,TRUE,428,199,-0.43,-0.187,-69,-0.238,-0.048,0.132,0.002,6819,10
+Malachi Fields,WR,23,Full Time Dick Sucker,1432,TRUE,159,198,-0.16,-0.093,127,-0.111,0.111,0.35,0.004,13285,4
+Tyrone Tracy,RB,26.8,Lubed up Johnsons,1225,TRUE,213,197,-0.213,-0.121,53,-0.174,0.056,0.306,0.022,11655,1
+Jakobi Meyers,WR,29.8,Galletti,1393,TRUE,392,190,-0.385,-0.176,-113,-0.281,-0.102,0.272,0.011,5947,6
+Denzel Boston,WR,22.7,glamgoblin,2279,TRUE,310,187,-0.3,-0.15,145,-0.136,0.08,0.314,0.015,13346,10
+Christian Kirk,WR,29.8,Galletti,230,TRUE,169,180,-0.152,-0.09,-123,-0.735,-0.669,0.021,0.196,4950,6
+De'Zhaun Stribling,WR,23.7,JTNoel,2340,TRUE,318,174,-0.294,-0.149,150,-0.136,0.08,0.332,0.021,13417,8
+Ted Hurst,WR,22.2,Galletti,1210,TRUE,185,172,-0.16,-0.096,56,-0.153,0.058,0.376,0.011,13317,6
+Michael Wilson,WR,26.5,Beef Blitzkrieg,2084,TRUE,455,171,-0.429,-0.188,-38,-0.218,-0.023,0.168,0.011,10232,2
+Michael Trigg,TE,24.2,glamgoblin,234,TRUE,105,171,-0.079,-0.05,-58,-0.449,-0.31,0.278,0.096,13401,10
+David Njoku,TE,30.1,JTNoel,780,TRUE,184,167,-0.154,-0.09,-26,-0.236,-0.042,0.185,0.039,4033,8
+Jonah Coleman,RB,23,glamgoblin,1860,TRUE,231,163,-0.196,-0.113,173,-0.124,0.119,0.352,0,13345,10
+KC Concepcion,WR,21.9,K Stafford isn't Worthy,2718,TRUE,381,162,-0.346,-0.164,162,-0.14,0.074,0.41,0.005,13298,5
+Mike Washington,RB,23.2,Full Time Dick Sucker,1502,TRUE,195,158,-0.156,-0.092,131,-0.13,0.112,0.366,0,13305,4
+Braelon Allen,RB,22.6,Galletti,1273,TRUE,210,156,-0.168,-0.1,67,-0.165,0.067,0.36,0.004,11576,6
+Alec Pierce,WR,26.3,K Stafford isn't Worthy,1935,TRUE,441,151,-0.395,-0.18,-55,-0.228,-0.035,0.231,0.004,8142,5
+DJ Moore,WR,29.4,Beef Blitzkrieg,2468,TRUE,503,150,-0.456,-0.193,-9,-0.204,-0.005,0.2,0.002,4983,2
+Cole Kmet,TE,27.5,Full Time Dick Sucker,267,TRUE,144,145,-0.092,-0.06,-90,-0.539,-0.422,0.132,0.069,6826,4
+Seth McGowan,RB,24.8,K Stafford isn't Worthy,329,TRUE,157,142,-0.102,-0.065,-86,-0.477,-0.332,0.355,0.076,13424,5
+Dalton Kincaid,TE,26.9,Goofball 3 Tokyo Drift ,2007,TRUE,431,137,-0.371,-0.173,-25,-0.215,-0.016,0.282,0.004,10236,7
+Jacoby Brissett,QB,33.7,JTNoel,1365,TRUE,481,133,-0.417,-0.182,-288,-0.352,-0.246,0.286,0.23,3257,8
+Rico Dowdle,RB,28.2,glamgoblin,1616,TRUE,398,130,-0.33,-0.163,-47,-0.246,-0.037,0.119,0.003,7021,10
+Rhamondre Stevenson,RB,28.5,That's so Ravens ,1635,TRUE,411,129,-0.343,-0.166,-56,-0.251,-0.044,0.112,0.003,7611,3
+Kenny Gainwell,RB,27.5,K Stafford isn't Worthy,1534,TRUE,370,129,-0.302,-0.155,-37,-0.241,-0.031,0.243,0.005,7567,5
+Jalen Hurts,QB,28.1,Beef Blitzkrieg,5498,TRUE,558,128,-0.49,-0.199,219,-0.101,0.046,0.26,0,6904,2
+Rome Odunze,WR,24.2,K Stafford isn't Worthy,3275,TRUE,498,128,-0.429,-0.19,156,-0.152,0.06,0.284,0.004,11620,5
+J.K. Dobbins,RB,27.7,Beef Blitzkrieg,1614,TRUE,390,120,-0.312,-0.157,-39,-0.241,-0.031,0.191,0.004,6806,2
+Pat Bryant,WR,23.7,Lubed up Johnsons,1500,TRUE,297,116,-0.217,-0.12,3,-0.198,0.002,0.246,0.01,12492,1
+George Pickens,WR,25.5,Galletti,5002,TRUE,538,111,-0.452,-0.193,462,-0.108,0.115,0.274,0,8137,6
+Zachariah Branch,WR,22.4,K Stafford isn't Worthy,1190,TRUE,275,105,-0.182,-0.105,-37,-0.231,-0.039,0.426,0.006,13320,5
+Isaiah Likely,TE,26.4,That's so Ravens ,2058,TRUE,441,103,-0.347,-0.167,-25,-0.214,-0.015,0.287,0.002,8131,3
+Garrett Wilson,WR,26.1,JTNoel,4065,TRUE,563,100,-0.466,-0.195,249,-0.139,0.077,0.178,0.002,8146,8
+Khalil Shakir,WR,26.6,JTNoel,1372,TRUE,452,88,-0.343,-0.164,-178,-0.33,-0.162,0.252,0.012,8134,8
+RJ Harvey,RB,25.6,Lubed up Johnsons,1970,TRUE,427,88,-0.318,-0.158,1,-0.217,0.001,0.216,0,12489,1
+Ladd McConkey,WR,24.8,Lubed up Johnsons,3869,TRUE,571,85,-0.459,-0.194,202,-0.148,0.065,0.279,0.001,11635,1
+Rashod Bateman,WR,26.7,JTNoel,530,TRUE,297,85,-0.184,-0.107,-191,-0.56,-0.451,0.218,0.048,7571,8
+C.J. Stroud,QB,24.9,Goofball 3 Tokyo Drift ,3202,TRUE,557,76,-0.437,-0.19,-105,-0.174,-0.038,0.373,0,9758,7
+Chimere Dike,WR,24.7,Goofball 3 Tokyo Drift ,522,TRUE,289,74,-0.165,-0.095,-185,-0.554,-0.442,0.237,0.033,12540,7
+Cooper Kupp,WR,33.2,glamgoblin,529,TRUE,296,69,-0.168,-0.101,-190,-0.56,-0.45,0.098,0.157,4039,10
+Tyler Shough,QB,26.9,Full Time Dick Sucker,3216,TRUE,602,68,-0.473,-0.196,-148,-0.187,-0.053,0.254,0.002,12545,4
+Cade Otton,TE,27.4,Beef Blitzkrieg,889,TRUE,294,65,-0.162,-0.097,-115,-0.331,-0.161,0.282,0.008,8111,2
+Jacory Croskey-Merritt,RB,25.4,Goofball 3 Tokyo Drift ,1717,TRUE,406,61,-0.27,-0.143,-34,-0.237,-0.025,0.222,0.001,12533,7
+Parker Washington,WR,24.4,K Stafford isn't Worthy,2574,TRUE,600,50,-0.453,-0.193,-85,-0.233,-0.041,0.266,0.02,9487,5
+Max Klare,TE,23.1,Beef Blitzkrieg,614,TRUE,245,49,-0.097,-0.06,-121,-0.399,-0.247,0.306,0.01,13278,2
+Nico Collins,WR,27.4,Goofball 3 Tokyo Drift ,4516,TRUE,605,40,-0.448,-0.192,298,-0.134,0.082,0.151,0,7569,7
+Chuba Hubbard,RB,27.2,Full Time Dick Sucker,1800,TRUE,484,32,-0.319,-0.158,-93,-0.269,-0.066,0.168,0.002,7594,4
+Isaac TeSlaa,WR,24.5,That's so Ravens ,1132,TRUE,360,26,-0.189,-0.108,-134,-0.318,-0.148,0.352,0.014,12535,3
+Adam Randall,RB,22.1,K Stafford isn't Worthy,603,TRUE,274,22,-0.099,-0.064,-143,-0.454,-0.303,0.336,0.018,13302,5
+Oscar Delp,TE,23.1,K Stafford isn't Worthy,595,TRUE,288,20,-0.112,-0.069,-168,-0.484,-0.354,0.226,0.015,13319,5
+Rachaad White,RB,27.6,Lubed up Johnsons,1482,TRUE,488,14,-0.304,-0.153,-166,-0.329,-0.143,0.32,0.013,8136,1
+Jordan Love,QB,27.8,glamgoblin,3924,TRUE,649,13,-0.465,-0.195,-95,-0.165,-0.028,0.279,0.004,6804,10
+Breece Hall,RB,25.2,Galletti,3674,TRUE,578,0,-0.382,-0.176,219,-0.157,0.076,0.281,0,8155,6
+Justin Joly,TE,22.1,Lubed up Johnsons,574,TRUE,294,-1,-0.096,-0.06,-178,-0.512,-0.388,0.268,0.029,13400,1
+Ollie Gordon,RB,22.6,That's so Ravens ,676,TRUE,319,-2,-0.12,-0.074,-173,-0.473,-0.326,0.342,0.024,12495,3
+Calvin Ridley,WR,31.7,Beef Blitzkrieg,534,TRUE,393,-6,-0.19,-0.111,-287,-0.737,-0.671,0.058,0.13,4981,2
+Keon Coleman,WR,23.3,JTNoel,987,TRUE,353,-10,-0.147,-0.091,-156,-0.358,-0.198,0.378,0.036,11637,8
+Cam Skattebo,RB,24.6,K Stafford isn't Worthy,3247,TRUE,595,-16,-0.382,-0.179,110,-0.183,0.043,0.291,0,12481,5
+Brock Purdy,QB,26.7,JTNoel,3911,TRUE,698,-18,-0.483,-0.196,-146,-0.179,-0.043,0.328,0,8183,8
+Theo Johnson,TE,25.5,Goofball 3 Tokyo Drift ,548,TRUE,355,-29,-0.129,-0.079,-244,-0.647,-0.558,0.18,0.044,11597,7
+Adonai Mitchell,WR,23.9,JTNoel,1202,TRUE,473,-37,-0.239,-0.132,-233,-0.394,-0.242,0.3,0.009,11625,8
+Eli Stowers,TE,23.4,That's so Ravens ,1987,TRUE,358,-38,-0.123,-0.078,44,-0.18,0.028,0.4,0.001,13349,3
+Colston Loveland,TE,22.4,Goofball 3 Tokyo Drift ,5207,TRUE,660,-41,-0.422,-0.187,392,-0.127,0.094,0.272,0.001,12517,7
+Omarion Hampton,RB,23.5,Beef Blitzkrieg,5941,TRUE,596,-42,-0.358,-0.171,693,-0.1,0.149,0.386,0,12507,2
+Zay Flowers,WR,26,Goofball 3 Tokyo Drift ,3963,TRUE,712,-44,-0.471,-0.196,80,-0.18,0.025,0.166,0,9997,7
+George Kittle,TE,32.9,K Stafford isn't Worthy,2234,TRUE,637,-46,-0.394,-0.18,-186,-0.285,-0.104,0.074,0.072,4217,5
+Rashid Shaheed,WR,28,JTNoel,1322,TRUE,549,-55,-0.298,-0.147,-285,-0.415,-0.269,0.176,0.022,8676,8
+Elic Ayomanor,WR,23.2,K Stafford isn't Worthy,790,TRUE,403,-55,-0.151,-0.09,-245,-0.51,-0.387,0.156,0.038,12499,5
+Tony Pollard,RB,29.3,K Stafford isn't Worthy,1544,TRUE,586,-56,-0.333,-0.163,-251,-0.38,-0.207,0.098,0.005,5967,5
+Ja'Marr Chase,WR,26.5,Lubed up Johnsons,9600,TRUE,650,-59,-0.394,-0.18,1269,-0.068,0.165,0,0,7564,1
+Makai Lemon,WR,22.2,Galletti,3019,TRUE,639,-61,-0.381,-0.175,-36,-0.212,-0.015,0.366,0.004,13294,6
+Jameson Williams,WR,25.4,Lubed up Johnsons,2803,TRUE,712,-81,-0.434,-0.19,-151,-0.254,-0.067,0.226,0.011,8148,1
+D'Andre Swift,RB,27.6,JTNoel,2366,TRUE,663,-85,-0.381,-0.178,-150,-0.28,-0.081,0.211,0,6790,8
+Jauan Jennings,WR,29.1,Galletti,888,TRUE,550,-91,-0.262,-0.137,-373,-0.62,-0.525,0.092,0.095,7049,6
+Jack Bech,WR,23.7,Lubed up Johnsons,901,TRUE,456,-99,-0.16,-0.094,-276,-0.506,-0.383,0.228,0.052,12483,1
+Kyren Williams,RB,26,Lubed up Johnsons,3501,TRUE,686,-116,-0.374,-0.176,74,-0.196,0.027,0.252,0,8150,1
+Elijah Sarratt,WR,23.3,Galletti,913,TRUE,454,-121,-0.137,-0.086,-272,-0.498,-0.372,0.268,0.052,13268,6
+T.J. Hockenson,TE,29.2,Lubed up Johnsons,1457,TRUE,568,-134,-0.237,-0.125,-273,-0.39,-0.235,0.196,0.006,5844,1
+Troy Franklin,WR,23.6,That's so Ravens ,875,TRUE,525,-138,-0.19,-0.11,-350,-0.6,-0.5,0.168,0.057,11627,3
+Derrick Henry,RB,32.7,glamgoblin,3054,TRUE,722,-142,-0.382,-0.176,-59,-0.236,-0.025,0,0,3198,10
+Hunter Henry,TE,31.7,glamgoblin,1239,TRUE,624,-157,-0.271,-0.14,-374,-0.504,-0.378,0.249,0.052,3214,10
+Marvin Harrison,WR,24,That's so Ravens ,3132,TRUE,803,-168,-0.438,-0.192,-177,-0.257,-0.071,0.274,0.001,11628,3
+David Montgomery,RB,29.2,Full Time Dick Sucker,2297,TRUE,757,-173,-0.387,-0.178,-259,-0.33,-0.144,0.173,0,5892,4
+Dalton Schultz,TE,30.1,K Stafford isn't Worthy,1284,TRUE,632,-174,-0.261,-0.137,-372,-0.492,-0.363,0.184,0.013,5001,5
+Tank Dell,WR,26.8,Full Time Dick Sucker,1485,TRUE,573,-178,-0.198,-0.112,-277,-0.386,-0.233,0.252,0.003,9502,4
+Juwan Johnson,TE,30,Lubed up Johnsons,1426,TRUE,707,-183,-0.326,-0.162,-419,-0.496,-0.368,0.182,0.01,7002,1
+Kayshon Boutte,WR,24.3,Galletti,1116,TRUE,588,-185,-0.206,-0.116,-365,-0.527,-0.409,0.286,0.018,9504,6
+Sam LaPorta,TE,25.6,K Stafford isn't Worthy,3115,TRUE,817,-200,-0.42,-0.186,-187,-0.262,-0.075,0.282,0.002,10859,5
+Brock Bowers,TE,23.7,Galletti,7686,TRUE,821,-208,-0.416,-0.184,732,-0.107,0.119,0,0.003,11604,6
+A.J. Brown,WR,29.2,glamgoblin,3984,TRUE,841,-219,-0.425,-0.189,-45,-0.211,-0.014,0.104,0,5859,10
+Trevor Lawrence,QB,26.9,Galletti,4881,TRUE,903,-222,-0.484,-0.198,-213,-0.185,-0.051,0.334,0.002,7523,6
+Jaylin Noel,WR,24,JTNoel,1159,TRUE,627,-223,-0.207,-0.115,-396,-0.541,-0.427,0.281,0.014,12536,8
+De'Von Achane,RB,24.9,Lubed up Johnsons,6377,TRUE,776,-224,-0.355,-0.171,609,-0.122,0.122,0.262,0,9226,1
+Deebo Samuel,WR,30.6,K Stafford isn't Worthy,1273,TRUE,744,-235,-0.311,-0.157,-489,-0.584,-0.48,0.124,0.085,5872,5
+Kyle Pitts,TE,25.9,Full Time Dick Sucker,2914,TRUE,866,-266,-0.403,-0.183,-277,-0.297,-0.119,0.284,0.004,7553,4
+Tre Tucker,WR,25.5,That's so Ravens ,1254,TRUE,706,-266,-0.243,-0.13,-455,-0.563,-0.454,0.258,0.017,10213,3
+Jerry Jeudy,WR,27.3,Lubed up Johnsons,1060,TRUE,710,-267,-0.245,-0.132,-498,-0.669,-0.587,0.164,0.051,6783,1
+Dontayvion Wicks,WR,25.2,That's so Ravens ,1226,TRUE,695,-288,-0.21,-0.117,-450,-0.567,-0.459,0.208,0.019,9486,3
+Jerome Ford,RB,27,Galletti,860,TRUE,589,-296,-0.096,-0.061,-402,-0.685,-0.597,0.246,0.026,8143,6
+Keenan Allen,WR,34.3,Galletti,1068,TRUE,705,-314,-0.194,-0.11,-491,-0.66,-0.575,0.28,0.132,1479,6
+Tee Higgins,WR,27.6,Full Time Dick Sucker,3466,TRUE,991,-318,-0.476,-0.196,-298,-0.286,-0.108,0.151,0,6801,4
+Daniel Jones,QB,29.3,K Stafford isn't Worthy,2443,TRUE,979,-329,-0.453,-0.192,-634,-0.401,-0.302,0.332,0.023,5870,5
+Josh Jacobs,RB,28.5,Beef Blitzkrieg,2857,TRUE,917,-344,-0.376,-0.177,-296,-0.321,-0.132,0.197,0,5850,2
+Drake Maye,QB,24,Galletti,8198,TRUE,1018,-347,-0.474,-0.196,140,-0.124,0.02,0.27,0,11564,6
+Amon-Ra St. Brown,WR,26.8,Full Time Dick Sucker,7352,TRUE,980,-358,-0.425,-0.185,489,-0.133,0.083,0.264,0,7547,4
+Malik Willis,QB,27.3,That's so Ravens ,2455,TRUE,1024,-378,-0.449,-0.192,-677,-0.417,-0.321,0.301,0.013,8161,3
+Jaylen Waddle,WR,27.8,That's so Ravens ,3213,TRUE,1030,-381,-0.452,-0.192,-388,-0.321,-0.151,0.166,0.002,7526,3
+Drake London,WR,25.1,Full Time Dick Sucker,5553,TRUE,1012,-395,-0.42,-0.188,98,-0.182,0.022,0.276,0,8112,4
+Travis Etienne,RB,27.6,Full Time Dick Sucker,2801,TRUE,996,-412,-0.386,-0.179,-387,-0.355,-0.177,0.191,0,7543,4
+Joe Burrow,QB,29.7,Lubed up Johnsons,6523,TRUE,1087,-415,-0.476,-0.197,-166,-0.167,-0.03,0.208,0,6770,1
+Malik Nabers,WR,23.1,JTNoel,6676,TRUE,1058,-419,-0.442,-0.191,277,-0.158,0.052,0.33,0,11632,8
+MarShawn Lloyd,RB,25.6,Goofball 3 Tokyo Drift ,1192,TRUE,795,-431,-0.167,-0.1,-536,-0.667,-0.575,0.254,0.012,11581,7
+Kenneth Walker,RB,25.9,That's so Ravens ,4429,TRUE,1009,-440,-0.372,-0.176,-47,-0.228,-0.014,0.222,0,8151,3
+Isiah Pacheco,RB,27.5,Galletti,1181,TRUE,852,-467,-0.188,-0.111,-596,-0.721,-0.644,0.162,0.029,8205,6
+Aaron Jones,RB,31.7,glamgoblin,1161,TRUE,950,-473,-0.28,-0.144,-698,-0.819,-0.768,0.183,0.014,4199,10
+Brian Robinson,RB,27.4,Full Time Dick Sucker,1189,TRUE,852,-488,-0.166,-0.099,-593,-0.716,-0.637,0.17,0.025,8154,4
+Alvin Kamara,RB,31.1,Goofball 3 Tokyo Drift ,1193,TRUE,931,-532,-0.202,-0.115,-672,-0.781,-0.72,0.31,0.011,4035,7
+Bryce Young,QB,25.1,Lubed up Johnsons,2639,TRUE,1154,-537,-0.42,-0.184,-781,-0.437,-0.345,0.351,0.005,9228,1
+Javonte Williams,RB,26.3,Beef Blitzkrieg,3098,TRUE,1124,-543,-0.384,-0.177,-451,-0.363,-0.186,0.204,0,7588,2
+Tyler Warren,TE,24.3,JTNoel,4560,TRUE,1183,-573,-0.414,-0.184,-262,-0.26,-0.072,0.25,0.002,12518,8
+Chase Brown,RB,26.4,Goofball 3 Tokyo Drift ,4638,TRUE,1124,-585,-0.342,-0.168,-117,-0.242,-0.032,0.17,0,9224,7
+Matthew Stafford,QB,38.6,K Stafford isn't Worthy,2702,TRUE,1262,-597,-0.468,-0.195,-880,-0.467,-0.379,0.212,0.163,421,5
+Puka Nacua,WR,25.3,That's so Ravens ,8271,TRUE,1403,-806,-0.4,-0.181,250,-0.17,0.038,0.318,0,9493,3
+Saquon Barkley,RB,29.6,glamgoblin,4274,TRUE,1562,-1019,-0.346,-0.17,-634,-0.365,-0.189,0.072,0,4866,10
+Christian McCaffrey,RB,30.2,K Stafford isn't Worthy,4397,TRUE,1594,-1083,-0.314,-0.161,-640,-0.363,-0.186,0.046,0,4034,5
+James Cook,RB,26.9,JTNoel,5353,TRUE,1680,-1151,-0.332,-0.166,-518,-0.314,-0.124,0.142,0,8138,8
+Jonathan Taylor,RB,27.6,Goofball 3 Tokyo Drift ,5677,TRUE,1979,-1445,-0.336,-0.164,-746,-0.349,-0.168,0.094,0,6813,7
+Jahmyr Gibbs,RB,24.4,Goofball 3 Tokyo Drift ,10071,TRUE,3212,-2712,-0.303,-0.153,-1025,-0.319,-0.13,0.303,0,9221,7
+Kenyon Sadiq,TE,21.5,Full Time Dick Sucker,2512,TRUE,-199,,-0.182,-0.104,706,0.079,0.352,0.534,0,13330,4
+Jeremiyah Love,RB,21.2,That's so Ravens ,6824,TRUE,-3,,-0.389,-0.177,1485,0.001,0.278,0.53,0,13287,3
+Carnell Tate,WR,21.6,JTNoel,4292,TRUE,-228,,-0.452,-0.191,1086,0.053,0.316,0.528,0,13279,8
