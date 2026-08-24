@@ -173,7 +173,7 @@
   cache <- list(
     opt = opt,
     rs = data.table::as.data.table(base_simulation$roster_scores),
-    lc = data.table::as.data.table(base_simulation$lineup_constraints)
+    lc = .ffs_sim_lineup_constraints(base_simulation)
   )
   data.table::setindexv(cache$rs, "franchise_id")
   data.table::setindexv(cache$rs, "player_id")

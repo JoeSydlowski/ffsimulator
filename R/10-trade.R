@@ -1310,6 +1310,64 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   out[]
 }
 
+#' Lineup constraints for the positions a simulation actually simulated
+#'
+#' [ffs_optimise_lineups()] filters `lineup_constraints` to `pos_filter` before
+#' building its LP, so a position that is never simulable (DEF has no rows in
+#' the scoring history) is not part of the base lineups. Any path that
+#' re-optimises against the base simulation has to filter identically: an
+#' unfiltered `DEF` row carries `min = 1`, which the LP can only satisfy with a
+#' zero-point filler, and that filler counts against `offense_starters` - so
+#' every re-optimised week starts one fewer real player than its base week and
+#' the resulting delta is wrong. Only bites when the league has a non-offensive
+#' slot, i.e. `offense_starters != total_starters`.
+#'
+#' @param base_simulation an `ff_simulation` from `return = "all"`
+#' @param lineup_constraints optional pre-converted constraints (defaults to the
+#'   simulation's own); filtering an already-filtered table is a no-op
+#' @param roster_scores optional pre-converted roster scores, used only to
+#'   recover the simulated positions when `simulation_params` carries no
+#'   `pos_filter` (older objects)
+#'
+#' @return `lineup_constraints` as a data.table, restricted to simulated positions
+#'
+#' @keywords internal
+.ffs_sim_lineup_constraints <- function(base_simulation, lineup_constraints = NULL,
+                                        roster_scores = NULL) {
+  lc <- data.table::as.data.table(
+    lineup_constraints %||% base_simulation$lineup_constraints)
+  pf <- base_simulation$simulation_params$pos_filter[[1]]
+  if (is.null(pf)) {
+    # no recorded pos_filter: a position with no roster rows was never simulated
+    rs <- roster_scores %||% base_simulation$roster_scores
+    pf <- unique(as.character(rs$pos))
+  }
+  lc[lc$pos %in% pf]
+}
+
+#' Number of lineup slots a franchise can fill with real players
+#'
+#' The lineup LP selects at most `total_starters` players overall and at most
+#' `offense_starters` from QB/RB/WR/TE (the zero-point fillers count as offence
+#' too), with each position capped at its own `max`. With a deep enough roster
+#' no filler is needed, so the most real players a franchise can start is
+#' `total_starters` capped by offence plus the non-offensive maxima. Equals
+#' `offense_starters` in a QB/RB/WR/TE-only league and 10 (not 9) in a league
+#' that also starts a kicker.
+#'
+#' @param lineup_constraints constraints **already filtered** to the simulated
+#'   positions by [.ffs_sim_lineup_constraints()]
+#'
+#' @return integer count of fillable starter slots
+#'
+#' @keywords internal
+.ffs_n_lineup_slots <- function(lineup_constraints) {
+  lc <- data.table::as.data.table(lineup_constraints)
+  non_offense <- !lc$pos %in% c("QB", "RB", "WR", "TE")
+  min(lc$total_starters[[1]],
+      lc$offense_starters[[1]] + sum(lc[["max"]][non_offense]))
+}
+
 #' Started-lineup-only optimiser (skips the hindsight-optimal LP)
 #'
 #' For valuation we only need each franchise-week's realised `actual_score` (the
@@ -1377,8 +1435,10 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 
   base_opt <- cache$opt %||% data.table::as.data.table(base_simulation$optimal_scores)
   rs <- cache$rs %||% data.table::as.data.table(base_simulation$roster_scores)
-  lc <- cache$lc %||% data.table::as.data.table(base_simulation$lineup_constraints)
-  n_slots <- min(lc$offense_starters[[1]], lc$total_starters[[1]])
+  # constraints must be filtered to the simulated positions exactly as the base
+  # simulation's own optimiser filtered them - see .ffs_sim_lineup_constraints()
+  lc <- cache$lc %||% .ffs_sim_lineup_constraints(base_simulation, roster_scores = rs)
+  n_slots <- .ffs_n_lineup_slots(lc)
   me_opt <- base_opt[franchise_id == fid]
   starters <- me_opt[, list(sp = unlist(starter_player_id)), by = list(season, week)]
 
@@ -1416,7 +1476,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   new_me <- data.table::copy(me_opt)
   if (nrow(aff)) {
     aff_rs <- merge(mod_rs, aff, by = c("season", "week"))
-    ns <- .ffs_optimise_started(aff_rs, base_simulation$lineup_constraints)
+    ns <- .ffs_optimise_started(aff_rs, lc)
     new_me <- merge(new_me, ns[, list(season, week, new_actual = actual_score)],
                     by = c("season", "week"), all.x = TRUE)
     new_me[!is.na(new_actual), actual_score := new_actual][, new_actual := NULL]

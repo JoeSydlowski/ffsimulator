@@ -54,7 +54,8 @@ rs2[order(-projected_score), pos_rank := seq_len(.N),
 # computing it for 56k franchise-weeks is what made the full path unusable.
 message("re-optimising both franchises' lineups on n=", dd$n_seasons, " @ ", Sys.time())
 reopt <- rbindlist(lapply(c(me, opp), function(f)
-  ffsimulator:::.ffs_optimise_started(rs2[franchise_id == f], as.data.table(sim$lineup_constraints))))
+  ffsimulator:::.ffs_optimise_started(
+    rs2[franchise_id == f], ffsimulator:::.ffs_sim_lineup_constraints(sim))))
 
 sim2 <- sim
 sim2$roster_scores  <- rs2

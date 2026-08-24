@@ -179,8 +179,15 @@ TH <- list(
 actual_sched <- if (!is.null(config$actual_schedule)) config$actual_schedule else TRUE
 message("valuation sim (n=", n_trade, ", actual_schedule=", actual_sched, ") @ ", Sys.time())
 set.seed(config$season + 1L)
+# The valuation sim must start the SAME positions as the standings sim: a
+# kicker-less franchise otherwise leaves that slot empty every week and is
+# modelled as punting a starter all season (see run_league_suite.R). Older
+# config.rds files predate both knobs, so fall back to the suite defaults.
+v_pos <- if (!is.null(config$pos_filter)) config$pos_filter else c("QB", "RB", "WR", "TE", "K")
+v_fill <- if (!is.null(config$fill_missing_starters)) config$fill_missing_starters else TRUE
 vsim <- ff_simulate(conn, n_seasons = n_trade, version = "v3",
                     lineup_method = "rank", replacement_level = FALSE,
+                    pos_filter = v_pos, fill_missing_starters = v_fill,
                     actual_schedule = actual_sched, return = "all")
 
 fr <- data.table::as.data.table(vsim$franchises)[, list(franchise_id, franchise_name)]

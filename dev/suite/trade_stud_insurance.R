@@ -26,7 +26,7 @@ me <- dd$me; opp <- dd$opp; send_ids <- dd$send_ids; recv_ids <- dd$recv_ids
 
 sim <- readRDS(file.path(out, "simulation.rds"))
 rs  <- as.data.table(sim$roster_scores)
-lc  <- as.data.table(sim$lineup_constraints)
+lc  <- ffsimulator:::.ffs_sim_lineup_constraints(sim)  # pos_filter-filtered: a DEF row breaks the LP
 n_seasons <- dd$n_seasons
 
 ## ---- league-wide standings, before and after ------------------------------------

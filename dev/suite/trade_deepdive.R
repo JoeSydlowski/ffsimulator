@@ -51,7 +51,7 @@ message("deal: ", my_team, " sends [", send_txt, "] to ", opp_name,
 
 sim <- readRDS(file.path(out, "simulation.rds"))
 rs  <- as.data.table(sim$roster_scores)
-lc  <- as.data.table(sim$lineup_constraints)
+lc  <- ffsimulator:::.ffs_sim_lineup_constraints(sim)  # pos_filter-filtered: a DEF row breaks the LP
 n_seasons <- uniqueN(rs$season)
 fr  <- unique(rs[, list(franchise_id, franchise_name)])
 me  <- fr[franchise_name == my_team]$franchise_id[1]
