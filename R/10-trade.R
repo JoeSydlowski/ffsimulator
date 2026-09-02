@@ -131,19 +131,26 @@ ffs_player_value <- function(base_simulation, player_id, franchise_id,
 #' @keywords internal
 .ffs_waiver_index <- function(waiver_scores) {
   player_id <- waiver_slot <- donor_id <- donor_rank <- avg_week <- mean_avg <-
-    slot_avg <- NULL
+    slot_avg <- rank_val <- value_w <- NULL
   if (is.null(waiver_scores) || !nrow(waiver_scores))
     return(data.table::data.table(player_id = character(), waiver_slot = character(),
                                   donor_id = character(), donor_rank = integer(),
                                   mean_avg = numeric()))
   w <- data.table::as.data.table(waiver_scores)
-  idx <- w[, list(mean_avg = mean(data.table::fcoalesce(as.numeric(avg_week), 0))),
+  # rank by what each free agent is worth to THIS roster when that has been
+  # measured (ffs_waiver_rank), and only fall back to raw weekly points
+  # otherwise. Points are not comparable across positions - the best WR by
+  # points can be worth less than a lesser-scoring TE who fills a real hole.
+  has_v <- "value_w" %in% names(w)
+  idx <- w[, list(mean_avg = mean(data.table::fcoalesce(as.numeric(avg_week), 0)),
+                  rank_val = if (has_v) as.numeric(value_w[[1]]) else
+                    mean(data.table::fcoalesce(as.numeric(avg_week), 0))),
            by = list(player_id, waiver_slot, donor_id, donor_rank)]
   # a slot is worth what its primary donor says it is - the alternates exist only
   # to dodge a donor who is in the deal, and must not reorder the wire. Every row
   # of a slot therefore shares one slot_avg, so the sort below cannot interleave
   # two slots' alternates.
-  slot_rank <- idx[, list(slot_avg = mean_avg[which.min(donor_rank)]), by = "waiver_slot"]
+  slot_rank <- idx[, list(slot_avg = rank_val[which.min(donor_rank)]), by = "waiver_slot"]
   idx <- merge(idx, slot_rank, by = "waiver_slot", all.x = TRUE)
   data.table::setorderv(idx, c("slot_avg", "waiver_slot", "donor_rank"),
                         c(-1L, 1L, 1L))
@@ -945,9 +952,13 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   waiver_gains <- numeric(0)
   if (waiver %in% c("me", "both") && nrow(waiver_idx)) {
     prim <- waiver_idx[!duplicated(waiver_idx$waiver_slot)]
-    waiver_gains <- stats::setNames(vapply(prim$player_id, function(p)
-      ffs_player_value(base_simulation, p, fid, base_summary = base_fid_summary,
-                       engine = engine)$h2h_wins, numeric(1)), prim$waiver_slot)
+    # ffs_waiver_rank() may already have measured these, in which case the pick
+    # ORDER is derived from them and re-valuing here would only risk disagreeing
+    waiver_gains <- if ("value_w" %in% names(base_simulation$waiver_scores))
+      stats::setNames(prim$rank_val, prim$waiver_slot) else
+      stats::setNames(vapply(prim$player_id, function(p)
+        ffs_player_value(base_simulation, p, fid, base_summary = base_fid_summary,
+                         engine = engine)$h2h_wins, numeric(1)), prim$waiver_slot)
     if (verbose) message("waiver wire: ", nrow(prim), " proxies worth ",
                          paste(sprintf("%s %+.2fw", prim$waiver_slot, waiver_gains),
                                collapse = " "), " to this roster")

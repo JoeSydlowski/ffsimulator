@@ -88,11 +88,25 @@ if (!exists("round_sheet")) {
   }
 }
 
-# knobs. n_trade default from dev/suite/valuation_convergence.R (2026-07-10):
-# value-rank stability plateaus at n=60 (Spearman .82/.87 vs .86/.91 at double
-# the cost); playoff-delta SD is pure 1/sqrt(n) (+-5.4% at 60) with no knee, so
-# raise FFS_TRADE_NSIMS (e.g. 240 -> +-3.3%) only to confirm a specific deal.
-n_trade      <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "60"))
+# The n=60 default is GONE (2026-09-02). valuation_convergence.R had measured
+# the stability of the value RANKING and of the playoff-delta SD, and concluded
+# n=60 was a fine plateau. dev/suite/trade_convergence.R asked the question that
+# actually matters for a board - is the DEAL ORDERING right - by evaluating 40
+# deals on nested subsamples of one n=2000 sim, and the answer was no:
+#
+#     n  grain  mae_pl  sign_flips  spearman  top10_kept
+#    60   1.67    2.50      16/40     0.524       5/10
+#   250   0.40    1.23       6/40     0.733       7/10
+#   500   0.20    1.08       3/40     0.899       8/10
+#  1000   0.10    0.39       1/40     0.956       8/10
+#  2000   0.05    0.00       0/40     1.000      10/10
+#
+# n=60 got the SIGN of the playoff delta wrong on 16 of 40 deals, and cannot
+# express a delta finer than 1/60 = 1.67% in the first place.
+#
+# 0 (default) = reuse the n=2000 standings sim already loaded above. A smaller
+# number builds a dedicated sim; below 1000 that needs FFS_ALLOW_NOISY_N=1.
+n_trade      <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "0"))
 # targets are exact-valued (~7s each on the n=60 search sim), so top_n trades
 # breadth for time: 100 ~= +6 min over 50, 200 ~= +17 min. Frontier wants breadth.
 trade_top_n  <- as.integer(Sys.getenv("FFS_TRADE_TOP_N", "200"))
@@ -210,20 +224,36 @@ TH <- list(
   sell_high_min = 3000
 )
 
-## ---- valuation sim: fast, REAL schedule ----------------------------------------
+## ---- the sim every trade delta is measured on ----------------------------------
 actual_sched <- if (!is.null(config$actual_schedule)) config$actual_schedule else TRUE
-message("valuation sim (n=", n_trade, ", actual_schedule=", actual_sched, ") @ ", Sys.time())
-set.seed(config$season + 1L)
 # The valuation sim must start the SAME positions as the standings sim: a
 # kicker-less franchise otherwise leaves that slot empty every week and is
 # modelled as punting a starter all season (see run_league_suite.R). Older
 # config.rds files predate both knobs, so fall back to the suite defaults.
 v_pos <- if (!is.null(config$pos_filter)) config$pos_filter else c("QB", "RB", "WR", "TE", "K")
 v_fill <- if (!is.null(config$fill_missing_starters)) config$fill_missing_starters else TRUE
-vsim <- ff_simulate(conn, n_seasons = n_trade, version = "v3",
-                    lineup_method = "rank", replacement_level = FALSE,
-                    pos_filter = v_pos, fill_missing_starters = v_fill,
-                    actual_schedule = actual_sched, return = "all")
+if (n_trade == 0L) {
+  # the standings sim IS the valuation sim - one object, no second opinion to
+  # reconcile, and every delta quoted is an n=2000 delta
+  vsim <- sim
+  n_trade <- length(unique(data.table::as.data.table(sim$summary_season)$season))
+  message("valuing on the n=", n_trade, " standings sim @ ", Sys.time())
+} else {
+  if (n_trade < 1000L) {
+    msg <- paste0("FFS_TRADE_NSIMS=", n_trade, " is below the measured stability floor ",
+                  "(at n=60 the playoff delta had the WRONG SIGN on 16 of 40 deals); ",
+                  "see dev/suite/trade_convergence.R")
+    if (Sys.getenv("FFS_ALLOW_NOISY_N", "0") != "1")
+      stop(msg, ". Set FFS_ALLOW_NOISY_N=1 to override for triage only.")
+    warning(msg, call. = FALSE); message("!! ", msg)
+  }
+  message("valuation sim (n=", n_trade, ", actual_schedule=", actual_sched, ") @ ", Sys.time())
+  set.seed(config$season + 1L)
+  vsim <- ff_simulate(conn, n_seasons = n_trade, version = "v3",
+                      lineup_method = "rank", replacement_level = FALSE,
+                      pos_filter = v_pos, fill_missing_starters = v_fill,
+                      actual_schedule = actual_sched, return = "all")
+}
 
 if (waiver_mode != "none") {
   vsim$waiver_scores <- ffs_waiver_proxies(
@@ -231,9 +261,11 @@ if (waiver_mode != "none") {
   # eyeball this: each proxy borrows the weekly scores of the rostered player
   # nearest him in ECR, so a large ecr_gap means the league has no comparable
   # rostered player and the clone is a stretch
+  vsim$waiver_scores <- ffs_waiver_rank(vsim, me)
   message("waiver wire (", waiver_mode, ", cut=", opp_cut, "):")
   print(unique(vsim$waiver_scores[donor_rank == 1L,
-    list(waiver_slot, player_name, ecr = round(ecr), ecr_gap = round(ecr_gap, 1))]))
+    list(waiver_slot, player_name, ecr = round(ecr), ecr_gap = round(ecr_gap, 1),
+         value_w = round(value_w, 3))])[order(-value_w)])
 }
 
 fr <- data.table::as.data.table(vsim$franchises)[, list(franchise_id, franchise_name)]

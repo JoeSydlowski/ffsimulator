@@ -110,6 +110,7 @@ if (waiver_mode != "none") {
   sim$waiver_scores <- ffs_waiver_proxies(
     sim, n_per_pos = as.integer(Sys.getenv("FFS_WAIVER_N", "3")),
     pos_filter = intersect(v_pos, c("QB","RB","WR","TE")))
+  sim$waiver_scores <- ffs_waiver_rank(sim, me)
   message("waiver wire (", waiver_mode, ", cut=", opp_cut, "): ",
           paste(unique(sim$waiver_scores[donor_rank == 1L]$player_name), collapse = ", "))
 }

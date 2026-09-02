@@ -434,3 +434,36 @@ test_that("the screen credits the backfill the eval will actually make", {
   # one open spot is credited exactly one free agent, no more
   expect_identical(data.table::uniqueN(on$waiver_gain[two]), 1L)
 })
+
+test_that("ffs_waiver_rank reorders the wire by value, not raw points", {
+  skip_on_cran()
+  sim <- .trade_sim_with_waivers()
+  skip_if(is.null(ffs_trade_engine(sim)), "fixture is not engine-eligible")
+  me <- sort(unique(stats::na.omit(
+    data.table::as.data.table(sim$roster_scores)$franchise_id)))[[1]]
+
+  # without a measurement the index falls back to mean weekly points
+  by_pts <- .ffs_waiver_index(sim$waiver_scores)
+  expect_identical(by_pts$slot_avg, by_pts$mean_avg[match(by_pts$waiver_slot, by_pts$waiver_slot)])
+
+  sim$waiver_scores <- ffs_waiver_rank(sim, me, engine = ffs_trade_engine(sim))
+  expect_true("value_w" %in% names(sim$waiver_scores))
+  # one value per slot, shared by that slot's donor alternates
+  expect_identical(
+    data.table::uniqueN(sim$waiver_scores, by = c("waiver_slot", "value_w")),
+    data.table::uniqueN(sim$waiver_scores$waiver_slot))
+
+  by_val <- .ffs_waiver_index(sim$waiver_scores)
+  # mean_avg is still reported, but rank_val - the measured value - is what the
+  # order now rides on
+  expect_true(all(c("mean_avg", "rank_val") %in% names(by_val)))
+  src <- unique(sim$waiver_scores[, c("player_id", "value_w")])
+  expect_equal(by_val$rank_val, src$value_w[match(by_val$player_id, src$player_id)])
+  # best-first still holds, now on the measured value
+  expect_true(by_val$slot_avg[[1]] >= by_val$slot_avg[[nrow(by_val)]])
+  expect_identical(.ffs_waiver_pick(by_val, 1L), by_val$player_id[[1]])
+
+  # no proxies at all is a no-op, not an error
+  bare <- .ffs_cache_example("trade_sim.rds")
+  expect_null(ffs_waiver_rank(bare, me))
+})

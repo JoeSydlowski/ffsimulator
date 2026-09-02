@@ -128,8 +128,28 @@ if (whole_roster) {
   safe <- gsub("[^A-Za-z0-9]+", "_", move_name)
 }
 
-## ---- fast SEARCH sim (cached) ---------------------------------------------------
-n_trade <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "60"))
+## ---- the sim the deals are EVALUATED on -----------------------------------------
+# MEASURED 2026-09-02 (dev/suite/trade_convergence.R, Goofball, 40 deals, nested
+# subsamples of one n=2000 sim so every comparison is paired):
+#
+#     n  grain  mae_pl  sign_flips  spearman  top10_kept
+#    60   1.67    2.50      16/40     0.524       5/10
+#   125   0.80    1.76      15/40     0.517       6/10
+#   250   0.40    1.23       6/40     0.733       7/10
+#   500   0.20    1.08       3/40     0.899       8/10
+#  1000   0.10    0.39       1/40     0.956       8/10
+#  2000   0.05    0.00       0/40     1.000      10/10
+#
+# The old n=60 default got the SIGN wrong on 16 of 40 deals and put only 5 of the
+# true top 10 in its top 10 - it was not a noisy ranking, it was close to no
+# ranking at all. It also cannot express a playoff delta finer than 1/60 = 1.67%,
+# so a whole board of "+1.7% / +3.3%" was really "this flipped 1 or 2 seasons
+# out of 60". Do not resurrect it.
+#
+# DEFAULT IS NOW THE n=2000 STANDINGS SIM - no separate search sim. Set
+# FFS_TRADE_NSIMS to build a smaller one anyway; below 1000 that needs
+# FFS_ALLOW_NOISY_N=1, and the numbers are for triage only, never for a decision.
+n_trade <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "0"))
 # pos_filter and fill_missing_starters must match the standings sim this board is
 # read against. Omitting them is not cosmetic: in a league with a K starting slot
 # the optimiser leaves that slot empty every week for any kicker-less manager,
@@ -141,18 +161,35 @@ v_fill <- if (!is.null(config$fill_missing_starters)) config$fill_missing_starte
 # ...and they go in the cache NAME, so a sim built before this fix can never be
 # silently reused for a league whose lineup it got wrong
 sim_tag <- paste0(paste(sort(v_pos), collapse = ""), if (isTRUE(v_fill)) "_fill" else "")
-sim_cache <- Sys.getenv("FFS_SEARCH_SIM",
-  file.path(league_dir, sprintf("search_n%d_%s.rds", n_trade, sim_tag)))
-if (file.exists(sim_cache)) {
-  message("search sim: ", sim_cache)
-  sim <- readRDS(sim_cache)
+if (n_trade == 0L) {
+  message("evaluating on the STANDINGS sim: ", file.path(out, "simulation.rds"))
+  sim <- readRDS(file.path(out, "simulation.rds"))
+  n_trade <- length(unique(as.data.table(sim$summary_season)$season))
+  message("  n = ", n_trade, " seasons")
 } else {
-  message("building n=", n_trade, " search sim @ ", Sys.time())
-  set.seed(config$season + 1L)
-  sim <- ff_simulate(conn, n_seasons = n_trade, version = "v3", lineup_method = "rank",
-                     return = "all", actual_schedule = TRUE, replacement_level = FALSE,
-                     pos_filter = v_pos, fill_missing_starters = v_fill)
-  saveRDS(sim, sim_cache)
+  if (n_trade < 1000L) {
+    msg <- paste0("FFS_TRADE_NSIMS=", n_trade, " is below the measured stability floor. ",
+                  "At n=60 the sign of the playoff delta was WRONG on 16 of 40 deals ",
+                  "(spearman 0.52); n=1000 is the first level with <=1 flip. ",
+                  "See dev/suite/trade_convergence.R.")
+    if (Sys.getenv("FFS_ALLOW_NOISY_N", "0") != "1")
+      stop(msg, " Set FFS_ALLOW_NOISY_N=1 to override for triage only.")
+    warning(msg, call. = FALSE)
+    message("!! ", msg)
+  }
+  sim_cache <- Sys.getenv("FFS_SEARCH_SIM",
+    file.path(league_dir, sprintf("search_n%d_%s.rds", n_trade, sim_tag)))
+  if (file.exists(sim_cache)) {
+    message("search sim: ", sim_cache)
+    sim <- readRDS(sim_cache)
+  } else {
+    message("building n=", n_trade, " search sim @ ", Sys.time())
+    set.seed(config$season + 1L)
+    sim <- ff_simulate(conn, n_seasons = n_trade, version = "v3", lineup_method = "rank",
+                       return = "all", actual_schedule = TRUE, replacement_level = FALSE,
+                       pos_filter = v_pos, fill_missing_starters = v_fill)
+    saveRDS(sim, sim_cache)
+  }
 }
 
 ## ---- waiver wire ----------------------------------------------------------------
@@ -167,17 +204,28 @@ waiver_n <- as.integer(Sys.getenv("FFS_WAIVER_N", "3"))
 if (waiver_mode != "none") {
   sim$waiver_scores <- ffs_waiver_proxies(
     sim, n_per_pos = waiver_n, pos_filter = intersect(v_pos, c("QB","RB","WR","TE")))
+  # rank the wire by what each free agent is worth to MY roster, not by raw mean
+  # points: points don't compare across positions, so the points order picks the
+  # wrong player (measured on Goofball, the best WR by points was worth -0.02
+  # wins while a lower-scoring TE was worth +0.05)
+  sim$waiver_scores <- ffs_waiver_rank(sim, me)
   wi <- ffsimulator:::.ffs_waiver_index(sim$waiver_scores)
   message("waiver wire (", waiver_mode, "): ", nrow(wi[donor_rank == 1L]), " free agents")
   # ALWAYS eyeball this before trusting the board. Each proxy borrows the weekly
   # scores of the rostered player nearest him in ECR; if the gaps are large or the
   # scores are near zero, this league has no wire and FFS_WAIVER should be "none".
-  print(unique(sim$waiver_scores[, .(waiver_slot, player_name, donor_rank,
-                                     ecr = round(ecr), ecr_gap = round(ecr_gap, 1))]))
+  print(unique(sim$waiver_scores[donor_rank == 1L,
+    .(waiver_slot, player_name, ecr = round(ecr), ecr_gap = round(ecr_gap, 1),
+      value_w = round(value_w, 3))])[order(-value_w)])
 }
 
 ## ---- nearest first-round picks per team (value-only gap fillers) -----------------
+# FFS_PICKS=0 keeps draft picks out of the asset universe entirely, on BOTH
+# sides. min_send_players only forces real players into the SEND package; with
+# picks priced they still fill the receive side and pad the gap, so a "pure
+# players for players" board needs this rather than the floor.
 fmt <- ffsimulator:::.ffs_detect_qb_format(sim$lineup_constraints)
+use_picks <- Sys.getenv("FFS_PICKS", "1") != "0"
 pick_season <- as.integer(Sys.getenv("FFS_PICK_SEASON", "0"))
 if (pick_season == 0L) pick_season <- as.integer(config$season) + 1L  # soonest future draft
 # real pick ownership (incl. traded picks) if ffs_draftpicks works, else each
@@ -192,7 +240,8 @@ picks_df <- tryCatch({
   CJ(season = pick_season, franchise_id = frs$franchise_id)[
     , `:=`(round = 1L, original_franchise_id = franchise_id)]
 })
-pv <- tryCatch(as.data.table(ffs_pick_values(
+pv <- if (!use_picks) { message("FFS_PICKS=0: players only, no draft picks either way"); NULL } else
+      tryCatch(as.data.table(ffs_pick_values(
         sim, picks = picks_df, pick_curve = here::here("dev", "data", "pick_value_curve.csv"),
         format = fmt)),
       error = function(e) { message("picks unavailable (skipping gap-fillers): ",

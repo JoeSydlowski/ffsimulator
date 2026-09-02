@@ -137,10 +137,44 @@ only run at value ≥ 300.
 - `FFS_TRADE_MIN_FUTURE` (default `-500`) — hard floor: drop deals that bleed
   more future value than this. Set `-Inf` to disable.
 - `FFS_TRADE_TOP_N` (default `50`) — how many screened targets to value.
-- `FFS_TRADE_NSIMS` — search sim size (default set by the convergence study).
+- `FFS_TRADE_NSIMS` — **0 (default) means "use the n=2000 standings sim"**. See
+  *How many seasons a trade delta needs* below before setting anything else.
 - `FFS_TRADE_CONFIRM_N` (default `15`) — how many deals get their deltas
   confirmed on the n=400 standings sim.
 - `FFS_SELL_MAX` (default `4`) — how many SELLs get buyer scans + matchmaking.
+
+### How many seasons a trade delta needs
+
+`dev/suite/trade_convergence.R`, measured 2026-09-02 on Goofball: 40 deals spanning
+the whole board score range, evaluated on **nested subsamples of one n=2000
+simulation**, so the n=250 estimate is literally the first 250 seasons of the
+n=2000 estimate and every comparison is paired.
+
+| n | grain | mae_pl | sign flips | spearman | top-10 kept |
+|---:|---:|---:|---:|---:|---:|
+| 60 | 1.67 | 2.50 | **16/40** | 0.524 | 5/10 |
+| 125 | 0.80 | 1.76 | **15/40** | 0.517 | 6/10 |
+| 250 | 0.40 | 1.23 | 6/40 | 0.733 | 7/10 |
+| 500 | 0.20 | 1.08 | 3/40 | 0.899 | 8/10 |
+| 1000 | 0.10 | 0.39 | 1/40 | 0.956 | 8/10 |
+| 2000 | 0.05 | 0.00 | 0/40 | 1.000 | 10/10 |
+
+`grain` is the smallest playoff delta an n-season sim can even express (100/n);
+`sign flips` counts deals whose delta points the **wrong way**.
+
+**The old n=60 default was not a noisy ranking, it was close to no ranking at
+all** — wrong sign on 16 of 40 deals, and only 5 of the true top 10 in its own
+top 10. A board of "+1.7% / +3.3% / +5.0%" deals was reporting "this flipped 1,
+2 or 3 seasons out of 60" to three significant figures.
+
+Note this does **not** contradict `valuation_convergence.R`, which found n=60 a
+fine plateau: that measured the stability of the value *ranking* and the SD of a
+single playoff delta. Neither implies the *ordering of deals against each other*
+survives, and it does not.
+
+`FFS_TRADE_NSIMS` therefore defaults to `0` = reuse the standings sim. Anything
+below 1000 requires `FFS_ALLOW_NOISY_N=1` and is for triage only, never for a
+decision.
 
 ### Consolidation (two of my players for one better one)
 

@@ -267,3 +267,44 @@ ffs_waiver_proxies <- function(base_simulation,
             donor_rank = integer(), ecr_gap = numeric(), ecr = numeric())]
   rs[]
 }
+
+#' Rank waiver proxies by what they are worth to one roster
+#'
+#' [.ffs_waiver_index()] falls back to ranking free agents by raw mean weekly
+#' points, which is position-blind and therefore wrong: points are not comparable
+#' across positions, and what a roster actually gains from a signing depends on
+#' the holes it has. Measured on Goofball, the best available WR by mean points
+#' (7.03) was worth **-0.02 wins** to the roster while a tight end scoring 5.72
+#' was worth **+0.05** - the points ordering picks the wrong player.
+#'
+#' This values each free agent exactly, with the same [ffs_player_value()] call
+#' the trade board uses, and writes it back as `value_w` so the pick order and
+#' the score agree. One valuation per slot, so it is cheap - but it is specific
+#' to `franchise_id`, so re-run it if you switch teams.
+#'
+#' @param base_simulation an `ff_simulation` carrying `waiver_scores`
+#' @param franchise_id the franchise doing the signing
+#' @param engine an optional [ffs_trade_engine()], shared with the caller
+#'
+#' @return `base_simulation$waiver_scores` with a `value_w` column
+#' @export
+ffs_waiver_rank <- function(base_simulation, franchise_id, engine = NULL) {
+  checkmate::assert_class(base_simulation, "ff_simulation")
+  waiver_slot <- player_id <- value_w <- NULL
+
+  w <- base_simulation$waiver_scores
+  if (is.null(w) || !nrow(w)) return(w)
+  w <- data.table::as.data.table(w)
+
+  idx <- .ffs_waiver_index(w)
+  prim <- idx[!duplicated(idx$waiver_slot)]
+  base_summary <- .ffs_franchise_summary_cached(base_simulation, franchise_id, engine)
+  v <- vapply(prim$player_id, function(p)
+    ffs_player_value(base_simulation, p, franchise_id,
+                     base_summary = base_summary, engine = engine)$h2h_wins,
+    numeric(1))
+  # the donor alternates within a slot are clones of near-identical-ECR players,
+  # so they inherit the slot's value rather than each being re-valued
+  w[, value_w := v[match(waiver_slot, prim$waiver_slot)]]
+  w[]
+}
