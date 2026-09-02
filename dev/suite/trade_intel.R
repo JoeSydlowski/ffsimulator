@@ -106,8 +106,10 @@ uneven_shade <- as.numeric(Sys.getenv("FFS_TRADE_UNEVEN_SHADE", as.character(val
 # give up a stud for a package worth less. consolidation_penalty is the required
 # overpay (both ways); 0.05 clears a proper consolidation like Loveland+Higgins
 # (+6.9% over J.Love) while rejecting a discounted one. win_win is a soft ranking
-# bump (winwin_bonus), NOT a hard filter. max_opp_drop still refuses deals that
-# tank the other side's playoff odds, e.g. asking for a team's only startable QB.
+# bump (winwin_bonus), NOT a hard filter. max_opp_drop is now a FLAG too: it
+# feeds `gettable` when a deal would tank the other side's playoff odds (asking
+# for a team's only startable QB), but their everyday acceptance is a market
+# decision - see ffs_deal_scores().
 consolidation <- as.numeric(Sys.getenv("FFS_TRADE_CONSOLIDATION", "0.05"))
 winwin_bonus  <- as.numeric(Sys.getenv("FFS_TRADE_WINWIN_BONUS", "0.5"))
 uneven_winwin <- as.logical(as.integer(Sys.getenv("FFS_TRADE_UNEVEN_WINWIN", "0")))
@@ -637,7 +639,8 @@ if (nrow(trades)) {
   # re-apply the acceptability gate on the CONFIRMED (n=400) opponent delta:
   # a deal that squeaked past the noisy search-sim value can confirm past the
   # threshold once the standings sim re-prices the other side's downside
-  trades <- trades[is.na(opp_playoff_delta) | opp_playoff_delta >= -max_opp_drop]
+  # the playoff veto is a FLAG (it feeds `gettable` below), not a filter: these
+  # deals are already exactly evaluated, so marking them beats dropping them
   # final ranking from the CONFIRMED deltas: fixed-rate equivalent-playoff-%
   # (default) - 100*playoff + future/future_rate - or the legacy z-blend. Same
   # exchange rate as ffs_build_trades; posture from my baseline playoff odds.
@@ -646,32 +649,23 @@ if (nrow(trades)) {
     if (is.na(s) || s == 0) return(rep(0, length(x)))
     (x - mean(x, na.rm = TRUE)) / s
   }
-  # per-position reliability + smooth win-now haircut (matches ffs_build_trades)
-  nv_by_id  <- stats::setNames(d$next_value_mean, as.character(d$player_id))
-  cur_by_id <- stats::setNames(d$cur_value, as.character(d$player_id))
-  pos_by_id <- stats::setNames(d$pos, as.character(d$player_id))
-  # value-space calibration slopes capped into [0,1] - keep in sync with
-  # ffs_build_trades()'s future_reliability default (refit 2026-07-28 against the
-  # log-space transition model; the old set was fit pre-1bc4128 and went stale)
-  rel_pos <- if (identical(as.character(fmt), "1qb")) c(QB=0.651,RB=0.679,TE=1.000,WR=1.000) else
-                                                      c(QB=0.551,RB=1.000,TE=0.835,WR=1.000)
-  rel_ids <- function(ids) { r <- rel_pos[pos_by_id[ids]]; r[is.na(r)] <- future_certainty; r }
-  # reliability discounts the projected MOVE (next-cur), not the known current level
-  reliable_next <- function(ids) { ids <- ids[!grepl("^PICK_", ids)]; if (!length(ids)) return(0)
-    cu <- cur_by_id[ids]; nx <- nv_by_id[ids]; rl <- rel_ids(ids); cu[is.na(cu)] <- 0; nx[is.na(nx)] <- 0
-    sum(cu + rl * (nx - cu)) }
-  adj_future <- function(sids, rids, fcd) {
-    praw <- sum(nv_by_id[rids[!grepl("^PICK_",rids)]], na.rm=TRUE) - sum(nv_by_id[sids[!grepl("^PICK_",sids)]], na.rm=TRUE)
-    (reliable_next(rids) - reliable_next(sids)) + 0.55 * (fcd - praw)
-  }
-  my_hc <- pmin(pmax(1.30 - base_me[["playoff_pct"]][1], 0.60), 1.00)
-  trades[, adj_future_capital := vapply(seq_len(.N),
-    function(i) adj_future(send_ids[[i]], recv_ids[[i]], future_capital_delta[i]), numeric(1))]
+  # per-position reliability, smooth win-now haircut, and the market view of the
+  # other side - all from the shared scorer, so this cannot drift out of sync
+  # with ffs_build_trades()/confirm_trade_board.R the way three hand-copied
+  # blocks did.
+  my_hc <- ffsimulator:::.ffs_haircut(base_me[["playoff_pct"]][1])
   if (score_mode == "rate") {
-    trades[, score := 100 * my_playoff_delta + adj_future_capital * my_hc / playoff_value +
-             champ_weight * 100 * my_champ_delta +
-             winwin_bonus * as.numeric(win_win %in% TRUE)]
+    trades <- ffs_deal_scores(
+      trades, d, my_haircut = my_hc, playoff_value = playoff_value,
+      future_certainty = future_certainty, format = as.character(fmt),
+      opp_edge_tol = as.numeric(Sys.getenv("FFS_OPP_EDGE_TOL", "0.05")),
+      max_opp_drop = max_opp_drop,
+      champ_weight = champ_weight, winwin_bonus = winwin_bonus)
   } else {
+    adj_fn <- ffsimulator:::.ffs_adj_future_fn(d, future_certainty = future_certainty,
+                                               format = as.character(fmt))
+    trades[, adj_future_capital := vapply(seq_len(.N), function(i)
+      adj_fn(send_ids[[i]], recv_ids[[i]], future_capital_delta[i]), numeric(1))]
     trades[, score := zt(my_playoff_delta) + champ_weight * zt(my_champ_delta) +
              future_weight * zt(future_capital_delta) +
              winwin_bonus * as.numeric(win_win %in% TRUE)]

@@ -14,6 +14,22 @@ mfl_franchises <- ffs_franchises(mfl_conn)
 mfl_rosters <- ffs_rosters(mfl_conn) %>%
   select(-salary, -contract_years, -roster_status, -draft_year, -draft_round)
 
+# trade_sim.rds - a 6-season slice of a real superflex sim, carrying only the
+# components ffs_trade_eval()/ffs_trade_engine() read. The older fixtures predate
+# lineup_method = "rank" (no avg_week, no starter_player_id), so the trade-engine
+# equivalence suite cannot run on them. Rebuild from any return = "all" sim:
+#
+#   sim <- readRDS("<a search sim>.rds")
+#   sub <- function(x) data.table::as.data.table(x)[season %in% 1:6]
+#   out <- list(optimal_scores = sub(sim$optimal_scores),
+#               roster_scores  = sub(sim$roster_scores),
+#               schedules      = sub(sim$schedules),
+#               lineup_constraints = sim$lineup_constraints,
+#               simulation_params  = sim$simulation_params)
+#   out$simulation_params$n_seasons <- 6
+#   class(out) <- class(sim)
+#   saveRDS(out, "inst/examples/trade_sim.rds", compress = "xz")
+
 mfl_lineup_constraints <- ffscrapr::ff_starter_positions(mfl_conn)
 
 saveRDS(mfl_conn, "inst/examples/mfl_conn.rds")

@@ -1,27 +1,43 @@
 # Move-a-player trade board: given ONE player you want to move, scan every team
 # for fair, realistic packages, and plot them so you can pick the best deal.
 #
-# This formalises the dev-scratch Puka board (trade_board2.R + plot_trades.R) into
-# a reusable, parameterised tool. The board rules encode what Joe converged on:
-#   * even (same-count) trades within `FFS_BOARD_EVEN_BAND` (default 3%),
-#     uneven consolidation within a `FFS_BOARD_UNEVEN_GAP` premium band (2-8%);
+# The scan is EXHAUSTIVE by default: every package shape (1..3 pieces each way)
+# against every team, with no per-team cap, and every deal inside the fair band
+# gets an exact evaluation. What keeps that affordable is that the acceptance
+# test is sim-free, so it prunes before the expensive step.
+#
+# The board rules:
+#   * ONE value band, `FFS_FAIR_BAND` (default -5%..+5%), measured against the
+#     SHAPE-FAIR price rather than a raw zero gap - a package must overpay the
+#     stud it is traded for, so a 1-for-2 is fair at +`FFS_FAIR_PREMIUM` (5%),
+#     not at 0. This replaces the old even/uneven band pair.
+#   * The OTHER SIDE is priced on current market value, not on my dynasty
+#     reliability model: they accept when their edge is within `FFS_OPP_EDGE_TOL`
+#     of fair. Their playoff odds only VETO a deal (`FFS_BOARD_MAX_OPP_DROP`,
+#     15%), and even then only flag `gettable` - an ordinary WR-for-WR+RB that
+#     dings their odds is not something a real owner refuses.
 #   * the second SEND piece must be a real player (min_piece_value), not filler;
 #   * draft PICKS fill value gaps (nearest, least-discounted year);
-#   * give-back sweetener ON: when a deal drains the other team, the builder also
-#     offers a variant that sends your cheapest player at that position BACK, so
-#     the return of e.g. an RB to the depleted team shows up as a softer opp drop
-#     (generalises "send Daniel Jones back on a QB buy");
-#   * posture-aware acceptance: rebuilders take a playoff hit for future value;
 #   * near-identical "player + filler / different pick year" ideas are deduped.
 #
 # Usage (env-configurable, defaults to Puka in the Jon superflex league):
 #   FFS_LEAGUE_ID=1359546500786434048 FFS_MOVE_PLAYER="Puka Nacua" \
 #     Rscript dev/suite/player_trade_board.R
+#
+# WHOLE-ROSTER MODE - set FFS_MOVE_PLAYER="" and every asset you own becomes a
+# candidate headline piece instead of just one named player. Writes
+# roster_trade_board.csv / roster_board.rds and adds a per-asset summary
+# ("which of my players actually generate tradeable ideas"). Measured on the Jon
+# league at production defaults: 42,246 evals / 1,571 ideas / 18 headline senders,
+# ~4.5 h search on 14 workers - an overnight job once the n=2000 confirm follows.
+#   FFS_MOVE_PLAYER="" Rscript dev/suite/player_trade_board.R
 # Other knobs: FFS_MY_TEAM, FFS_TRADE_NSIMS (search sim n, default 60),
 #   FFS_SEARCH_SIM (path to a cached search sim), FFS_PICK_SEASON (nearest pick
-#   year, default = soonest future draft), FFS_BOARD_EVEN_BAND, FFS_BOARD_UNEVEN_GAP
-#   ("lo,hi"), FFS_BOARD_MAX_OPP_DROP, FFS_BOARD_MAX_OPP_FUTURE_DROP,
-#   FFS_TRADE_SCREEN_N, FFS_TRADE_TOP_N, FFS_MIN_PIECE_VALUE.
+#   year, default = soonest future draft), FFS_FAIR_BAND ("lo,hi" or "off" for
+#   the legacy bands), FFS_FAIR_PREMIUM, FFS_OPP_EDGE_TOL, FFS_BOARD_MAX_OPP_DROP,
+#   FFS_BOARD_SHAPES, FFS_TARGET_N, FFS_TRADE_SCREEN_N / _PER_OPP ("Inf" =
+#   exhaustive), FFS_TRADE_EVAL_MAX (safety cap, 40000), FFS_TRADE_WORKERS
+#   (parallel exact evals), FFS_BOARD_GIVEBACK, FFS_MIN_PIECE_VALUE.
 
 suppressMessages({
   library(data.table)
@@ -74,9 +90,25 @@ frs   <- unique(dyn[, .(franchise_id, franchise_name)])
 me    <- frs[franchise_name == my_team]$franchise_id[1]
 stopifnot("my_team not found in dynasty_outlook" = !is.na(me))
 
+# WHOLE-ROSTER MODE: FFS_MOVE_PLAYER="" drops the must_send constraint, so every
+# asset you own is a candidate headline piece rather than just one named player.
+# MEASURED 2026-08-06 (Jon league, production defaults): Puka-only = 2,436 evals
+# / 64 ideas / 1 headline sender; whole roster = 42,246 evals / 1,571 ideas / 18
+# headline senders (~4.5 h search on 14 workers, so an overnight job with the
+# n=2000 confirm). Your MID-VALUE assets generate more tradeable ideas than the
+# stud does - a 2027 R1, Jordyn Tyson and Harold Fannin each beat Puka - because
+# they fit inside more teams' fair-price bands.
 move_name <- Sys.getenv("FFS_MOVE_PLAYER", "Puka Nacua")
-move_id   <- dyn[franchise_id == me & player_name == move_name]$player_id[1]
-if (is.na(move_id)) stop(sprintf("'%s' is not on %s's roster", move_name, my_team))
+whole_roster <- !nzchar(trimws(move_name))
+if (whole_roster) {
+  move_id <- NULL
+  safe <- "roster"
+  message("WHOLE-ROSTER mode: every asset is a candidate headline piece")
+} else {
+  move_id <- dyn[franchise_id == me & player_name == move_name]$player_id[1]
+  if (is.na(move_id)) stop(sprintf("'%s' is not on %s's roster", move_name, my_team))
+  safe <- gsub("[^A-Za-z0-9]+", "_", move_name)
+}
 
 ## ---- fast SEARCH sim (cached) ---------------------------------------------------
 n_trade <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "60"))
@@ -115,61 +147,128 @@ pv <- tryCatch(as.data.table(ffs_pick_values(
                                     conditionMessage(e)); NULL })
 
 ## ---- board knobs ----------------------------------------------------------------
+# ONE band replaces the old even/uneven pair: my_edge is the deal's gap measured
+# against the SHAPE-FAIR price (0 on an even swap, +fair_premium per extra piece
+# the receiving side takes back, because a package must overpay the stud it is
+# traded for). The upper edge is how far over fair I am willing to try to take;
+# the lower edge stops enumerating deals where I overpay.
+fair_premium <- as.numeric(Sys.getenv("FFS_FAIR_PREMIUM", "0.05"))
+fair_band <- as.numeric(strsplit(Sys.getenv("FFS_FAIR_BAND", "-0.05,0.05"), ",")[[1]])
+# How far below the shape-fair price the other owner will still deal. NOTE this
+# defaults to the SAME 5% as the upper edge of FFS_FAIR_BAND - they are the same
+# quantity seen from the two sides ("how much over fair I'll try to take" vs "how
+# much under fair they'll swallow"). So every enumerated deal passes the market
+# half of `gettable` by construction, and at board time the flag is effectively
+# the playoff veto alone. Widen FFS_FAIR_BAND past this to enumerate near-misses
+# and make the flag discriminate on value again.
+opp_edge_tol <- as.numeric(Sys.getenv("FFS_OPP_EDGE_TOL", "0.05"))
+# legacy bands, still used when FFS_FAIR_BAND is set to "off"
 even_band <- as.numeric(Sys.getenv("FFS_BOARD_EVEN_BAND", "0.03"))
-# uneven (consolidation / fragment) premium band. A touch wider than the even
-# band so fragment shapes (1-for-3: split a stud into 2 players + a pick) have
-# room - two real pieces already sum near the stud, so the pick pushes the gap up.
 ug <- as.numeric(strsplit(Sys.getenv("FFS_BOARD_UNEVEN_GAP", "0.02,0.10"), ",")[[1]])
+if (identical(Sys.getenv("FFS_FAIR_BAND"), "off")) fair_band <- NULL
 # SEND floor at 1000: a real rotation player (Aaron Jones 1259, Tony Pollard 1582,
 # Chris Rodriguez 1216) can be packaged with the stud, but true junk (Emanuel
 # Wilson 553, Najee Harris 329, Taylen Green 474 - all <1000) stays out. The 2000
 # floor Joe first tried treated Aaron Jones as filler, so "Aaron Jones + Puka"
 # never enumerated (he only surfaced as an auto give-back).
 min_piece <- as.numeric(Sys.getenv("FFS_MIN_PIECE_VALUE", "1000"))
-# RECEIVED floor stays at 2000: real pieces coming back, no junk in the package.
-min_recv <- as.numeric(Sys.getenv("FFS_MIN_RECV_VALUE", "2000"))
-max_opp_drop <- as.numeric(Sys.getenv("FFS_BOARD_MAX_OPP_DROP", "0.10"))
-max_opp_future <- as.numeric(Sys.getenv("FFS_BOARD_MAX_OPP_FUTURE_DROP", "750"))
+# RECEIVED floor 1500 (Joe, 2026-08-06; was 2000). Once core_n is capping per
+# idea the floor no longer buys runtime - it only decides which pieces are
+# allowed to appear in a return package. 1500 lets smaller real pieces come back
+# instead of being pre-excluded, and costs ~2 extra evals (measured: 1,049 ->
+# 1,051 at core_n=20, despite the raw banded set growing 19,445 -> 32,263).
+min_recv <- as.numeric(Sys.getenv("FFS_MIN_RECV_VALUE", "1500"))
+# playoff VETO, not a filter: it now only flags `gettable`, and only fires on a
+# large drop - the case where a deal genuinely guts them at a position. An
+# ordinary WR-for-WR+RB that shaves a couple of points off their odds is not
+# something a real owner refuses; their acceptance is a market decision.
+max_opp_drop <- as.numeric(Sys.getenv("FFS_BOARD_MAX_OPP_DROP", "0.15"))
+# legacy rebuilder branch, off by default (cur_value already prices their taste
+# for youth and picks)
+max_opp_future <- as.numeric(Sys.getenv("FFS_BOARD_MAX_OPP_FUTURE_DROP", "Inf"))
 # soft trajectory down-rank: don't ship my risers / acquire their decliners
 traj_weight <- as.numeric(Sys.getenv("FFS_BOARD_TRAJ_WEIGHT", "0.75"))
 rise_cut <- as.numeric(Sys.getenv("FFS_BOARD_RISE_CUT", "0.075"))
 fade_cut <- as.numeric(Sys.getenv("FFS_BOARD_FADE_CUT", "-0.075"))
-screen_n <- as.integer(Sys.getenv("FFS_TRADE_SCREEN_N", "120"))
-# evaluate this many of each opponent's packages exactly (coverage). ffs_build_trades
-# additionally reserves a per-opponent quota for pick-carrying packages, so
-# future-banking deals (e.g. Puka+Kittle -> Egbuka+Barkley+pick, whose win-neutral
-# pick deflates the win-gain screen) are not starved out of the eval budget.
-screen_per_opp <- as.integer(Sys.getenv("FFS_TRADE_SCREEN_PER_OPP", "12"))
-top_n    <- as.integer(Sys.getenv("FFS_TRADE_TOP_N", "400"))
+# EXHAUSTIVE by default: every deal inside the fair band gets an exact
+# evaluation, with no global or per-team cap. The screen then serves only as
+# eval ordering, so a run stopped early (or capped by FFS_TRADE_EVAL_MAX) has
+# still priced the most promising deals first. Set these to integers to go back
+# to a budgeted scan.
+num_or_inf <- function(v, d) { x <- Sys.getenv(v, d); if (x %in% c("Inf","inf")) Inf else as.numeric(x) }
+screen_n <- num_or_inf("FFS_TRADE_SCREEN_N", "Inf")
+screen_per_opp <- num_or_inf("FFS_TRADE_SCREEN_PER_OPP", "Inf")
+# Cap per trade IDEA, not per team. MEASURED 2026-08-05: the ~19,400 banded deals
+# on a full Puka board are only ~64 distinct (opponent, best sent, best received)
+# cores - 74% are 3-for-3, and 58% carry a sent piece under 1500 - so ~300 of
+# every 301 evaluations re-price the same idea with different filler. The largest
+# single core ("send Puka, get Jayden Daniels") is expressed 1,151 ways, with the
+# screen running from +52 down to -30.
+#
+# 50 rather than 20 (Joe, 2026-08-06): the core key only looks at the TOP piece
+# each way, so "Daniels + Swift" and "Daniels + Nabers" share a core and compete
+# for the same slots. 50 leaves room for genuinely different SECOND pieces to
+# survive instead of being crowded out by variations on one combination.
+core_n <- num_or_inf("FFS_TRADE_CORE_N", "50")
+# safety net so a mis-set band cannot silently launch a multi-day run
+eval_max <- num_or_inf("FFS_TRADE_EVAL_MAX", "40000")
+# MEASURED 2026-08-05 (Jon league, n=240 search sim, all 9 shapes, target_n=400):
+# the +-5% band admits ~19,400 deals, ~7,000 after dedupe. At ~3.8 s/deal that is
+# 7+ hours sequentially, so the exhaustive default only makes sense in parallel -
+# hence workers defaults to the box's physical cores less two. Set
+# FFS_TRADE_WORKERS=1 to force in-process (and expect it to take all night).
+workers <- as.integer(Sys.getenv("FFS_TRADE_WORKERS",
+  as.character(max(1L, parallel::detectCores(logical = FALSE) - 2L))))
+top_n    <- num_or_inf("FFS_TRADE_TOP_N", "Inf")
+# the give-back loop costs up to giveback_try EXTRA exact evals per triggered
+# deal, which on an exhaustive scan multiplies the budget - off by default here
+giveback <- as.integer(Sys.getenv("FFS_BOARD_GIVEBACK", "0")) == 1L
 
 # Build the target list HERE with a deep top_n instead of letting ffs_build_trades
 # use its internal top_n=50 proxy screen. The proxy (mean points - positional
 # baseline) under-ranks players at a position I'm deep in - Egbuka is a real 0.55-
 # win target but ranks #76 on the proxy because my WR room is stacked, so top_n=50
 # would drop him. A deep scan exact-values him and lets Egbuka+Barkley+pick build.
-target_n <- as.integer(Sys.getenv("FFS_TARGET_N", "160"))
-# package shapes to enumerate, e.g. FFS_BOARD_SHAPES="1,2;2,2" for send-1/2 only
-board_shapes <- lapply(strsplit(Sys.getenv("FFS_BOARD_SHAPES", "1,2;2,2;2,3"), ";")[[1]],
+target_n <- as.integer(Sys.getenv("FFS_TARGET_N", "400"))
+# ALL shapes by default (1..3 pieces each way). must_send forces the moved player
+# into every send package, so 1-for-N is "just him" and 3-for-N packages him with
+# two more pieces. FFS_BOARD_SHAPES="1,2;2,2" narrows it.
+default_shapes <- paste(apply(expand.grid(1:3, 1:3), 1, paste, collapse = ","), collapse = ";")
+board_shapes <- lapply(strsplit(Sys.getenv("FFS_BOARD_SHAPES", default_shapes), ";")[[1]],
                        function(s) as.integer(strsplit(trimws(s), ",")[[1]]))
+# one engine for the whole run: the target scan, the roster valuation and every
+# exact deal evaluation share it (each ffs_player_value call would otherwise
+# re-summarise the league and re-copy roster_scores)
+engine <- ffs_trade_engine(sim)
+# NOTE this is the run's big fixed cost - roughly 2s per target on an n=240
+# search sim, so ~13 min at target_n=400. sides="you" halves it by skipping the
+# owner-side valuation, which the package builder never reads.
 message("scanning ", target_n, " targets @ ", Sys.time())
-targets <- data.table::as.data.table(ffs_trade_targets(sim, me, top_n = target_n))
+targets <- data.table::as.data.table(
+  ffs_trade_targets(sim, me, top_n = target_n, engine = engine, sides = "you"))
 
-message("building board: move ", move_name, " across all teams @ ", Sys.time())
+message("building board: ",
+        if (whole_roster) "every asset" else paste("move", move_name),
+        " across all teams @ ", Sys.time())
 board <- as.data.table(ffs_build_trades(
   sim, me, dynasty = dyn, picks = pv, must_send = move_id, targets = targets,
   shapes = board_shapes,
-  even_band = even_band, uneven_gap = ug, max_gap = ug[2],
+  fair_premium = fair_premium, fair_band = fair_band, opp_edge_tol = opp_edge_tol,
+  even_band = even_band, uneven_gap = ug,
   min_piece_value = min_piece, min_recv_value = min_recv,
-  giveback = TRUE, giveback_trigger = 0, giveback_try = 3L,
+  require_positive_target = as.integer(Sys.getenv("FFS_REQUIRE_POSITIVE_TARGET", "0")) == 1L,
+  giveback = giveback, giveback_trigger_edge = 0, giveback_try = 3L,
   max_opp_drop = max_opp_drop, max_opp_future_drop = max_opp_future,
   traj_weight = traj_weight, rise_cut = rise_cut, fade_cut = fade_cut,
   score_mode = Sys.getenv("FFS_TRADE_SCORE_MODE", "rate"),
+  opp_mode = Sys.getenv("FFS_TRADE_OPP_MODE", "market"),
   playoff_value = as.numeric(Sys.getenv("FFS_TRADE_PLAYOFF_VALUE", "68")),
   future_certainty = as.numeric(Sys.getenv("FFS_TRADE_FUTURE_CERTAINTY", "0.905")),
   win_to_playoff = as.numeric(Sys.getenv("FFS_TRADE_WIN_TO_PLAYOFF", "17.8")),
   future_weight = as.numeric(Sys.getenv("FFS_TRADE_FUTURE_WEIGHT", "3")),
-  min_future_delta = -750, winwin_bonus = 0.5,
-  dedupe = TRUE, screen_n = screen_n, screen_per_opp = screen_per_opp, top_n = top_n))
+  min_future_delta = -750, winwin_bonus = 0.5, verbose = TRUE, engine = engine,
+  dedupe = TRUE, screen_n = screen_n, screen_per_opp = screen_per_opp,
+  core_n = core_n, eval_max = eval_max, workers = workers, top_n = top_n))
 
 ## ---- format + write the ranked board --------------------------------------------
 board <- merge(board, frs, by.x = "opponent", by.y = "franchise_id", all.x = TRUE)
@@ -183,16 +282,24 @@ board[, `:=`(
     any(grepl("^PICK_", c(send_ids[[i]], recv_ids[[i]]))), logical(1)))]
 board[, shape := paste0(nS, "-for-", nR)]
 board[, headliner := tstrsplit(receive, " \\+ ", keep = 1)]
+# the most valuable piece LEAVING - the whole-roster view's organising column
+# (in single-player mode it is the moved player on every row)
+cur_by_id <- setNames(dyn$cur_value, dyn$player_id)
+if (!is.null(pv)) cur_by_id <- c(cur_by_id, setNames(pv$cur_value, pv$player_id))
+send_nm <- setNames(dyn$player_name, dyn$player_id)
+if (!is.null(pv)) send_nm <- c(send_nm, setNames(pv$player_name, pv$player_id))
+board[, sending := vapply(send_ids, function(x) {
+  v <- cur_by_id[x]; v[is.na(v)] <- 0; unname(send_nm[x[which.max(v)]])
+}, character(1))]
 setorder(board, -score)
 
-board[, grade := data.table::fcase(score>=18,"A", score>=10,"B", score>=4,"C",
-                                   score>=0,"D", default="F")]
-outb <- board[, .(team = franchise_name, shape, send, receive,
+outb <- board[, .(team = franchise_name, sending, shape, send, receive,
   send_value = round(send_value), recv_value = round(recv_value),
-  gap_pct, mine_pl, opp_pl, fut, adj_fut = round(adj_future_capital),
-  score = round(score, 1), grade, opp_score = round(opp_score, 1), gettable,
+  gap_pct, my_edge = round(100 * my_edge, 1), opp_edge = round(100 * opp_edge, 1),
+  mine_pl, opp_pl, fut, adj_fut = round(adj_future_capital),
+  score = round(score, 1), grade,
+  opp_surplus = round(opp_surplus), opp_score = round(opp_score, 1), gettable,
   win_win, give_back, uses_pick)]
-safe <- gsub("[^A-Za-z0-9]+", "_", move_name)
 board_csv <- file.path(out, paste0(safe, "_trade_board.csv"))
 fwrite(outb, board_csv)
 message("wrote ", nrow(outb), " deals to ", board_csv)
@@ -215,12 +322,15 @@ board[, shape_rank := match(shape, c("1-for-2", "1-for-3", "2-for-2", "2-for-3",
 board[is.na(shape_rank), shape_rank := 99L]
 norm_recv <- function(x) gsub("20[0-9]{2} R", "R", x)   # "2027 R1 (~1.07)" slots merge
 board[, recv_key := vapply(receive, norm_recv, character(1))]
-fair <- board[gap_pct <= 100 * ug[2] & opp_pl >= -8 & mine_pl >= -8]
+# the display pool is now the acceptance model itself: deals the other side
+# plausibly takes (market edge within tolerance, no gutting playoff drop) that
+# also help me
+fair <- board[gettable == TRUE & mine_pl >= 0]
 targets_per_team <- as.integer(Sys.getenv("FFS_TARGETS_PER_TEAM", "3"))
 sends_per_target <- as.integer(Sys.getenv("FFS_SENDS_PER_TARGET", "3"))
 
-deal_line <- function(r) sprintf("     %-8s %-46s gap%+.1f%% you%+.1f%% opp%+.1f%% fut%+d%s%s",
-    r$shape, r$send, r$gap_pct, r$mine_pl, r$opp_pl, r$fut,
+deal_line <- function(r) sprintf("     %-8s %-46s edge%+.1f%% you%+.1f%% opp%+.1f%% fut%+d%s%s",
+    r$shape, r$send, 100 * r$opp_edge, r$mine_pl, r$opp_pl, r$fut,
     if (isTRUE(r$win_win)) " WW" else "", if (isTRUE(r$give_back)) " +gb" else "")
 
 show_team <- function(pool, label) {
@@ -230,6 +340,34 @@ show_team <- function(pool, label) {
     tk <- pool[recv_key == k][order(-score)]
     cat("  ► get: ", tk$receive[1], "\n", sep = "")
     for (j in seq_len(min(nrow(tk), sends_per_target))) cat(deal_line(tk[j]), "\n", sep = "")
+  }
+}
+
+## ---- coverage: how exhaustively did each team actually get scanned? -------------
+cov <- merge(board[, .(deals = .N, gettable = sum(gettable), best = round(max(score), 1)),
+                   by = franchise_name],
+             board[gettable == TRUE, .(shapes = uniqueN(shape)), by = franchise_name],
+             by = "franchise_name", all.x = TRUE)
+setorder(cov, -best)
+cat("\n== coverage per team (evaluated / gettable / shapes / best score) ==\n")
+print(cov)
+missing <- setdiff(setdiff(frs$franchise_name, my_team), board$franchise_name)
+if (length(missing)) cat("NO deals enumerated for:", paste(missing, collapse = ", "), "\n")
+
+## ---- whole-roster: which of MY assets actually generate tradeable ideas? --------
+if (whole_roster) {
+  snd <- board[, .(deals = .N, gettable = sum(gettable),
+                   teams = uniqueN(franchise_name), best = round(max(score), 1)),
+               by = sending][order(-best)]
+  cat("\n== what you'd be shipping: ideas per headline asset (best first) ==\n")
+  print(snd)
+  cat("\n== best deal for each asset you could move ==\n")
+  for (i in seq_len(nrow(snd))) {
+    r <- board[sending == snd$sending[i]][order(-score)][1]
+    cat(sprintf("  %-20s -> %-44s  [%s] you%+.1f%% them%+.1f%% score %.1f %s%s\n",
+                substr(snd$sending[i], 1, 20), substr(r$receive, 1, 44),
+                substr(r$franchise_name, 1, 14), r$mine_pl, r$opp_pl, r$score,
+                r$grade, if (isTRUE(r$gettable)) "" else " (not gettable)"))
   }
 }
 
@@ -255,25 +393,36 @@ if (requireNamespace("ggplot2", quietly = TRUE) && nrow(fair)) {
   # label only the best few deals per team so the map stays legible; every fair
   # deal is still plotted as a point, and the ranked CSV carries all the detail
   label_per_team <- as.integer(Sys.getenv("FFS_LABEL_PER_TEAM", "2"))
-  pd[, rk := frank(-score, ties.method = "first"), by = franchise_name]
-  pd[, lab := fifelse(rk <= label_per_team,
-                      paste0(franchise_name, ": ", headliner,
-                             ifelse(uses_pick, " +pk", ""), " (", shape, ")"),
-                      NA_character_)]
+  # whole-roster mode has far too many points to label per team, and the useful
+  # question there is "which of MY assets does this deal ship" - so label the
+  # best few per outgoing asset instead
+  if (whole_roster) {
+    pd[, rk := frank(-score, ties.method = "first"), by = sending]
+    pd[, lab := fifelse(rk <= label_per_team,
+                        paste0(sending, " -> ", headliner), NA_character_)]
+  } else {
+    pd[, rk := frank(-score, ties.method = "first"), by = franchise_name]
+    pd[, lab := fifelse(rk <= label_per_team,
+                        paste0(franchise_name, ": ", headliner,
+                               ifelse(uses_pick, " +pk", ""), " (", shape, ")"),
+                        NA_character_)]
+  }
   p <- ggplot(pd, aes(mine_pl, fut)) +
     geom_hline(yintercept = 0, colour = "grey85", linewidth = 0.4) +
     geom_vline(xintercept = 0, colour = "grey85", linewidth = 0.4) +
-    geom_point(aes(colour = opp_pl, shape = deal_type), size = 4, stroke = 0.6) +
+    geom_point(aes(colour = 100 * opp_edge, shape = deal_type), size = 4, stroke = 0.6) +
     scale_colour_gradient2(low = "#B45309", mid = "grey78", high = "#1D6D9C",
-      midpoint = 0, name = "Their playoffΔ\n(accept?)") +
+      midpoint = 0, name = "Their market edge\nvs fair (%)") +
     scale_shape_manual(values = c("give-back (send filler back)" = 17,
       "straight swap" = 16), name = "Deal type") +
     labs(
-      title = sprintf("Fair trades to move %s (%s)", move_name, my_team),
-      subtitle = "x = your win-now impact  •  y = future value banked  •  colour = will the other side accept",
+      title = if (whole_roster)
+        sprintf("Gettable trades across %s's whole roster", my_team) else
+        sprintf("Gettable trades to move %s (%s)", move_name, my_team),
+      subtitle = "x = your win-now impact  •  y = future value banked  •  colour = their market edge vs the shape-fair price",
       x = "Your playoff-odds change (win-now)", y = "Future dynasty capital gained",
-      caption = sprintf("n=%d search estimates • fair to both: gap ≤ %.0f%% and neither side below -8%% playoff",
-                        n_trade, 100 * ug[2])) +
+      caption = sprintf("n=%d search estimates • gettable = their edge >= -%.0f%% of fair and playoff drop < %.0f%%",
+                        n_trade, 100 * opp_edge_tol, 100 * max_opp_drop)) +
     scale_x_continuous(labels = function(x) paste0(ifelse(x > 0, "+", ""), x, "%")) +
     theme_minimal(base_size = 12) +
     theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank(),

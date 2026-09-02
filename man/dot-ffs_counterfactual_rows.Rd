@@ -8,7 +8,8 @@
   base_simulation,
   fid,
   remove_ids = character(0),
-  add_ids = character(0)
+  add_ids = character(0),
+  cache = NULL
 )
 }
 \arguments{
@@ -19,6 +20,10 @@
 \item{remove_ids}{player_ids leaving \code{fid} (can be empty)}
 
 \item{add_ids}{player_ids joining \code{fid} (can be empty)}
+
+\item{cache}{optional list of pre-converted \code{opt}/\code{rs}/\code{lc} data.tables (see
+\code{\link[=.ffs_eval_engine]{.ffs_eval_engine()}}). Converting \code{roster_scores} - millions of rows on a
+large simulation - on every call otherwise dominates a batch of evaluations.}
 }
 \value{
 \code{fid}'s optimal_scores rows with \code{actual_score} updated in the affected
