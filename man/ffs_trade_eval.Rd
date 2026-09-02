@@ -11,7 +11,9 @@ ffs_trade_eval(
   franchise_b,
   gives_b,
   fast = TRUE,
-  engine = NULL
+  engine = NULL,
+  waiver = c("none", "me", "both"),
+  cut_to_size = FALSE
 )
 }
 \arguments{
@@ -32,6 +34,17 @@ efficiency/best-ball sims.}
 deals against one simulation repeats an identical league-wide summary every
 call; an engine hoists that invariant work out of the loop and is one to two
 orders of magnitude faster per deal. Results are identical.}
+
+\item{waiver}{who refills a roster spot the trade vacated, from
+\code{base_simulation$waiver_scores} (see \code{\link[=ffs_waiver_proxies]{ffs_waiver_proxies()}}): \code{"none"}
+(default - a side that sends more bodies than it receives simply carries a
+smaller roster), \code{"me"} (franchise_a only, the right setting when you win
+the waiver claims in your league) or \code{"both"}, which hands out distinct
+players so two franchises never sign the same free agent.}
+
+\item{cut_to_size}{whether the side that GAINS bodies drops its weakest
+players to stay at roster size. With \code{waiver} on, this makes a 2-for-1
+evaluate as the 2-for-2 it really is. Defaults to \code{FALSE}.}
 }
 \value{
 a two-row dataframe (one per franchise) with before/after and delta

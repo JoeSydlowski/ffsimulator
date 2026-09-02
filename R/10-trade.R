@@ -42,8 +42,7 @@ ffs_player_value <- function(base_simulation, player_id, franchise_id,
   use_engine <- !is.null(engine) && inherits(engine, "ffs_eval_engine")
   # the engine already holds roster_scores as a data.table; re-converting it here
   # copies millions of rows on every call, and a deep target scan makes thousands
-  rs <- if (use_engine) engine$roster else
-    data.table::as.data.table(base_simulation$roster_scores)
+  rs <- if (use_engine) engine$roster else .ffs_rs_with_waivers(base_simulation)
   checkmate::assert_true(pid %in% rs$player_id)
 
   player_rows <- rs[rs$player_id == pid]
@@ -112,6 +111,153 @@ ffs_player_value <- function(base_simulation, player_id, franchise_id,
 # NULL/absent-safe numeric accessor for optional summary columns
 .nz <- function(x) if (is.null(x) || length(x) == 0 || is.na(x)) 0 else x
 
+# Roster churn: waiver backfill and cut-to-size ------------------------------
+#
+# A trade that is not one-for-one changes how many BODIES each side carries, and
+# the base evaluation prices that change as free: the loser of a body simply has
+# a smaller roster forever, and the gainer keeps everyone. Neither is what
+# happens in a league with a live waiver wire and a roster cap. `waiver` refills
+# the side that lost bodies from [ffs_waiver_proxies()]; `cut_to_size` makes the
+# side that gained bodies drop its weakest players. With both on, a 2-for-1 is
+# evaluated as the 2-for-2 it really is.
+#
+# Draft picks never count - they are stripped before this point and occupy no
+# roster spot until they are used.
+
+#' Rank the waiver proxies once, so picking is a lookup
+#'
+#' @param waiver_scores a table from [ffs_waiver_proxies()]
+#' @return a data.table, one row per (slot, donor alternate), best slot first
+#' @keywords internal
+.ffs_waiver_index <- function(waiver_scores) {
+  player_id <- waiver_slot <- donor_id <- donor_rank <- avg_week <- mean_avg <-
+    slot_avg <- NULL
+  if (is.null(waiver_scores) || !nrow(waiver_scores))
+    return(data.table::data.table(player_id = character(), waiver_slot = character(),
+                                  donor_id = character(), donor_rank = integer(),
+                                  mean_avg = numeric()))
+  w <- data.table::as.data.table(waiver_scores)
+  idx <- w[, list(mean_avg = mean(data.table::fcoalesce(as.numeric(avg_week), 0))),
+           by = list(player_id, waiver_slot, donor_id, donor_rank)]
+  # a slot is worth what its primary donor says it is - the alternates exist only
+  # to dodge a donor who is in the deal, and must not reorder the wire. Every row
+  # of a slot therefore shares one slot_avg, so the sort below cannot interleave
+  # two slots' alternates.
+  slot_rank <- idx[, list(slot_avg = mean_avg[which.min(donor_rank)]), by = "waiver_slot"]
+  idx <- merge(idx, slot_rank, by = "waiver_slot", all.x = TRUE)
+  data.table::setorderv(idx, c("slot_avg", "waiver_slot", "donor_rank"),
+                        c(-1L, 1L, 1L))
+  idx[]
+}
+
+#' Pick `n` waiver players to fill vacated roster spots
+#'
+#' Best slot first, one player per slot. Within a slot, take the nearest-ECR
+#' donor whose profile is not already spoken for by this deal: cloning a player
+#' who is himself being traded would make sending him free.
+#'
+#' @param idx a [.ffs_waiver_index()] table
+#' @param n how many spots to fill
+#' @param exclude_ids player_ids in the deal (donors to avoid)
+#' @param taken waiver player_ids already handed to the other side
+#' @return a character vector of waiver player_ids, possibly shorter than `n`
+#' @keywords internal
+.ffs_waiver_pick <- function(idx, n, exclude_ids = character(0), taken = character(0)) {
+  if (is.null(idx) || !nrow(idx) || n < 1L) return(character(0))
+  used_slots <- idx$waiver_slot[idx$player_id %in% taken]
+  used_donors <- idx$donor_id[idx$player_id %in% taken]
+  ok <- idx[!idx$waiver_slot %in% used_slots]
+  if (!nrow(ok)) return(character(0))
+
+  # idx is already ordered best-slot-first, nearest-donor-first. Walk it and take
+  # one player per slot, skipping any whose donor is spoken for. Two free agents
+  # of similar rank often share a nearest-ECR donor (measured on Goofball: the
+  # top two QBs both borrow from the same rostered QB), and filling two spots
+  # with two clones of one player would give them perfectly correlated weeks.
+  out <- character(0)
+  blocked <- c(exclude_ids, used_donors)
+  for (s in unique(ok$waiver_slot)) {
+    if (length(out) >= n) break
+    cand <- ok[ok$waiver_slot == s & !ok$donor_id %in% blocked]
+    if (!nrow(cand)) next
+    out <- c(out, cand$player_id[[1]])
+    blocked <- c(blocked, cand$donor_id[[1]])
+  }
+  out
+}
+
+#' Pick the `n` weakest players a franchise would drop to get back to size
+#'
+#' @param rs a roster_scores table
+#' @param fid the franchise cutting
+#' @param n how many to drop
+#' @param exclude_ids players already leaving in the trade
+#' @return a character vector of player_ids
+#' @keywords internal
+.ffs_cut_pick <- function(rs, fid, n, exclude_ids = character(0)) {
+  franchise_id <- player_id <- avg_week <- mean_avg <- NULL
+  if (n < 1L) return(character(0))
+  r <- data.table::as.data.table(rs)[franchise_id == fid & !player_id %in% exclude_ids]
+  if (!nrow(r)) return(character(0))
+  agg <- r[, list(mean_avg = mean(data.table::fcoalesce(as.numeric(avg_week), 0))),
+           by = "player_id"]
+  data.table::setorderv(agg, "mean_avg")
+  agg$player_id[seq_len(min(n, nrow(agg)))]
+}
+
+#' Resolve the roster churn a deal implies for both sides
+#'
+#' @param waiver_idx a [.ffs_waiver_index()] table (may be empty)
+#' @param rs roster_scores, for the cut side
+#' @param waiver `"none"`, `"me"` (franchise_a only) or `"both"`
+#' @param cut_to_size whether the body-gaining side drops its weakest players
+#' @return a list of `add_a`, `add_b`, `cut_a`, `cut_b` player_id vectors
+#' @keywords internal
+.ffs_roster_churn <- function(waiver_idx, rs, franchise_a, gives_a, franchise_b, gives_b,
+                              waiver = "none", cut_to_size = FALSE) {
+  out <- list(add_a = character(0), add_b = character(0),
+              cut_a = character(0), cut_b = character(0))
+  if (identical(waiver, "none") && !isTRUE(cut_to_size)) return(out)
+
+  # draft picks are value-only assets and take up no roster spot until they are
+  # used, so they never move a body - strip them here rather than trusting every
+  # caller to have done it
+  gives_a <- gives_a[!grepl("^PICK_", gives_a)]
+  gives_b <- gives_b[!grepl("^PICK_", gives_b)]
+  net_a <- length(gives_b) - length(gives_a)   # bodies franchise_a gains
+  in_deal <- c(gives_a, gives_b)
+
+  if (waiver %in% c("me", "both") && net_a < 0)
+    out$add_a <- .ffs_waiver_pick(waiver_idx, -net_a, in_deal)
+  if (identical(waiver, "both") && net_a > 0)
+    out$add_b <- .ffs_waiver_pick(waiver_idx, net_a, in_deal, taken = out$add_a)
+
+  if (isTRUE(cut_to_size)) {
+    # a side that took on more bodies than it sent is over the cap; the players
+    # it just received are not candidates to be cut, nor are the ones leaving
+    if (net_a > 0) out$cut_a <- .ffs_cut_pick(rs, franchise_a, net_a,
+                                              c(in_deal, out$add_a))
+    if (net_a < 0) out$cut_b <- .ffs_cut_pick(rs, franchise_b, -net_a,
+                                              c(in_deal, out$add_b))
+  }
+  out
+}
+
+#' roster_scores with the waiver proxies appended, for id lookups
+#'
+#' The proxies carry `franchise_id = NA`, so every `franchise_id == fid` filter
+#' in this file ignores them - they are reachable only by explicit `add_ids`.
+#'
+#' @keywords internal
+.ffs_rs_with_waivers <- function(base_simulation, roster_scores = NULL) {
+  rs <- data.table::as.data.table(
+    roster_scores %||% base_simulation$roster_scores)
+  w <- base_simulation$waiver_scores
+  if (is.null(w) || !nrow(w)) return(rs)
+  w <- data.table::as.data.table(w)[, intersect(names(rs), names(w)), with = FALSE]
+  data.table::rbindlist(list(rs, w), use.names = TRUE, fill = TRUE)
+}
+
 #' Evaluate a proposed trade
 #'
 #' (EXPERIMENTAL) Swaps players between two franchises inside an existing
@@ -131,23 +277,35 @@ ffs_player_value <- function(base_simulation, player_id, franchise_id,
 #'   deals against one simulation repeats an identical league-wide summary every
 #'   call; an engine hoists that invariant work out of the loop and is one to two
 #'   orders of magnitude faster per deal. Results are identical.
+#' @param waiver who refills a roster spot the trade vacated, from
+#'   `base_simulation$waiver_scores` (see [ffs_waiver_proxies()]): `"none"`
+#'   (default - a side that sends more bodies than it receives simply carries a
+#'   smaller roster), `"me"` (franchise_a only, the right setting when you win
+#'   the waiver claims in your league) or `"both"`, which hands out distinct
+#'   players so two franchises never sign the same free agent.
+#' @param cut_to_size whether the side that GAINS bodies drops its weakest
+#'   players to stay at roster size. With `waiver` on, this makes a 2-for-1
+#'   evaluate as the 2-for-2 it really is. Defaults to `FALSE`.
 #'
 #' @return a two-row dataframe (one per franchise) with before/after and delta
 #'   columns for h2h_wins, allplay_winpct, points_for, playoff_pct
 #'
 #' @export
 ffs_trade_eval <- function(base_simulation, franchise_a, gives_a, franchise_b, gives_b,
-                           fast = TRUE, engine = NULL) {
+                           fast = TRUE, engine = NULL,
+                           waiver = c("none", "me", "both"), cut_to_size = FALSE) {
   checkmate::assert_class(base_simulation, "ff_simulation")
+  waiver <- match.arg(waiver)
   franchise_id <- NULL
 
   # pre-built engine: the league summary is invariant, so a deal reduces to two
   # column overwrites in a cached score matrix (see .ffs_eval_engine)
   if (!is.null(engine) && inherits(engine, "ffs_eval_engine")) {
-    return(engine$eval(franchise_a, gives_a, franchise_b, gives_b))
+    return(engine$eval(franchise_a, gives_a, franchise_b, gives_b,
+                       waiver = waiver, cut_to_size = cut_to_size))
   }
 
-  rs <- data.table::as.data.table(base_simulation$roster_scores)
+  rs <- .ffs_rs_with_waivers(base_simulation)
   # draft picks (id like "PICK_...") are value-only assets: they score no wins,
   # so they are win-neutral in the simulation. Drop them here - their dynasty
   # value is accounted for by the caller (future_capital_delta) - and keep the
@@ -160,14 +318,24 @@ ffs_trade_eval <- function(base_simulation, franchise_a, gives_a, franchise_b, g
   params <- base_simulation$simulation_params
   use_fast <- isTRUE(fast) && identical(params$lineup_method, "rank") && !isTRUE(params$best_ball)
 
+  # waiver backfill / cut-to-size: what each side does with the roster spots the
+  # trade opened or overfilled (see .ffs_roster_churn)
+  churn <- .ffs_roster_churn(.ffs_waiver_index(base_simulation$waiver_scores), rs,
+                             franchise_a, gives_a, franchise_b, gives_b,
+                             waiver = waiver, cut_to_size = cut_to_size)
+
   if (use_fast) {
     # exact partial re-optimisation: each side re-optimises only the weeks its
     # incoming/outgoing players touch; everyone else stays at the base lineups.
     base_opt <- data.table::as.data.table(base_simulation$optimal_scores)
     a_rows <- .ffs_counterfactual_rows(base_simulation, franchise_a,
-                                       remove_ids = gives_a, add_ids = gives_b)
+                                       remove_ids = c(gives_a, churn$cut_a),
+                                       add_ids = c(gives_b, churn$add_a),
+                                       cache = list(rs = rs))
     b_rows <- .ffs_counterfactual_rows(base_simulation, franchise_b,
-                                       remove_ids = gives_b, add_ids = gives_a)
+                                       remove_ids = c(gives_b, churn$cut_b),
+                                       add_ids = c(gives_a, churn$add_b),
+                                       cache = list(rs = rs))
     after_opt <- rbind(
       base_opt[!franchise_id %in% c(franchise_a, franchise_b)], a_rows, b_rows, fill = TRUE)
     after <- .ffs_summarise_optimal(base_simulation, after_opt, c(franchise_a, franchise_b))
@@ -183,11 +351,11 @@ ffs_trade_eval <- function(base_simulation, franchise_a, gives_a, franchise_b, g
       rows
     }
     a_new <- rbind(
-      rs[rs$franchise_id == franchise_a & !rs$player_id %in% gives_a],
-      move(rs[rs$player_id %in% gives_b], franchise_a))
+      rs[rs$franchise_id == franchise_a & !rs$player_id %in% c(gives_a, churn$cut_a)],
+      move(rs[rs$player_id %in% c(gives_b, churn$add_a)], franchise_a))
     b_new <- rbind(
-      rs[rs$franchise_id == franchise_b & !rs$player_id %in% gives_b],
-      move(rs[rs$player_id %in% gives_a], franchise_b))
+      rs[rs$franchise_id == franchise_b & !rs$player_id %in% c(gives_b, churn$cut_b)],
+      move(rs[rs$player_id %in% c(gives_a, churn$add_b)], franchise_b))
     after <- .ffs_franchise_summary(base_simulation, c(franchise_a, franchise_b),
                                     rbind(a_new, b_new))
     before <- .ffs_franchise_summary(base_simulation, c(franchise_a, franchise_b))
@@ -529,6 +697,18 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20,
 #'   and each opponent's top-`screen_per_opp`, giving every team coverage. `Inf`
 #'   drops the per-team cap entirely (exhaustive), which with `screen_n = Inf`
 #'   leaves the screen serving only as eval ordering.
+#' @param screen_per_shape guarantee at least this many of each package SHAPE's
+#'   best-screened deals are valued (default `0` = off). The screen is led by
+#'   `add_gain`, which is structurally negative for a consolidation - two
+#'   contributors deleted to add one - so on a budgeted scan every
+#'   two-real-players-for-one deal loses to a player+pick package and none is
+#'   simulated at all. This makes shapes compete within themselves first.
+#' @param min_send_players minimum number of REAL players (picks excluded) in the
+#'   send package. `min_piece_value` exempts picks, so with a priced pick set the
+#'   cheapest way to meet any overpay band is "one player + a pick" and genuine
+#'   consolidations barely get enumerated; `min_send_players = 2` is the knob that
+#'   actually forces them.
+#' @inheritParams ffs_trade_eval
 #' @param top_n how many ranked deals to return (default 20)
 #'
 #' @return a dataframe of trades: `opponent`, `send`, `receive`, dynasty
@@ -537,7 +717,9 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20,
 #'   `future_capital_delta`, a `give_back` flag (whether a give-back sweetener was
 #'   appended), the `score` used to rank them and its letter `grade`, the market
 #'   view of the other side (`my_edge`, `opp_edge`, `opp_value_gain`, `opp_score`,
-#'   `gettable`), and list-columns `send_ids`/`recv_ids` so a deal can be
+#'   `gettable`), the roster churn the deal implies (`backfill`, the waiver player
+#'   filling a spot it vacated; `opp_drop`, the player the other side releases to
+#'   fit it), and list-columns `send_ids`/`recv_ids` so a deal can be
 #'   re-evaluated (e.g. confirmed on a larger simulation with [ffs_trade_eval()])
 #'
 #' @seealso [ffs_trade_targets()] for the one-sided target scan, [ffs_trade_eval()]
@@ -571,7 +753,10 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                              traj_weight = 0, rise_cut = 0.075, fade_cut = -0.075,
                              posture_rebuild_cut = 0.35, max_opp_future_drop = Inf,
                              dedupe = FALSE,
-                             screen_n = 40L, screen_per_opp = 0L, eval_max = Inf,
+                             min_send_players = 0L,
+                             waiver = c("none", "me", "both"), cut_to_size = FALSE,
+                             screen_n = 40L, screen_per_opp = 0L,
+                             screen_per_shape = 0L, eval_max = Inf,
                              engine = NULL, workers = 1L, verbose = FALSE,
                              core_n = Inf, dry_run = FALSE, top_n = 20L) {
   checkmate::assert_class(base_simulation, "ff_simulation")
@@ -587,10 +772,12 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   adj_future_capital <- opp_score <- gettable <- opp_playoff_before <- NULL
   opp_value_gain <- opp_edge <- my_edge <- n_send <- n_recv <- NULL
   n <- adj_future_screen <- deal_id <- opp_surplus <- grade <- single_value <- NULL
-  core <- core_rank <- shape <- NULL
+  core <- core_rank <- shape <- shape_rank <- n_send_players <- NULL
   opponent <- send_value <- send_ids <- recv_ids <- NULL
+  waiver_gain <- backfill <- opp_drop <- NULL
 
   opp_mode <- match.arg(opp_mode)
+  waiver <- match.arg(waiver)
 
   # standard-deviation scaling that is safe when the column is constant/singleton
   z <- function(x) {
@@ -676,6 +863,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     my_edge = numeric(), opp_edge = numeric(), opp_value_gain = numeric(),
     opp_surplus = numeric(), opp_score = numeric(), gettable = logical(),
     grade = character(),
+    backfill = character(), opp_drop = character(),
     send_ids = I(list()), recv_ids = I(list())
   )
 
@@ -744,6 +932,27 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     .ffs_franchise_summary_cached(base_simulation, o, engine)$playoff_pct, numeric(1))
   names(opp_baseline) <- as.character(opp_ids)
 
+  # What a vacated roster spot is worth back to me off the waiver wire, in the
+  # same win units as value_to_me. The exact eval refills those spots (see
+  # .ffs_roster_churn), so without this the sim-free screen would keep pricing a
+  # consolidation as losing the second player outright and prune it before the
+  # eval ever sees it. Taken in the index's own order, which is the order the
+  # churn hands the players out, so screen and eval agree on WHICH free agent.
+  waiver_idx <- .ffs_waiver_index(base_simulation$waiver_scores)
+  # valued per SLOT, not per proxy id: the donor alternates within a slot are
+  # clones of near-identical-ECR players, so they are worth the same to me, and
+  # .ffs_waiver_pick may return an alternate whose id was never valued
+  waiver_gains <- numeric(0)
+  if (waiver %in% c("me", "both") && nrow(waiver_idx)) {
+    prim <- waiver_idx[!duplicated(waiver_idx$waiver_slot)]
+    waiver_gains <- stats::setNames(vapply(prim$player_id, function(p)
+      ffs_player_value(base_simulation, p, fid, base_summary = base_fid_summary,
+                       engine = engine)$h2h_wins, numeric(1)), prim$waiver_slot)
+    if (verbose) message("waiver wire: ", nrow(prim), " proxies worth ",
+                         paste(sprintf("%s %+.2fw", prim$waiver_slot, waiver_gains),
+                               collapse = " "), " to this roster")
+  }
+
   send_sizes <- unique(vapply(shapes, function(s) as.integer(s[[1]]), integer(1)))
   recv_sizes <- unique(vapply(shapes, function(s) as.integer(s[[2]]), integer(1)))
   allowed <- function(ns, nr) any(vapply(shapes,
@@ -753,6 +962,19 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   send_pkgs <- .ffs_packages(mine, send_sizes, must_include = must_send,
                              gain_col = "value_to_me")
   if (!nrow(send_pkgs)) return(empty)
+
+  # min_send_players is the only knob that actually forces a CONSOLIDATION.
+  # min_piece_value exempts picks (they are value-only assets with no floor), so
+  # with a priced pick set the cheapest way to satisfy any overpay band is always
+  # "one real player + a pick", and two-real-player packages never get enumerated
+  # in any number. This counts real players, so min_send_players = 2 means what
+  # it says.
+  if (min_send_players > 0L) {
+    n_real_send <- vapply(send_pkgs$ids,
+                          function(x) sum(!grepl("^PICK_", x)), integer(1))
+    send_pkgs <- send_pkgs[n_real_send >= min_send_players]
+    if (!nrow(send_pkgs)) return(empty)
+  }
 
   # Enumerate opponent receive packages and match them to send packages. This is
   # a vectorised cross join per opponent rather than a nested R loop: an
@@ -840,6 +1062,25 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   if (verbose) message(nrow(deals), " deals passed the band + market gate (",
                        data.table::uniqueN(deals$opponent), " teams) @ ", Sys.time())
 
+  # bodies each side moves, picks excluded - they occupy no roster spot. n_open
+  # is how many of my spots the deal vacates, i.e. how many waiver claims I make.
+  n_real <- function(x) vapply(x, function(i) sum(!grepl("^PICK_", i)), integer(1))
+  deals[, n_send_players := n_real(send_ids)]
+  deals[, waiver_gain := 0]
+  if (length(waiver_gains)) {
+    # credit the players .ffs_waiver_pick would actually sign, not the first k of
+    # the index: it skips a slot whose donor is already used, so for two open
+    # spots the second signing is often not the second-ranked free agent. The
+    # per-deal exclusions it also applies cannot be known here, which is fine -
+    # the screen only has to order the eval budget.
+    n_open <- pmax(0L, deals$n_send_players - n_real(deals$recv_ids))
+    slot_of <- stats::setNames(waiver_idx$waiver_slot, waiver_idx$player_id)
+    cum <- vapply(seq_len(max(max(n_open), 1L)), function(k)
+      sum(waiver_gains[slot_of[.ffs_waiver_pick(waiver_idx, k)]], na.rm = TRUE),
+      numeric(1))
+    deals[, waiver_gain := c(0, cum)[pmin(n_open, length(cum)) + 1L]]
+  }
+
   # screen down to the exact-eval budget, blending win gain with retention so
   # future-friendly deals are not pruned before they are valued. ceiling_weight
   # adds a top-end proxy (best player received minus best player sent) so
@@ -855,12 +1096,13 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     deals[, adj_future_screen := vapply(seq_len(.N), function(i)
       screen_adj_fn(send_ids[[i]], recv_ids[[i]], future_capital_delta[i]), numeric(1))]
     # exactly the future half of the final score, so screen and score agree
-    deals[, screen := add_gain * win_to_playoff +
+    deals[, screen := (add_gain + waiver_gain) * win_to_playoff +
             adj_future_screen * my_haircut / playoff_value +
             ceiling_weight * (recv_top - send_top) * win_to_playoff]
     deals[, adj_future_screen := NULL]
   } else {
-    deals[, screen := z(add_gain) + future_weight * z(future_capital_delta) +
+    deals[, screen := z(add_gain + waiver_gain) +
+            future_weight * z(future_capital_delta) +
             ceiling_weight * z(recv_top - send_top)]
   }
   data.table::setorder(deals, -screen)
@@ -909,6 +1151,21 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                          nrow(deals), " deals")
   }
 
+  # Guarantee each SHAPE a slice of the eval budget. The screen is add_gain-led,
+  # and add_gain is structurally negative for a consolidation - you delete two
+  # contributors to add one - so on a budgeted scan (screen_n = 40) every
+  # two-real-players-for-one deal loses to a player+pick package and none is ever
+  # simulated. This is the direct fix: shapes compete within themselves first.
+  # FALSE, not TRUE: this is a union term added to the screen selection below, so
+  # an all-TRUE default would silently disable screen_n entirely
+  shape_keep <- rep(FALSE, nrow(deals))
+  if (is.finite(screen_per_shape) && screen_per_shape > 0L && nrow(deals) > 1) {
+    deals[, shape := paste0(lengths(send_ids), "-for-", lengths(recv_ids))]
+    deals[, shape_rank := seq_len(.N), by = shape]   # already in screen order
+    shape_keep <- deals$shape_rank <= screen_per_shape
+    deals[, c("shape", "shape_rank") := NULL]
+  }
+
   # screen_n / screen_per_opp accept Inf: an exhaustive scan evaluates every
   # banded deal and uses the screen purely as eval ordering, so a run cut short
   # (or capped by eval_max) has still priced the most promising deals first.
@@ -927,11 +1184,11 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     deals[has_pick == TRUE, pick_rank := seq_len(.N), by = opponent]
     keep <- deals$opp_rank <= screen_per_opp |
       (!is.na(deals$pick_rank) & deals$pick_rank <= screen_per_opp) |
-      seq_len(nrow(deals)) <= screen_n
+      seq_len(nrow(deals)) <= screen_n | shape_keep
     deals <- deals[keep]
     deals[, c("opp_rank", "has_pick", "pick_rank") := NULL]
   } else if (is.finite(screen_n)) {
-    deals <- deals[seq_len(min(screen_n, .N))]
+    deals <- deals[seq_len(.N) <= screen_n | shape_keep]
   }
   # dry run: hand back the banded, screened candidate set WITHOUT paying for the
   # exact evaluation. An exhaustive band can admit tens of thousands of deals, and
@@ -970,7 +1227,8 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     base_simulation,
     data.table::data.table(franchise_a = fid, gives_a = deals$send_ids,
                            franchise_b = deals$opponent, gives_b = deals$recv_ids),
-    engine = engine, workers = workers, progress = prog)
+    engine = engine, workers = workers, progress = prog,
+    waiver = waiver, cut_to_size = cut_to_size)
   ev <- data.table::as.data.table(ev)
   m <- ev[franchise_id == fid][order(deal_id)]
   op <- ev[franchise_id != fid][order(deal_id)]
@@ -1021,7 +1279,8 @@ ffs_build_trades <- function(base_simulation, franchise_id,
         gk <- cand[k]
         ns <- c(deals$send_ids[[i]], gk$player_id)
         te <- data.table::as.data.table(ffs_trade_eval(
-          base_simulation, fid, ns, deals$opponent[[i]], rids))
+          base_simulation, fid, ns, deals$opponent[[i]], rids,
+          engine = engine, waiver = waiver, cut_to_size = cut_to_size))
         opk <- te[franchise_id == deals$opponent[[i]]]$playoff_pct_delta
         lift <- opk - base_opp                 # how much this give-back helps them
         eff  <- lift / max(gk$cur_value, 1)     # lift per unit of value I give up
@@ -1122,6 +1381,25 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     deals[, gettable := opp_edge >= -opp_edge_tol & opp_playoff_delta >= -max_opp_drop]
     deals[, grade := .ffs_grade(score)]
   }
+  # name the fourth and fifth assets in a "2-for-1". A board row that reads
+  # "send Corum + Olave, get Jeanty" hides the waiver claim that made the deal
+  # work and the player the other side had to release to fit it; both are
+  # already inside the simulated deltas, so they belong on the row.
+  deals[, `:=`(backfill = NA_character_, opp_drop = NA_character_)]
+  if (waiver != "none" || isTRUE(cut_to_size)) {
+    rs_all <- .ffs_rs_with_waivers(base_simulation, rs)
+    nm <- if ("player_name" %in% names(rs_all))
+      stats::setNames(rs_all$player_name, rs_all$player_id) else character(0)
+    label <- function(ids) if (!length(ids)) NA_character_ else
+      paste(data.table::fcoalesce(unname(nm[ids]), ids), collapse = " + ")
+    ch <- lapply(seq_len(nrow(deals)), function(i) .ffs_roster_churn(
+      waiver_idx, rs_all, fid, deals$send_ids[[i]],
+      deals$opponent[[i]], deals$recv_ids[[i]],
+      waiver = waiver, cut_to_size = cut_to_size))
+    deals[, backfill := vapply(ch, function(x) label(x$add_a), character(1))]
+    deals[, opp_drop := vapply(ch, function(x) label(x$cut_b), character(1))]
+  }
+
   data.table::setorder(deals, -score, -my_win_delta)
 
   # dedup: collapse deals that differ only by throw-in filler or draft-pick YEAR
@@ -1136,7 +1414,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     opp_win_delta, opp_playoff_delta, opp_champ_delta, opp_playoff_before,
     win_win, future_capital_delta, adj_future_capital, give_back, score,
     my_edge, opp_edge, opp_value_gain, opp_surplus, opp_score, gettable, grade,
-    send_ids, recv_ids)]
+    backfill, opp_drop, send_ids, recv_ids)]
   return(as.data.frame(out))
 }
 
@@ -1434,7 +1712,9 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     sp <- cutline <- nreal <- p_avg <- new_actual <- actual_score <- NULL
 
   base_opt <- cache$opt %||% data.table::as.data.table(base_simulation$optimal_scores)
-  rs <- cache$rs %||% data.table::as.data.table(base_simulation$roster_scores)
+  # waiver proxies ride along so an add_id can name one; they carry
+  # franchise_id = NA and so are invisible to every franchise filter below
+  rs <- cache$rs %||% .ffs_rs_with_waivers(base_simulation)
   # constraints must be filtered to the simulated positions exactly as the base
   # simulation's own optimiser filtered them - see .ffs_sim_lineup_constraints()
   lc <- cache$lc %||% .ffs_sim_lineup_constraints(base_simulation, roster_scores = rs)

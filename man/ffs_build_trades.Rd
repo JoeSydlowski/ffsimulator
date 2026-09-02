@@ -55,8 +55,12 @@ ffs_build_trades(
   posture_rebuild_cut = 0.35,
   max_opp_future_drop = Inf,
   dedupe = FALSE,
+  min_send_players = 0L,
+  waiver = c("none", "me", "both"),
+  cut_to_size = FALSE,
   screen_n = 40L,
   screen_per_opp = 0L,
+  screen_per_shape = 0L,
   eval_max = Inf,
   engine = NULL,
   workers = 1L,
@@ -269,6 +273,23 @@ picks is already priced into \code{cur_value} - so it defaults to \code{Inf} (of
 or draft-pick \emph{year} (same pick slot) to the single highest-scoring
 representative, so near-identical ideas do not flood the board (default \code{FALSE})}
 
+\item{min_send_players}{minimum number of REAL players (picks excluded) in the
+send package. \code{min_piece_value} exempts picks, so with a priced pick set the
+cheapest way to meet any overpay band is "one player + a pick" and genuine
+consolidations barely get enumerated; \code{min_send_players = 2} is the knob that
+actually forces them.}
+
+\item{waiver}{who refills a roster spot the trade vacated, from
+\code{base_simulation$waiver_scores} (see \code{\link[=ffs_waiver_proxies]{ffs_waiver_proxies()}}): \code{"none"}
+(default - a side that sends more bodies than it receives simply carries a
+smaller roster), \code{"me"} (franchise_a only, the right setting when you win
+the waiver claims in your league) or \code{"both"}, which hands out distinct
+players so two franchises never sign the same free agent.}
+
+\item{cut_to_size}{whether the side that GAINS bodies drops its weakest
+players to stay at roster size. With \code{waiver} on, this makes a 2-for-1
+evaluate as the 2-for-2 it really is. Defaults to \code{FALSE}.}
+
 \item{screen_n}{how many screened packages to value exactly (default 40).
 \code{Inf} evaluates every banded deal - the exhaustive mode.}
 
@@ -279,6 +300,13 @@ top-\code{screen_n}). The eval set becomes the union of the global top-\code{scr
 and each opponent's top-\code{screen_per_opp}, giving every team coverage. \code{Inf}
 drops the per-team cap entirely (exhaustive), which with \code{screen_n = Inf}
 leaves the screen serving only as eval ordering.}
+
+\item{screen_per_shape}{guarantee at least this many of each package SHAPE's
+best-screened deals are valued (default \code{0} = off). The screen is led by
+\code{add_gain}, which is structurally negative for a consolidation - two
+contributors deleted to add one - so on a budgeted scan every
+two-real-players-for-one deal loses to a player+pick package and none is
+simulated at all. This makes shapes compete within themselves first.}
 
 \item{eval_max}{hard ceiling on how many deals get the exact evaluation
 (default \code{Inf}). A safety net for exhaustive scans: deals beyond the cap are
@@ -317,7 +345,9 @@ a dataframe of trades: \code{opponent}, \code{send}, \code{receive}, dynasty
 \code{future_capital_delta}, a \code{give_back} flag (whether a give-back sweetener was
 appended), the \code{score} used to rank them and its letter \code{grade}, the market
 view of the other side (\code{my_edge}, \code{opp_edge}, \code{opp_value_gain}, \code{opp_score},
-\code{gettable}), and list-columns \code{send_ids}/\code{recv_ids} so a deal can be
+\code{gettable}), the roster churn the deal implies (\code{backfill}, the waiver player
+filling a spot it vacated; \code{opp_drop}, the player the other side releases to
+fit it), and list-columns \code{send_ids}/\code{recv_ids} so a deal can be
 re-evaluated (e.g. confirmed on a larger simulation with \code{\link[=ffs_trade_eval]{ffs_trade_eval()}})
 }
 \description{

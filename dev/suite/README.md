@@ -142,6 +142,55 @@ only run at value ≥ 300.
   confirmed on the n=400 standings sim.
 - `FFS_SELL_MAX` (default `4`) — how many SELLs get buyer scans + matchmaking.
 
+### Consolidation (two of my players for one better one)
+
+Three builder defaults work against this shape, and all three have to be turned
+off before a board will show any:
+
+- `FFS_TRADE_SHAPES` (`"2,1;1,1"`) — `trade_intel.R` previously had no shapes
+  knob at all and silently ran `c(1,1)/c(2,1)/c(1,2)`.
+- `FFS_MIN_SEND_PLAYERS` (`2`) — `min_piece_value` **exempts draft picks**, so
+  with a priced pick set the cheapest way to satisfy the overpay band is always
+  "one real player + a pick". This counts real players, and is the only knob
+  that actually forces a two-player package.
+- `FFS_SCREEN_PER_SHAPE` — the screen is led by `add_gain`, which is
+  structurally negative for a consolidation (two contributors deleted to add
+  one), so at `screen_n = 40` none is ever simulated. This gives each shape its
+  own slice of the eval budget. Unnecessary when `screen_n` is `Inf`.
+
+`FFS_TRADE_CEILING_WEIGHT` is a separate, orthogonal lever: it prices the stud
+premium the berth objective cannot see, rather than correcting a mismeasurement.
+
+### Waiver wire (`FFS_WAIVER`, `FFS_OPP_CUT`)
+
+A 2-for-1 vacates a roster spot, and the base evaluation prices that as a
+permanent hole — you simply carry a smaller roster forever. In a league with a
+live wire you refill it the same week, which is the difference between
+"consolidation costs me a player" and "consolidation is a 2-for-2".
+
+- `FFS_WAIVER` = `none` (default, reproduces every previous board exactly) /
+  `me` (I win the claims) / `both` (distinct free agents, so two teams never
+  sign the same player).
+- `FFS_OPP_CUT=1` — the side taking on the extra body releases its weakest
+  player, conserving bodies both ways.
+- `FFS_WAIVER_N` (default 3) — free agents carried per position.
+
+`ffs_waiver_proxies()` gets those free agents weekly scores without
+re-simulating: each borrows the score profile of the **rostered player nearest
+him in ECR**. Projections are ECR-driven, so the clone is close to what
+simulating him would have produced, and it works against an already-saved
+`simulation.rds` — which is what keeps the n=2000 confirm path usable. The
+scripts print each proxy's `ecr_gap`; a large gap means no comparable rostered
+player exists and the clone is a stretch. A wire nobody would claim off costs
+nothing either way: such a proxy never clears the started cut-line, so no week
+re-optimises and the delta is unchanged.
+
+**Set the same values on `confirm_trade_board.R`** as on the scan, or the
+confirmed deltas are not comparable to the board's.
+
+This is unrelated to `replacement_level` below, which hands the *same* free
+agents to *every* roster and is why the suite leaves it off.
+
 ## Config notes
 
 - `replacement_level = FALSE` is the right setting for deep dynasty leagues:

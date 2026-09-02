@@ -172,25 +172,35 @@
   # (multi-million-row) roster_scores table on every deal
   cache <- list(
     opt = opt,
-    rs = data.table::as.data.table(base_simulation$roster_scores),
+    # the waiver proxies live in the same lookup table as the real rosters; they
+    # carry franchise_id = NA, so no franchise filter can reach them and the
+    # baseline `before` above is unchanged by their presence
+    rs = .ffs_rs_with_waivers(base_simulation),
     lc = .ffs_sim_lineup_constraints(base_simulation)
   )
   data.table::setindexv(cache$rs, "franchise_id")
   data.table::setindexv(cache$rs, "player_id")
+  waiver_idx <- .ffs_waiver_index(base_simulation$waiver_scores)
 
   fw_of <- function(dt) fw[list(dt$season, dt$week), fw_id, on = c("season", "week")]
 
-  eval_deal <- function(franchise_a, gives_a, franchise_b, gives_b) {
+  eval_deal <- function(franchise_a, gives_a, franchise_b, gives_b,
+                        waiver = "none", cut_to_size = FALSE) {
     ca <- match(as.character(franchise_a), fids)
     cb <- match(as.character(franchise_b), fids)
     if (is.na(ca) || is.na(cb)) stop("franchise not present in the simulation")
     ga <- gives_a[!grepl("^PICK_", gives_a)]
     gb <- gives_b[!grepl("^PICK_", gives_b)]
 
+    churn <- .ffs_roster_churn(waiver_idx, cache$rs, franchise_a, ga, franchise_b, gb,
+                               waiver = waiver, cut_to_size = cut_to_size)
+
     ra <- .ffs_counterfactual_rows(base_simulation, franchise_a,
-                                   remove_ids = ga, add_ids = gb, cache = cache)
+                                   remove_ids = c(ga, churn$cut_a),
+                                   add_ids = c(gb, churn$add_a), cache = cache)
     rb <- .ffs_counterfactual_rows(base_simulation, franchise_b,
-                                   remove_ids = gb, add_ids = ga, cache = cache)
+                                   remove_ids = c(gb, churn$cut_b),
+                                   add_ids = c(ga, churn$add_b), cache = cache)
     S2 <- S
     S2[fw_of(ra), ca] <- ra$actual_score
     S2[fw_of(rb), cb] <- rb$actual_score
@@ -312,11 +322,17 @@ ffs_trade_engine <- function(base_simulation) {
                "season", "week", "projected_score", "avg_week")
   keep_opt <- c("league_id", "franchise_id", "franchise_name", "season", "week",
                 "actual_score", "starter_player_id")
+  keep_w <- c(keep_rs, "waiver_slot", "donor_id", "donor_rank")
   rs <- data.table::as.data.table(base_simulation$roster_scores)
   opt <- data.table::as.data.table(base_simulation$optimal_scores)
+  w <- base_simulation$waiver_scores
   out <- list(
     roster_scores = rs[, intersect(keep_rs, names(rs)), with = FALSE],
     optimal_scores = opt[, intersect(keep_opt, names(opt)), with = FALSE],
+    # the proxies must survive slimming or a parallel worker silently drops
+    # every waiver backfill and disagrees with the sequential path
+    waiver_scores = if (is.null(w)) NULL else
+      data.table::as.data.table(w)[, intersect(keep_w, names(w)), with = FALSE],
     schedules = base_simulation$schedules,
     lineup_constraints = base_simulation$lineup_constraints,
     simulation_params = base_simulation$simulation_params
@@ -347,13 +363,17 @@ ffs_trade_engine <- function(base_simulation) {
 #' @param workers number of parallel workers. `1` (default) runs in-process;
 #'   `NULL` picks `parallel::detectCores(logical = FALSE) - 2`. Parallel runs need
 #'   roughly 0.8 GB per worker on a 2000-season simulation.
+#' @inheritParams ffs_trade_eval
 #'
 #' @return a data.frame with one row per deal per franchise (two rows a deal),
 #'   carrying a `deal_id` column plus the columns [ffs_trade_eval()] returns
 #'
 #' @export
 ffs_trade_eval_many <- function(base_simulation, deals, engine = NULL,
-                                progress = NULL, workers = 1L) {
+                                progress = NULL, workers = 1L,
+                                waiver = c("none", "me", "both"),
+                                cut_to_size = FALSE) {
+  waiver <- match.arg(waiver)
   deals <- data.table::as.data.table(deals)
   checkmate::assert_names(names(deals),
     must.include = c("franchise_a", "gives_a", "franchise_b", "gives_b"))
@@ -364,7 +384,8 @@ ffs_trade_eval_many <- function(base_simulation, deals, engine = NULL,
   workers <- min(as.integer(workers), n)
 
   if (workers > 1L) {
-    par <- tryCatch(.ffs_eval_parallel(base_simulation, deals, workers),
+    par <- tryCatch(.ffs_eval_parallel(base_simulation, deals, workers,
+                                       waiver = waiver, cut_to_size = cut_to_size),
                     error = function(e) e)
     if (!inherits(par, "error")) return(par)
     # a dead worker (usually memory) must not lose the batch - finish in-process
@@ -379,7 +400,8 @@ ffs_trade_eval_many <- function(base_simulation, deals, engine = NULL,
     te <- ffs_trade_eval(base_simulation,
                          deals$franchise_a[[i]], deals$gives_a[[i]],
                          deals$franchise_b[[i]], deals$gives_b[[i]],
-                         engine = engine)
+                         engine = engine, waiver = waiver,
+                         cut_to_size = cut_to_size)
     te$deal_id <- i
     out[[i]] <- te
     if (!is.null(progress)) progress(i, n)
@@ -392,7 +414,8 @@ ffs_trade_eval_many <- function(base_simulation, deals, engine = NULL,
 #' @inheritParams ffs_trade_eval_many
 #' @return the same data.frame [ffs_trade_eval_many()] returns
 #' @keywords internal
-.ffs_eval_parallel <- function(base_simulation, deals, workers) {
+.ffs_eval_parallel <- function(base_simulation, deals, workers,
+                               waiver = "none", cut_to_size = FALSE) {
   n <- nrow(deals)
   simfile <- tempfile(fileext = ".rds")
   on.exit(unlink(simfile), add = TRUE)
@@ -423,13 +446,16 @@ ffs_trade_eval_many <- function(base_simulation, deals, engine = NULL,
     fa = as.character(deals$franchise_a[ii]),
     ga = deals$gives_a[ii],
     fb = as.character(deals$franchise_b[ii]),
-    gb = deals$gives_b[ii]))
+    gb = deals$gives_b[ii],
+    waiver = waiver,
+    cut_to_size = cut_to_size))
 
   res <- parallel::parLapplyLB(cl, payload, function(p) {
     out <- vector("list", length(p$idx))
     for (k in seq_along(p$idx)) {
       te <- ffsimulator::ffs_trade_eval(.sim, p$fa[[k]], p$ga[[k]], p$fb[[k]], p$gb[[k]],
-                                        engine = .engine)
+                                        engine = .engine, waiver = p$waiver,
+                                        cut_to_size = p$cut_to_size)
       te$deal_id <- p$idx[[k]]
       out[[k]] <- te
     }

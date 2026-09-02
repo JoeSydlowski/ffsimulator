@@ -4,7 +4,13 @@
 \alias{.ffs_eval_parallel}
 \title{Spread a batch of trade evaluations over a PSOCK cluster}
 \usage{
-.ffs_eval_parallel(base_simulation, deals, workers)
+.ffs_eval_parallel(
+  base_simulation,
+  deals,
+  workers,
+  waiver = "none",
+  cut_to_size = FALSE
+)
 }
 \arguments{
 \item{base_simulation}{an \code{ff_simulation} from \code{return = "all"}}
@@ -15,6 +21,17 @@ and \code{gives_b}; the two \code{gives_} columns are list-columns of player_ids
 \item{workers}{number of parallel workers. \code{1} (default) runs in-process;
 \code{NULL} picks \code{parallel::detectCores(logical = FALSE) - 2}. Parallel runs need
 roughly 0.8 GB per worker on a 2000-season simulation.}
+
+\item{waiver}{who refills a roster spot the trade vacated, from
+\code{base_simulation$waiver_scores} (see \code{\link[=ffs_waiver_proxies]{ffs_waiver_proxies()}}): \code{"none"}
+(default - a side that sends more bodies than it receives simply carries a
+smaller roster), \code{"me"} (franchise_a only, the right setting when you win
+the waiver claims in your league) or \code{"both"}, which hands out distinct
+players so two franchises never sign the same free agent.}
+
+\item{cut_to_size}{whether the side that GAINS bodies drops its weakest
+players to stay at roster size. With \code{waiver} on, this makes a 2-for-1
+evaluate as the 2-for-2 it really is. Defaults to \code{FALSE}.}
 }
 \value{
 the same data.frame \code{\link[=ffs_trade_eval_many]{ffs_trade_eval_many()}} returns

@@ -157,3 +157,113 @@ ffs_fill_missing_starters <- function(rosters,
   if (!length(fills)) return(rosters)
   data.table::rbindlist(c(list(r), fills), use.names = TRUE, fill = TRUE)
 }
+
+#' Score profiles for the best players nobody rosters
+#'
+#' The waiver wire is invisible to a finished simulation. Projections are
+#' filtered to rostered players ([ffs_generate_projections()]) and
+#' [ffs_score_rosters()] inner-joins, so no unrostered player has weekly scores -
+#' which means a trade that sends more bodies than it receives is currently
+#' priced as losing that roster spot outright. In a shallow-ish league that is
+#' wrong: the spot gets refilled off waivers the same week, so a 2-for-1 is
+#' really a 2-for-2.
+#'
+#' Rather than re-simulate, each free agent borrows the weekly score profile of
+#' the *rostered* player nearest him in ECR. Projections are ECR-driven
+#' ([ffs_generate_projections()] reads `ecr`/`sd` and nothing else about a
+#' player), so an unrostered WR at ECR 71 scores essentially like the rostered WR
+#' at ECR 70, and the clone is close to what simulating him would have produced.
+#' The payoff is that this runs in seconds against an already-saved simulation,
+#' so the n=2000 confirmation path keeps working.
+#'
+#' Cloning is only safe while the donor is not himself part of the deal being
+#' evaluated - "I sent Blake Corum and picked up a player who scores exactly like
+#' Blake Corum" would make the send free. `n_donors` alternates per slot are
+#' emitted so [.ffs_waiver_pick()] can fall through to the next-nearest donor.
+#'
+#' @param base_simulation an `ff_simulation` from `ff_simulate(..., return = "all")`
+#'   (`rosters` and `latest_rankings` are both required, so a slimmed simulation
+#'   will not do)
+#' @param n_per_pos how many free agents to carry per position
+#' @param pos_filter positions to build proxies for
+#' @param n_donors how many donor alternates to emit per free agent
+#'
+#' @return a data.table of `roster_scores`-shaped rows with `franchise_id = NA`
+#'   and globally unique `player_id`s (`WAIVER_<pos>_<k>_<donor_rank>`), plus
+#'   `waiver_slot`, `donor_id`, `donor_rank`, `ecr` and `ecr_gap` for auditing
+#'
+#' @export
+ffs_waiver_proxies <- function(base_simulation,
+                               n_per_pos = 3L,
+                               pos_filter = c("QB", "RB", "WR", "TE"),
+                               n_donors = 2L) {
+  checkmate::assert_class(base_simulation, "ff_simulation")
+  checkmate::assert_int(n_per_pos, lower = 0)
+  checkmate::assert_int(n_donors, lower = 1)
+
+  pos <- ecr <- fantasypros_id <- player_id <- player <- donor_id <-
+    donor_rank <- ecr_gap <- ecr_donor <- ecr_fa <- waiver_slot <- rn <- NULL
+
+  rosters <- base_simulation$rosters
+  lr <- base_simulation$latest_rankings
+  if (is.null(rosters) || is.null(lr))
+    stop("ffs_waiver_proxies() needs a simulation built with return = \"all\" ",
+         "(rosters and latest_rankings are both dropped otherwise)")
+  if (n_per_pos < 1L) return(.ffs_empty_waiver_scores(base_simulation))
+
+  r <- data.table::as.data.table(rosters)
+  lr <- data.table::as.data.table(lr)[pos %in% pos_filter & !is.na(ecr)]
+  rs <- data.table::as.data.table(base_simulation$roster_scores)
+
+  # the free agents: ranked, unrostered, best first at each position
+  fa <- lr[!fantasypros_id %in% r$fantasypros_id][order(pos, ecr)]
+  fa <- fa[, utils::head(.SD, n_per_pos), by = "pos"]
+  if (!nrow(fa)) return(.ffs_empty_waiver_scores(base_simulation))
+  fa[, rn := seq_len(.N), by = "pos"]
+  fa[, waiver_slot := paste(pos, rn, sep = "_")]
+
+  # candidate donors: rostered, ranked, and actually present in roster_scores
+  donors <- merge(r[, c("player_id", "fantasypros_id", "pos")],
+                  lr[, list(fantasypros_id, ecr)],
+                  by = "fantasypros_id")
+  donors <- donors[player_id %in% unique(rs$player_id)]
+  if (!nrow(donors)) return(.ffs_empty_waiver_scores(base_simulation))
+
+  # nearest ECR at the same position, n_donors deep
+  pairs <- merge(fa[, list(waiver_slot, pos, player, ecr_fa = ecr)],
+                 donors[, list(pos, donor_id = player_id, ecr_donor = ecr)],
+                 by = "pos", allow.cartesian = TRUE)
+  pairs[, ecr_gap := abs(ecr_donor - ecr_fa)]
+  data.table::setorderv(pairs, c("waiver_slot", "ecr_gap"))
+  pairs <- pairs[, utils::head(.SD, n_donors), by = "waiver_slot"]
+  pairs[, donor_rank := seq_len(.N), by = "waiver_slot"]
+
+  out <- lapply(seq_len(nrow(pairs)), function(i) {
+    p <- pairs[i]
+    rows <- data.table::copy(rs[player_id == p$donor_id])
+    if (!nrow(rows)) return(NULL)
+    data.table::set(rows, j = "player_id",
+                    value = paste0("WAIVER_", p$waiver_slot, "_", p$donor_rank))
+    for (cc in intersect(c("franchise_id", "franchise_name"), names(rows)))
+      data.table::set(rows, j = cc, value = NA_character_)
+    if ("player_name" %in% names(rows))
+      data.table::set(rows, j = "player_name", value = p$player)
+    data.table::set(rows, j = "waiver_slot", value = p$waiver_slot)
+    data.table::set(rows, j = "donor_id", value = p$donor_id)
+    data.table::set(rows, j = "donor_rank", value = p$donor_rank)
+    data.table::set(rows, j = "ecr_gap", value = p$ecr_gap)
+    data.table::set(rows, j = "ecr", value = p$ecr_fa)
+    rows
+  })
+
+  data.table::rbindlist(out, use.names = TRUE, fill = TRUE)
+}
+
+#' An empty waiver-proxy table shaped like roster_scores
+#' @keywords internal
+.ffs_empty_waiver_scores <- function(base_simulation) {
+  rs <- data.table::as.data.table(base_simulation$roster_scores)[0]
+  rs[, `:=`(waiver_slot = character(), donor_id = character(),
+            donor_rank = integer(), ecr_gap = numeric(), ecr = numeric())]
+  rs[]
+}

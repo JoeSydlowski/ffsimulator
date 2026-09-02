@@ -146,6 +146,41 @@ pick_for_pick <- as.logical(as.integer(Sys.getenv("FFS_TRADE_PICK_FOR_PICK", "0"
 # set >0 only to experiment. Same for ceiling_weight (the consolidation screen).
 champ_weight <- as.numeric(Sys.getenv("FFS_TRADE_CHAMP_WEIGHT", "0"))
 ceiling_weight <- as.numeric(Sys.getenv("FFS_TRADE_CEILING_WEIGHT", "0"))
+
+# --- CONSOLIDATION: turning two of my players into one better one ---------------
+# The builder's defaults are stacked against this shape and it took a Goofball
+# board with 39 deals and exactly TWO two-real-player consolidations on it (both
+# forced by must_send in the sell pass) to make that obvious:
+#   * shapes was never passed, so it silently ran the c(1,1)/c(2,1)/c(1,2) default
+#   * min_piece_value is 0 here AND exempts picks, so with 150 priced picks the
+#     cheapest way to satisfy the overpay band is always "one player + a pick"
+#   * the screen is add_gain-led, and add_gain is structurally negative for a
+#     consolidation (two contributors deleted to add one), so at screen_n = 40
+#     none of them was ever simulated
+#   * core_n = Inf / dedupe = FALSE let one idea take four of the twenty slots
+# FFS_TRADE_SHAPES="2,1;1,1" narrows the enumeration; the rest are knobs now.
+shapes_env <- Sys.getenv("FFS_TRADE_SHAPES", "")
+trade_shapes <- if (nzchar(shapes_env))
+  lapply(strsplit(shapes_env, ";")[[1]],
+         function(s) as.integer(strsplit(trimws(s), ",")[[1]])) else
+  list(c(1, 1), c(2, 1), c(1, 2))
+min_send_players <- as.integer(Sys.getenv("FFS_MIN_SEND_PLAYERS", "0"))
+screen_n <- as.integer(Sys.getenv("FFS_TRADE_SCREEN_N", "40"))
+screen_per_shape <- as.integer(Sys.getenv("FFS_SCREEN_PER_SHAPE", "0"))
+# cap per trade IDEA and collapse pick-year variants, so twenty board slots hold
+# twenty ideas rather than five ideas expressed four ways each
+trade_core_n <- as.numeric(Sys.getenv("FFS_TRADE_CORE_N", "3"))
+trade_dedupe <- as.integer(Sys.getenv("FFS_TRADE_DEDUPE", "1")) == 1L
+
+# --- waiver wire ----------------------------------------------------------------
+# A 2-for-1 vacates a roster spot; priced as a permanent hole it reads as a loss,
+# but in a league with a live wire you refill it that week. FFS_WAIVER=me is the
+# setting for a manager who wins his claims; FFS_OPP_CUT makes the side taking on
+# the extra body release its weakest player, so bodies are conserved both ways.
+# Default "none" reproduces every previous board exactly.
+waiver_mode <- Sys.getenv("FFS_WAIVER", "none")
+opp_cut <- as.integer(Sys.getenv("FFS_OPP_CUT", "0")) == 1L
+waiver_n <- as.integer(Sys.getenv("FFS_WAIVER_N", "3"))
 playoff_slots <- if (!is.null(config$playoff_slots)) config$playoff_slots else 6L
 
 # role thresholds (shared by roster labels and the console narrative)
@@ -189,6 +224,17 @@ vsim <- ff_simulate(conn, n_seasons = n_trade, version = "v3",
                     lineup_method = "rank", replacement_level = FALSE,
                     pos_filter = v_pos, fill_missing_starters = v_fill,
                     actual_schedule = actual_sched, return = "all")
+
+if (waiver_mode != "none") {
+  vsim$waiver_scores <- ffs_waiver_proxies(
+    vsim, n_per_pos = waiver_n, pos_filter = intersect(v_pos, c("QB","RB","WR","TE")))
+  # eyeball this: each proxy borrows the weekly scores of the rostered player
+  # nearest him in ECR, so a large ecr_gap means the league has no comparable
+  # rostered player and the clone is a stretch
+  message("waiver wire (", waiver_mode, ", cut=", opp_cut, "):")
+  print(unique(vsim$waiver_scores[donor_rank == 1L,
+    list(waiver_slot, player_name, ecr = round(ecr), ecr_gap = round(ecr_gap, 1))]))
+}
 
 fr <- data.table::as.data.table(vsim$franchises)[, list(franchise_id, franchise_name)]
 fr <- unique(fr)
@@ -579,7 +625,11 @@ trades_buy <- data.table::as.data.table(ffs_build_trades(
   score_mode = score_mode, playoff_value = playoff_value,
   future_certainty = future_certainty, win_to_playoff = win_to_playoff,
   future_weight = future_weight, min_future_delta = min_future,
-  traj_weight = traj_weight, pick_for_pick = pick_for_pick))
+  traj_weight = traj_weight, pick_for_pick = pick_for_pick,
+  shapes = trade_shapes, min_send_players = min_send_players,
+  screen_n = screen_n, screen_per_shape = screen_per_shape,
+  core_n = trade_core_n, dedupe = trade_dedupe,
+  waiver = waiver_mode, cut_to_size = opp_cut))
 if (nrow(trades_buy)) trades_buy[, motive := "buy"]
 
 # sell matchmaker: for each SELL, deals that send HIM to his best buyers and
@@ -622,6 +672,12 @@ if (!is.null(buyer_tbl) && nrow(buyer_tbl)) {
       future_certainty = future_certainty, win_to_playoff = win_to_playoff,
       future_weight = future_weight, min_future_delta = min_future,
       traj_weight = traj_weight, pick_for_pick = pick_for_pick,
+      # the same roster-churn model as the buy pass, or the two halves of one
+      # board would be priced on different assumptions. min_send_players is NOT
+      # applied here: must_send already anchors the package, and forcing a second
+      # real player would suppress "just send him" 1-for-N offers.
+      waiver = waiver_mode, cut_to_size = opp_cut,
+      screen_per_shape = screen_per_shape, core_n = trade_core_n,
       must_send = p, opponents = buyers, screen_n = 15L, top_n = 5))
     if (nrow(deal)) {
       deal[, motive := paste0("sell ", p_name)]
@@ -653,11 +709,18 @@ if (nrow(trades)) {
   first_per_motive <- trades[, list(rid = rid[1]), by = motive][["rid"]]
   by_score <- setdiff(trades[order(-score)][["rid"]], first_per_motive)
   confirm_ids <- utils::head(c(first_per_motive, by_score), confirm_n)
+  # the confirmation must use the SAME roster-churn model the board did, or the
+  # confirmed delta silently reverts a 2-for-2 to a 2-for-1 and the two numbers
+  # in the sheet are not on one scale
+  if (waiver_mode != "none" && is.null(sim$waiver_scores))
+    sim$waiver_scores <- ffs_waiver_proxies(
+      sim, n_per_pos = waiver_n, pos_filter = intersect(v_pos, c("QB","RB","WR","TE")))
   message("confirming ", length(confirm_ids), " deals on the standings sim @ ", Sys.time())
   for (rid_i in confirm_ids) {
     te <- data.table::as.data.table(ffs_trade_eval(
       sim, me, trades$send_ids[[rid_i]],
-      trades$opponent[[rid_i]], trades$recv_ids[[rid_i]]))
+      trades$opponent[[rid_i]], trades$recv_ids[[rid_i]],
+      waiver = waiver_mode, cut_to_size = opp_cut))
     m <- te[te$franchise_id == me]
     op <- te[te$franchise_id != me]
     trades[rid == rid_i, `:=`(
@@ -843,7 +906,11 @@ if (nrow(trades)) {
                 dd$my_win_delta, 100 * dd$my_playoff_delta, 100 * dd$my_champ_delta,
                 dd$opp_win_delta, 100 * dd$opp_playoff_delta,
                 as.integer(round(dd$future_capital_delta)),
-                if (isTRUE(dd$win_win)) " | WIN-WIN" else ""))
+                paste0(
+                  # the waiver claim is inside the deltas above, so print it
+                  if (!is.null(dd$backfill) && !is.na(dd$backfill))
+                    paste0(" | + sign ", dd$backfill) else "",
+                  if (isTRUE(dd$win_win)) " | WIN-WIN" else "")))
     shown <- shown + 1L
     if (shown >= 10L) break
   }

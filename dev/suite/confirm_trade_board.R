@@ -22,6 +22,8 @@
 # Knobs: FFS_MY_TEAM, FFS_CONFIRM_MIN_SCORE (0), FFS_CONFIRM_REQUIRE_GETTABLE (1),
 #   FFS_CONFIRM_MAX (Inf), FFS_CONFIRM_WORKERS (1), FFS_CONFIRM_CHECKPOINT (25),
 #   FFS_CONFIRM_RESUME (1), FFS_OPP_EDGE_TOL, FFS_BOARD_MAX_OPP_DROP.
+#   FFS_WAIVER / FFS_OPP_CUT / FFS_WAIVER_N must be set to the SAME values the
+#   scan used, or the confirmed deltas are not comparable to the board's.
 
 suppressMessages({
   library(data.table)
@@ -95,6 +97,23 @@ if (whole_roster) {
 }
 stopifnot("could not resolve my franchise in the standings sim" = !is.na(me))
 
+## ---- waiver wire: must match the board being confirmed ---------------------------
+# If the board priced a 2-for-1 as a 2-for-2 and the confirm does not, the two
+# numbers are not comparable and the whole point of confirming is lost. Set the
+# SAME FFS_WAIVER / FFS_OPP_CUT here as on the scan. The free agents are rederived
+# from this simulation's own rosters + rankings, so a standings sim scraped on a
+# different day can pick a slightly different wire - the message below says which.
+waiver_mode <- Sys.getenv("FFS_WAIVER", "none")
+opp_cut <- as.integer(Sys.getenv("FFS_OPP_CUT", "0")) == 1L
+if (waiver_mode != "none") {
+  v_pos <- if (!is.null(config$pos_filter)) config$pos_filter else c("QB","RB","WR","TE","K")
+  sim$waiver_scores <- ffs_waiver_proxies(
+    sim, n_per_pos = as.integer(Sys.getenv("FFS_WAIVER_N", "3")),
+    pos_filter = intersect(v_pos, c("QB","RB","WR","TE")))
+  message("waiver wire (", waiver_mode, ", cut=", opp_cut, "): ",
+          paste(unique(sim$waiver_scores[donor_rank == 1L]$player_name), collapse = ", "))
+}
+
 workers <- as.integer(Sys.getenv("FFS_CONFIRM_WORKERS", "1"))
 engine  <- if (workers <= 1L) ffs_trade_engine(sim) else NULL
 if (workers <= 1L && is.null(engine))
@@ -117,11 +136,14 @@ eval_chunk <- function(d) {
     sim,
     data.table(franchise_a = me, gives_a = d$send_ids,
                franchise_b = d$opponent, gives_b = d$recv_ids),
-    engine = engine, workers = workers))
+    engine = engine, workers = workers,
+    waiver = waiver_mode, cut_to_size = opp_cut))
   m  <- ev[franchise_id == me][order(deal_id)]
   op <- ev[franchise_id != me][order(deal_id)]
   r <- data.table(
     team = d$franchise_name, shape = d$shape, send = d$send, receive = d$receive,
+    backfill = if ("backfill" %in% names(d)) d$backfill else NA_character_,
+    opp_drop = if ("opp_drop" %in% names(d)) d$opp_drop else NA_character_,
     send_value = d$send_value, recv_value = d$recv_value,
     send_ids = d$send_ids, recv_ids = d$recv_ids,
     fut = d$fut, s_you_pl = d$mine_pl, s_opp_pl = d$opp_pl,   # search-sim estimates

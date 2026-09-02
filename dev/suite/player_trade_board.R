@@ -38,6 +38,21 @@
 #   FFS_BOARD_SHAPES, FFS_TARGET_N, FFS_TRADE_SCREEN_N / _PER_OPP ("Inf" =
 #   exhaustive), FFS_TRADE_EVAL_MAX (safety cap, 40000), FFS_TRADE_WORKERS
 #   (parallel exact evals), FFS_BOARD_GIVEBACK, FFS_MIN_PIECE_VALUE.
+#
+# CONSOLIDATION MODE - "turn two of my players into one better one". Two things
+# have to be forced, because both defaults work against it:
+#   * FFS_MIN_SEND_PLAYERS=2 - min_piece_value exempts draft picks, so otherwise
+#     the cheapest way to meet the overpay band is always "one player + a pick".
+#   * FFS_SCREEN_PER_SHAPE - the screen is add_gain-led and add_gain is
+#     structurally negative for a consolidation (two contributors deleted to add
+#     one), so on a budgeted scan these are pruned before the eval. Unnecessary
+#     when screen_n is Inf, which is this script's default.
+# And the roster spot it vacates is refilled off the wire rather than lost:
+#   * FFS_WAIVER=none|me|both, FFS_OPP_CUT=1, FFS_WAIVER_N (free agents/position).
+# Writes <safe>_consolidation_plan.csv - the best FFS_PLAN_N deals that share no
+# assets and no trade partner, i.e. ones you could actually do together.
+#   FFS_MOVE_PLAYER="" FFS_BOARD_SHAPES="2,1;3,1" FFS_MIN_SEND_PLAYERS=2 \
+#     FFS_WAIVER=me FFS_OPP_CUT=1 Rscript dev/suite/player_trade_board.R
 
 suppressMessages({
   library(data.table)
@@ -115,7 +130,19 @@ if (whole_roster) {
 
 ## ---- fast SEARCH sim (cached) ---------------------------------------------------
 n_trade <- as.integer(Sys.getenv("FFS_TRADE_NSIMS", "60"))
-sim_cache <- Sys.getenv("FFS_SEARCH_SIM", file.path(league_dir, sprintf("search_n%d.rds", n_trade)))
+# pos_filter and fill_missing_starters must match the standings sim this board is
+# read against. Omitting them is not cosmetic: in a league with a K starting slot
+# the optimiser leaves that slot empty every week for any kicker-less manager,
+# which moved two Goofball franchises' playoff odds by 40+ points and reordered
+# the standings (see commits 9de0278 / d09ade6, and trade_intel.R, which was
+# fixed for exactly this and this script was not).
+v_pos  <- if (!is.null(config$pos_filter)) config$pos_filter else c("QB","RB","WR","TE","K")
+v_fill <- if (!is.null(config$fill_missing_starters)) config$fill_missing_starters else TRUE
+# ...and they go in the cache NAME, so a sim built before this fix can never be
+# silently reused for a league whose lineup it got wrong
+sim_tag <- paste0(paste(sort(v_pos), collapse = ""), if (isTRUE(v_fill)) "_fill" else "")
+sim_cache <- Sys.getenv("FFS_SEARCH_SIM",
+  file.path(league_dir, sprintf("search_n%d_%s.rds", n_trade, sim_tag)))
 if (file.exists(sim_cache)) {
   message("search sim: ", sim_cache)
   sim <- readRDS(sim_cache)
@@ -123,8 +150,30 @@ if (file.exists(sim_cache)) {
   message("building n=", n_trade, " search sim @ ", Sys.time())
   set.seed(config$season + 1L)
   sim <- ff_simulate(conn, n_seasons = n_trade, version = "v3", lineup_method = "rank",
-                     return = "all", actual_schedule = TRUE, replacement_level = FALSE)
+                     return = "all", actual_schedule = TRUE, replacement_level = FALSE,
+                     pos_filter = v_pos, fill_missing_starters = v_fill)
   saveRDS(sim, sim_cache)
+}
+
+## ---- waiver wire ----------------------------------------------------------------
+# A 2-for-1 vacates a roster spot. Priced as a permanent hole it is a loss; in a
+# league with a live wire you refill it the same week, which is the difference
+# between "consolidation costs me a player" and "consolidation is a 2-for-2".
+# FFS_WAIVER: none | me (I win the claims) | both. FFS_OPP_CUT makes the side
+# taking on the extra body release its weakest player, conserving bodies both ways.
+waiver_mode <- Sys.getenv("FFS_WAIVER", "none")
+opp_cut <- as.integer(Sys.getenv("FFS_OPP_CUT", "0")) == 1L
+waiver_n <- as.integer(Sys.getenv("FFS_WAIVER_N", "3"))
+if (waiver_mode != "none") {
+  sim$waiver_scores <- ffs_waiver_proxies(
+    sim, n_per_pos = waiver_n, pos_filter = intersect(v_pos, c("QB","RB","WR","TE")))
+  wi <- ffsimulator:::.ffs_waiver_index(sim$waiver_scores)
+  message("waiver wire (", waiver_mode, "): ", nrow(wi[donor_rank == 1L]), " free agents")
+  # ALWAYS eyeball this before trusting the board. Each proxy borrows the weekly
+  # scores of the rostered player nearest him in ECR; if the gaps are large or the
+  # scores are near zero, this league has no wire and FFS_WAIVER should be "none".
+  print(unique(sim$waiver_scores[, .(waiver_slot, player_name, donor_rank,
+                                     ecr = round(ecr), ecr_gap = round(ecr_gap, 1))]))
 }
 
 ## ---- nearest first-round picks per team (value-only gap fillers) -----------------
@@ -239,6 +288,16 @@ target_n <- as.integer(Sys.getenv("FFS_TARGET_N", "400"))
 default_shapes <- paste(apply(expand.grid(1:3, 1:3), 1, paste, collapse = ","), collapse = ";")
 board_shapes <- lapply(strsplit(Sys.getenv("FFS_BOARD_SHAPES", default_shapes), ";")[[1]],
                        function(s) as.integer(strsplit(trimws(s), ",")[[1]]))
+# CONSOLIDATION knobs. min_piece_value exempts draft picks, so with a priced pick
+# set the cheapest way to satisfy any overpay band is "one real player + a pick"
+# and two-real-player packages barely enumerate: FFS_MIN_SEND_PLAYERS=2 is what
+# actually forces them. FFS_SCREEN_PER_SHAPE then guarantees each shape a slice of
+# the eval budget, because the screen is add_gain-led and add_gain is structurally
+# negative for a consolidation - you delete two contributors to add one.
+#   FFS_MOVE_PLAYER="" FFS_BOARD_SHAPES="2,1;3,1" FFS_MIN_SEND_PLAYERS=2 \
+#     FFS_WAIVER=me FFS_OPP_CUT=1 Rscript dev/suite/player_trade_board.R
+min_send_players <- as.integer(Sys.getenv("FFS_MIN_SEND_PLAYERS", "0"))
+screen_per_shape <- num_or_inf("FFS_SCREEN_PER_SHAPE", "0")
 # one engine for the whole run: the target scan, the roster valuation and every
 # exact deal evaluation share it (each ffs_player_value call would otherwise
 # re-summarise the league and re-copy roster_scores)
@@ -270,6 +329,9 @@ board <- as.data.table(ffs_build_trades(
   win_to_playoff = as.numeric(Sys.getenv("FFS_TRADE_WIN_TO_PLAYOFF", "17.8")),
   future_weight = as.numeric(Sys.getenv("FFS_TRADE_FUTURE_WEIGHT", "3")),
   min_future_delta = -750, winwin_bonus = 0.5, verbose = TRUE, engine = engine,
+  ceiling_weight = as.numeric(Sys.getenv("FFS_TRADE_CEILING_WEIGHT", "0")),
+  min_send_players = min_send_players, screen_per_shape = screen_per_shape,
+  waiver = waiver_mode, cut_to_size = opp_cut,
   dedupe = TRUE, screen_n = screen_n, screen_per_opp = screen_per_opp,
   core_n = core_n, eval_max = eval_max, workers = workers, top_n = top_n))
 
@@ -302,7 +364,11 @@ outb <- board[, .(team = franchise_name, sending, shape, send, receive,
   mine_pl, opp_pl, fut, adj_fut = round(adj_future_capital),
   score = round(score, 1), grade,
   opp_surplus = round(opp_surplus), opp_score = round(opp_score, 1), gettable,
-  win_win, give_back, uses_pick)]
+  win_win, give_back, uses_pick,
+  # the fourth and fifth assets in a 2-for-1: who I sign off the wire to refill
+  # the spot, and who they release to fit the extra body. Both are already inside
+  # the simulated deltas above, so a row that hides them is misleading.
+  backfill, opp_drop)]
 board_csv <- file.path(out, paste0(safe, "_trade_board.csv"))
 fwrite(outb, board_csv)
 message("wrote ", nrow(outb), " deals to ", board_csv)
@@ -344,6 +410,47 @@ show_team <- function(pool, label) {
     cat("  ► get: ", tk$receive[1], "\n", sep = "")
     for (j in seq_len(min(nrow(tk), sends_per_target))) cat(deal_line(tk[j]), "\n", sep = "")
   }
+}
+
+## ---- a PLAN: several consolidations you can actually do together ----------------
+# The ranked board answers "what is the single best deal", but a roster with a
+# long tail wants to consolidate two or three times, and the top rows all reuse
+# the same pieces - reading them as a to-do list double-spends the same players.
+# Greedy from the top, accepting a deal only when it shares no asset (either way,
+# and no trade partner) with one already accepted. Assets sent to two different
+# teams cannot both happen; the same opponent twice is a separate negotiation and
+# each deal is priced against the pre-trade league, so it is excluded too.
+plan_n <- as.integer(Sys.getenv("FFS_PLAN_N", "5"))
+pool <- board[gettable == TRUE & mine_pl >= 0][order(-score)]
+plan_rows <- integer(0); spent <- character(0); teams_used <- character(0)
+for (i in seq_len(nrow(pool))) {
+  ids <- c(pool$send_ids[[i]], pool$recv_ids[[i]])
+  if (length(intersect(ids, spent)) || pool$franchise_name[i] %in% teams_used) next
+  plan_rows <- c(plan_rows, i); spent <- c(spent, ids)
+  teams_used <- c(teams_used, pool$franchise_name[i])
+  if (length(plan_rows) >= plan_n) break
+}
+if (length(plan_rows)) {
+  plan <- pool[plan_rows]
+  plan_csv <- file.path(out, paste0(safe, "_consolidation_plan.csv"))
+  fwrite(plan[, .(step = seq_len(.N), team = franchise_name, shape, send, receive,
+                  backfill, opp_drop, send_value = round(send_value),
+                  recv_value = round(recv_value), mine_pl, opp_pl, fut,
+                  score = round(score, 1), grade)], plan_csv)
+  cat("\n== a plan: ", nrow(plan), " deals sharing no assets and no trade partner ==\n", sep = "")
+  for (i in seq_len(nrow(plan))) {
+    r <- plan[i]
+    cat(sprintf("  %d. [%s] send %s -> get %s%s | you%+.1f%% them%+.1f%% fut%+d score %.1f %s\n",
+                i, substr(r$franchise_name, 1, 14), r$send, r$receive,
+                if (!is.na(r$backfill)) paste0(" + sign ", r$backfill) else "",
+                r$mine_pl, r$opp_pl, r$fut, r$score, r$grade))
+  }
+  cat(sprintf("  TOTAL if all %d happen: you%+.1f%% playoff, fut%+d (each priced against the\n",
+              nrow(plan), sum(plan$mine_pl), sum(plan$fut)))
+  cat("  PRE-trade roster, so the sum is an estimate - re-run the board after the first)\n")
+  message("wrote ", plan_csv)
+} else {
+  cat("\n== no disjoint plan: every gettable deal reuses an asset from a better one ==\n")
 }
 
 ## ---- coverage: how exhaustively did each team actually get scanned? -------------
