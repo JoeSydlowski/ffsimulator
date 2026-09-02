@@ -1,29 +1,29 @@
 player_name,pos,age,cur_value,win_now_value,win_now_edge,playoff_add,champ_add,growth_abs,exp_change,rel_change,p_rise,p_exit,my_pos_rank,mean_weeks_started,trajectory,verdict,bust_flag,best_buyers,player_id
-Justin Jefferson,WR,27.2,6813,1401,-1708,0.505,0.203,-39,-0.206,-0.007,0.25,0,1,10.029,holding,SELL HIGH,FALSE,Galletti (+0.87w/+7%); JTNoel (+0.65w/+13%); Goofball 3 Tokyo Drift  (-1.38w/-23%),6794
-CeeDee Lamb,WR,27.4,6354,1829,-2143,0.512,0.203,-559,-0.288,-0.11,0.221,0,2,10.035,declining,SELL HIGH,FALSE,JTNoel (+0.88w/+25%); Galletti (+0.78w/+5%); Goofball 3 Tokyo Drift  (-1.13w/-22%),6786
-Trey McBride,TE,26.8,6297,950,-1254,0.502,0.203,323,-0.151,0.064,0.311,0.002,1,9.857,holding,SELL HIGH,FALSE,JTNoel (+0.47w/+17%); Galletti (+0.37w/+3%); Goofball 3 Tokyo Drift  (-1.57w/-33%),8130
-Bo Nix,QB,26.5,4825,904,-1123,0.416,0.185,-223,-0.187,-0.054,0.355,0,2,9.134,holding,SELL HIGH,FALSE,JTNoel (+0.18w/+3%); Galletti (-0.00w/-0%); Goofball 3 Tokyo Drift  (-1.78w/-35%),11563
-Chris Olave,WR,26.2,4202,535,-739,0.402,0.183,305,-0.127,0.091,0.2,0,3,8.65,holding,SELL HIGH,FALSE,,8144
-DeVonta Smith,WR,27.8,3652,848,-1008,0.357,0.17,-118,-0.232,-0.041,0.144,0,4,7.912,holding,SELL HIGH,FALSE,,7525
-Rashee Rice,WR,26.4,3527,725,-873,0.346,0.167,-20,-0.206,-0.007,0.258,0.002,5,7.601,holding,SELL HIGH,FALSE,,10229
-Brian Thomas,WR,23.9,3073,876,-774,0.095,0.062,-262,-0.285,-0.106,0.266,0.004,7,2.454,declining,SELL HIGH,FALSE,,11631
-Sam Darnold,QB,29.2,2962,467,-481,0.212,0.117,-48,-0.158,-0.019,0.314,0.013,3,5.284,holding,PARKED CHIP,FALSE,,4943
-Bhayshul Tuten,RB,23.5,2647,724,-821,0.294,0.153,-149,-0.274,-0.072,0.314,0,1,6.497,holding,PARKED CHIP,FALSE,,12490
-Jaylen Warren,RB,27.8,1963,511,-574,0.26,0.138,-85,-0.261,-0.055,0.15,0,2,5.632,holding,PARKED CHIP,FALSE,,8228
-Blake Corum,RB,25.8,1831,355,-294,0.136,0.085,42,-0.194,0.029,0.202,0,3,3.197,holding,PARKED CHIP,FALSE,,11586
-Zach Charbonnet,RB,25.6,1695,393,-256,0.06,0.049,-25,-0.232,-0.019,0.226,0.002,8,1.86,holding,PARKED CHIP,FALSE,,9753
-Jordan Mason,RB,27.3,1593,371,-292,0.119,0.077,-25,-0.233,-0.02,0.209,0.001,4,2.965,holding,PARKED CHIP,FALSE,,8408
-Courtland Sutton,WR,30.9,1564,372,-249,0.074,0.052,-59,-0.238,-0.047,0.116,0.004,8,2.166,holding,PARKED CHIP,FALSE,,5045
-Stefon Diggs,WR,32.8,1489,612,-465,0.05,0.038,-314,-0.411,-0.264,0.102,0.004,9,1.554,declining,SWEETENER,FALSE,,2449
-Dallas Goedert,TE,31.7,1441,553,-494,0.139,0.085,-261,-0.383,-0.227,0.225,0.028,2,3.768,declining,SWEETENER,FALSE,,5022
-Eli Raridon,TE,22.5,1028,293,-113,0.018,0.016,-85,-0.285,-0.103,0.34,0.004,3,0.706,declining,SWEETENER,FALSE,,13421
-Chris Bell,WR,22.2,1312,110,83,0.005,0.005,153,-0.084,0.145,0.36,0.014,11,0.198,appreciating,CORE,FALSE,,13311
-Chris Rodriguez,RB,26.9,1310,107,13,0.077,0.056,177,-0.082,0.173,0.374,0.032,6,2.15,appreciating,CORE,FALSE,,10219
-Keaton Mitchell,RB,24.6,1294,101,24,0.073,0.05,180,-0.078,0.178,0.355,0.014,9,1.879,appreciating,CORE,FALSE,,9511
-Jayden Daniels,QB,25.7,6690,444,-767,0.52,0.207,500,-0.066,0.087,0.26,0,1,10.573,appreciating,STASH (appreciating),FALSE,,11566
-Emeka Egbuka,WR,23.9,4543,468,-510,0.24,0.132,440,-0.103,0.121,0.304,0,6,5.697,appreciating,STASH (appreciating),FALSE,,12514
-Jordyn Tyson,WR,22,3369,188,-18,0.027,0.023,485,-0.056,0.18,0.408,0.004,10,0.935,appreciating,STASH (appreciating),FALSE,,13281
-Woody Marks,RB,25.7,1431,140,-16,0.073,0.05,170,-0.098,0.152,0.38,0.013,7,1.866,appreciating,STASH (appreciating),FALSE,,12474
-Tyjae Spears,RB,25.2,1222,246,-140,0.092,0.058,19,-0.201,0.02,0.386,0.01,5,2.106,holding,hold,FALSE,,9508
-Emmett Johnson,RB,22.9,1214,283,-135,0.048,0.036,-20,-0.233,-0.021,0.382,0.003,10,1.282,holding,hold,FALSE,,13337
+Justin Jefferson,WR,27.2,6813,1401,-345,0.058,0.047,-39,-0.206,-0.007,0.25,0,1,10.029,holding,SELL HIGH,FALSE,Galletti (+1.00w/+22%); Beef Blitzkrieg (+0.83w/+17%); Goofball 3 Tokyo Drift  (+0.80w/+12%),6794
+CeeDee Lamb,WR,27.4,6354,1829,-741,0.06,0.047,-559,-0.288,-0.11,0.221,0,2,10.035,declining,SELL HIGH,FALSE,Goofball 3 Tokyo Drift  (+0.83w/+8%); K Stafford isn't Worthy (+0.77w/+7%); Beef Blitzkrieg (+0.75w/+17%),6786
+Brian Thomas,WR,23.9,3073,876,-493,0.005,0.004,-262,-0.285,-0.106,0.266,0.004,8,2.454,declining,SELL HIGH,FALSE,,11631
+DeVonta Smith,WR,27.8,3652,848,-186,0.027,0.023,-118,-0.232,-0.041,0.144,0,4,7.912,holding,PARKED CHIP,FALSE,Goofball 3 Tokyo Drift  (+0.88w/+10%); Galletti (+0.67w/+12%); K Stafford isn't Worthy (+0.55w/+8%),7525
+Rashee Rice,WR,26.4,3527,725,-189,0.017,0.021,-20,-0.206,-0.007,0.258,0.002,5,7.601,holding,PARKED CHIP,FALSE,That's so Ravens  (+0.62w/+10%); Goofball 3 Tokyo Drift  (+0.58w/+3%); Beef Blitzkrieg (+0.53w/+10%),10229
+Bhayshul Tuten,RB,23.5,2647,724,-150,0.02,0.022,-149,-0.274,-0.072,0.314,0,1,6.497,holding,PARKED CHIP,FALSE,,12490
+Stefon Diggs,WR,32.8,1489,612,-228,0.005,0.003,-314,-0.411,-0.264,0.102,0.004,10,1.554,declining,SWEETENER,FALSE,,2449
+Dallas Goedert,TE,31.7,1441,553,-36,0.016,0.016,-261,-0.383,-0.227,0.225,0.028,2,3.768,declining,SWEETENER,FALSE,,5022
+Eli Raridon,TE,22.5,1028,293,59,0.003,0.004,-85,-0.285,-0.103,0.34,0.004,3,0.706,declining,SWEETENER,FALSE,,13421
+Jayden Daniels,QB,25.7,6690,444,1100,0.097,0.07,500,-0.066,0.087,0.26,0,1,10.573,appreciating,CORE,FALSE,,11566
+Trey McBride,TE,26.8,6297,950,430,0.084,0.064,323,-0.151,0.064,0.311,0.002,1,9.857,holding,CORE,FALSE,,8130
+Bo Nix,QB,26.5,4825,904,253,0.066,0.05,-223,-0.187,-0.054,0.355,0,2,9.134,holding,CORE,FALSE,,11563
+Emeka Egbuka,WR,23.9,4543,468,42,0.015,0.013,440,-0.103,0.121,0.304,0,6,5.697,appreciating,CORE,FALSE,,12514
+Chris Olave,WR,26.2,4202,535,210,0.034,0.028,305,-0.127,0.091,0.2,0,3,8.65,holding,CORE,FALSE,,8144
+Jordyn Tyson,WR,22,3369,188,202,0.006,0.003,485,-0.056,0.18,0.408,0.004,9,0.935,appreciating,CORE,FALSE,,13281
+Sam Darnold,QB,29.2,2962,467,316,0.037,0.025,-48,-0.158,-0.019,0.314,0.013,3,5.284,holding,CORE,FALSE,,4943
+Jaylen Warren,RB,27.8,1963,511,113,0.024,0.019,-85,-0.261,-0.055,0.15,0,2,5.632,holding,CORE,FALSE,,8228
+Blake Corum,RB,25.8,1831,355,117,0.012,0.01,42,-0.194,0.029,0.202,0,4,3.197,holding,CORE,FALSE,,11586
+Jordan Mason,RB,27.3,1593,371,57,0.009,0.008,-25,-0.233,-0.02,0.209,0.001,3,2.965,holding,CORE,FALSE,,8408
+Woody Marks,RB,25.7,1431,140,237,0.005,0.004,170,-0.098,0.152,0.38,0.013,10,1.866,appreciating,CORE,FALSE,,12474
+Chris Bell,WR,22.2,1312,110,217,0.001,0.001,153,-0.084,0.145,0.36,0.014,11,0.198,appreciating,CORE,FALSE,,13311
+Chris Rodriguez,RB,26.9,1310,107,238,0.002,0.005,177,-0.082,0.173,0.374,0.032,7,2.15,appreciating,CORE,FALSE,,10219
+Keaton Mitchell,RB,24.6,1294,101,251,0.003,0.003,180,-0.078,0.178,0.355,0.014,9,1.879,appreciating,CORE,FALSE,,9511
+Tyjae Spears,RB,25.2,1222,246,163,0.007,0.005,19,-0.201,0.02,0.386,0.01,5,2.106,holding,CORE,FALSE,,9508
+Emmett Johnson,RB,22.9,1214,283,30,0,0.004,-20,-0.233,-0.021,0.382,0.003,8,1.282,holding,CORE,FALSE,,13337
+Zach Charbonnet,RB,25.6,1695,393,-42,0.003,0.004,-25,-0.232,-0.019,0.226,0.002,6,1.86,holding,hold,FALSE,,9753
+Courtland Sutton,WR,30.9,1564,372,-8,0.004,0.004,-59,-0.238,-0.047,0.116,0.004,7,2.166,holding,hold,FALSE,,5045
 Jason Myers,K,,,,,0.602,0.219,,,,,,1,13.984,holding,depth,FALSE,,2747

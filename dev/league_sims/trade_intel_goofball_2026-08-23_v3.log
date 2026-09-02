@@ -1,0 +1,188 @@
+scoring-history shim installed (nflverse stats_player path)
+reading report C:/RProjects/ffsimulator/dev/league_sims/1312145437842497536/2026-08-22
+Warning message:
+package 'testthat' was built under R version 4.4.2 
+valuation sim (n=60, actual_schedule=TRUE) @ 2026-08-23 19:24:47.861989
+ℹ Simulating only unplayed weeks: 1-14
+ℹ filled 2 empty K slot across 2 franchises
+priced 150 draft picks
+valuing my roster (28 players, on the n=2000 standings sim) @ 2026-08-23 19:25:35.466682
+trade targets (top_n=200) @ 2026-08-23 19:30:10.957084
+confirming 189 top targets on the standings sim @ 2026-08-23 19:33:04.978942
+finding buyers for 4 movable players @ 2026-08-23 21:06:55.987148
+Warning messages:
+1: Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+2: Removed 1 row containing missing values or values outside the scale range
+(`geom_text_repel()`). 
+3: ggrepel: 184 unlabeled data points (too many overlaps). Consider increasing max.overlaps 
+building buy-side trades @ 2026-08-23 21:07:31.700568
+sell matchmaker for Justin Jefferson: valuing 30 pieces from 3 buyers @ 2026-08-23 21:08:42.891057
+sell matchmaker for CeeDee Lamb: valuing 30 pieces from 3 buyers @ 2026-08-23 21:09:52.189239
+sell matchmaker for DeVonta Smith: valuing 30 pieces from 3 buyers @ 2026-08-23 21:10:38.037306
+sell matchmaker for Rashee Rice: valuing 30 pieces from 3 buyers @ 2026-08-23 21:11:14.882845
+confirming 15 deals on the standings sim @ 2026-08-23 21:12:03.255312
+
+==== Rootin' Tuten trade intelligence (superflex, valuation n=60) ====
+
+posture: contend (playoff odds 85% @ n=2000)
+capital: 79341 now -> 65382 expected (p10 32673 / p90 96185); value-at-risk 262
+concentration: top-3 assets hold 25% of capital
+
+-- capital by verdict --
+       verdict capital     n
+        <char>   <num> <int>
+1:        CORE   46058    16
+2:   SELL HIGH   16240     3
+3: PARKED CHIP    9826     3
+4:   SWEETENER    3958     3
+5:        hold    3259     2
+
+-- roster (SELL board: SELL HIGH > CASH RENTAL > DUMP > PARKED CHIP > SWEETENER, then holds) --
+         player_name    pos   age cur_value win_now_value win_now_edge
+              <char> <char> <num>     <num>         <num>        <num>
+ 1: Justin Jefferson     WR  27.2      6813          1401         -345
+ 2:      CeeDee Lamb     WR  27.4      6354          1829         -741
+ 3:     Brian Thomas     WR  23.9      3073           876         -493
+ 4:    DeVonta Smith     WR  27.8      3652           848         -186
+ 5:      Rashee Rice     WR  26.4      3527           725         -189
+ 6:   Bhayshul Tuten     RB  23.5      2647           724         -150
+ 7:     Stefon Diggs     WR  32.8      1489           612         -228
+ 8:   Dallas Goedert     TE  31.7      1441           553          -36
+ 9:      Eli Raridon     TE  22.5      1028           293           59
+10:   Jayden Daniels     QB  25.7      6690           444         1100
+11:     Trey McBride     TE  26.8      6297           950          430
+12:           Bo Nix     QB  26.5      4825           904          253
+13:     Emeka Egbuka     WR  23.9      4543           468           42
+14:      Chris Olave     WR  26.2      4202           535          210
+15:     Jordyn Tyson     WR  22.0      3369           188          202
+16:      Sam Darnold     QB  29.2      2962           467          316
+17:    Jaylen Warren     RB  27.8      1963           511          113
+18:      Blake Corum     RB  25.8      1831           355          117
+19:     Jordan Mason     RB  27.3      1593           371           57
+20:      Woody Marks     RB  25.7      1431           140          237
+21:       Chris Bell     WR  22.2      1312           110          217
+22:  Chris Rodriguez     RB  26.9      1310           107          238
+23:  Keaton Mitchell     RB  24.6      1294           101          251
+24:     Tyjae Spears     RB  25.2      1222           246          163
+25:   Emmett Johnson     RB  22.9      1214           283           30
+26:  Zach Charbonnet     RB  25.6      1695           393          -42
+27: Courtland Sutton     WR  30.9      1564           372           -8
+28:      Jason Myers      K    NA        NA            NA           NA
+         player_name    pos   age cur_value win_now_value win_now_edge
+    playoff_add champ_add model_chg my_pos_rank     verdict
+          <num>     <num>    <char>       <num>      <char>
+ 1:       0.058     0.047      -21%           1   SELL HIGH
+ 2:       0.060     0.047      -29%           2   SELL HIGH
+ 3:       0.005     0.004      -29%           8   SELL HIGH
+ 4:       0.027     0.023      -23%           4 PARKED CHIP
+ 5:       0.017     0.021      -21%           5 PARKED CHIP
+ 6:       0.020     0.022      -27%           1 PARKED CHIP
+ 7:       0.005     0.003      -41%          10   SWEETENER
+ 8:       0.016     0.016      -38%           2   SWEETENER
+ 9:       0.003     0.004      -28%           3   SWEETENER
+10:       0.097     0.070       -7%           1        CORE
+11:       0.084     0.064      -15%           1        CORE
+12:       0.066     0.050      -19%           2        CORE
+13:       0.015     0.013      -10%           6        CORE
+14:       0.034     0.028      -13%           3        CORE
+15:       0.006     0.003       -6%           9        CORE
+16:       0.037     0.025      -16%           3        CORE
+17:       0.024     0.019      -26%           2        CORE
+18:       0.012     0.010      -19%           4        CORE
+19:       0.009     0.008      -23%           3        CORE
+20:       0.005     0.004      -10%          10        CORE
+21:       0.001     0.001       -8%          11        CORE
+22:       0.002     0.005       -8%           7        CORE
+23:       0.003     0.003       -8%           9        CORE
+24:       0.007     0.005      -20%           5        CORE
+25:       0.000     0.004      -23%           8        CORE
+26:       0.003     0.004      -23%           6        hold
+27:       0.004     0.004      -24%           7        hold
+28:       0.602     0.219        NA           1       depth
+    playoff_add champ_add model_chg my_pos_rank     verdict
+
+-- movable pieces (SELL HIGH = valuable & overvalued-for-my-lineup, cash at 
+   market; CASH RENTAL = fairly priced but melting; DUMP = mid stranded; 
+   PARKED CHIP = holding surplus; SWEETENER = throw-in): who buys, what I get back --
+
+Justin Jefferson -> buyers: Galletti (+1.00w/+22%); Beef Blitzkrieg (+0.83w/+17%); Goofball 3 Tokyo Drift  (+0.80w/+12%)
+  best return: send Justin Jefferson -> get Jadarian Price + Dak Prescott | me +0.01w +0.2%pl | opp -0.22w -4.2%pl
+
+CeeDee Lamb -> buyers: Goofball 3 Tokyo Drift  (+0.83w/+8%); K Stafford isn't Worthy (+0.77w/+7%); Beef Blitzkrieg (+0.75w/+17%)
+  best return: send CeeDee Lamb -> get Dak Prescott + Josh Jacobs | me +0.17w +2.9%pl | opp -0.38w -8.4%pl
+
+DeVonta Smith -> buyers: Goofball 3 Tokyo Drift  (+0.88w/+10%); Galletti (+0.67w/+12%); K Stafford isn't Worthy (+0.55w/+8%)
+  best return: send DeVonta Smith -> get Cam Ward + 2028 R5 (~pick 45) | me -0.15w -1.5%pl | opp +0.51w +10.7%pl
+
+Rashee Rice -> buyers: That's so Ravens  (+0.62w/+10%); Goofball 3 Tokyo Drift  (+0.58w/+3%); Beef Blitzkrieg (+0.53w/+10%)
+  best return: send Rashee Rice + 2029 R3 (~pick 27) -> get Dak Prescott | me +0.09w +1.5%pl | opp -0.23w -4.5%pl
+
+-- top buys (biggest win_now_edge bargains first; year+1 growth_abs alongside) --
+           player_name    pos                   owner cur_value win_now_value
+                <char> <char>                  <char>     <num>         <num>
+ 1:     Bijan Robinson     RB                Galletti     10300           119
+ 2:      Ashton Jeanty     RB                  JTNoel      6863           141
+ 3:         Josh Allen     QB              glamgoblin     10326           245
+ 4:     Caleb Williams     QB   Full Time Dick Sucker      6868           190
+ 5:        Jaxson Dart     QB K Stafford isn't Worthy      5063           175
+ 6:     Baker Mayfield     QB        That's so Ravens      3275            91
+ 7:      Lamar Jackson     QB        That's so Ravens      7246           368
+ 8:   Fernando Mendoza     QB   Full Time Dick Sucker      4009             5
+ 9:       Dak Prescott     QB         Beef Blitzkrieg      4096           371
+10:     Justin Herbert     QB       Lubed up Johnsons      5652           457
+11: Jaxon Smith-Njigba     WR  Goofball 3 Tokyo Drift      8769           326
+12:      Ja'Marr Chase     WR       Lubed up Johnsons      9600           650
+    win_now_edge playoff_delta_you champ_delta_you growth_abs model_chg
+           <num>             <num>           <num>      <num>    <char>
+ 1:         1026             0.065           0.073       2118       -1%
+ 2:          851             0.053           0.062       1349       -2%
+ 3:          805             0.057           0.059       1214       -2%
+ 4:          777             0.051           0.044        780       -3%
+ 5:          582             0.034           0.031        540       -3%
+ 6:          559             0.026           0.020        372       -3%
+ 7:          555             0.047           0.051        656       -5%
+ 8:          493             0.014           0.010        561       -0%
+ 9:          482             0.042           0.037        208       -9%
+10:          427             0.044           0.041        341       -8%
+11:          401             0.032           0.045       1427       -4%
+12:          374             0.055           0.061       1269       -7%
+    confirmed
+       <lgcl>
+ 1:      TRUE
+ 2:      TRUE
+ 3:      TRUE
+ 4:      TRUE
+ 5:      TRUE
+ 6:      TRUE
+ 7:      TRUE
+ 8:      TRUE
+ 9:      TRUE
+10:      TRUE
+11:      TRUE
+12:      TRUE
+
+-- leaguewide fades (fading BEYOND position drift, market still bidding; not in targets) --
+Key: <pos>
+          player_name    pos   age                  owner cur_value vs_drift
+               <char> <char> <num>                 <char>     <num>   <char>
+1: Anthony Richardson     QB  24.3 Goofball 3 Tokyo Drift       924     -61%
+2:         Ty Simpson     QB  23.7 Goofball 3 Tokyo Drift      2306     -22%
+   mkt_trend p_exit
+      <char>  <num>
+1:      +22%  0.074
+2:      +19%  0.007
+
+-- top deals (win-now + future value blend, future_weight=3; deltas confirmed on the n=400 standings sim, ~ = search-sim only) --
+[buy] send CeeDee Lamb                  -> get Ashton Jeanty + Jam Miller | me +0.28w +2.8%pl +2.4%ch | opp -0.33w -5.1%pl | fut +2291
+[buy] send 2027 R1 (~1.07) + 2027 R3 (~pick 27) -> get Dak Prescott             | me +0.33w +4.5%pl +4.1%ch | opp -0.76w -14.5%pl | fut -433
+[buy] send 2027 R1 (~1.07) + 2027 R2 (~pick 17) -> get Carnell Tate             | me +0.07w +1.4%pl +1.0%ch | opp -0.23w -4.4%pl | fut -224
+[buy] send Stefon Diggs + 2027 R1 (~1.07) -> get Carnell Tate             | me +0.04w +0.7%pl +0.6%ch | opp -0.10w -2.0%pl | fut +609
+[buy] send Stefon Diggs + 2027 R1 (~1.07) -> get Dak Prescott             | me +0.34w +4.4%pl +3.9%ch | opp -0.62w -11.8%pl | fut -134
+[buy] send Chris Olave + 2027 R1 (~1.07) -> get Ashton Jeanty            | me +0.28w +3.0%pl +3.5%ch | opp -0.31w -5.5%pl | fut +70
+[buy & sell CeeDee Lamb] send CeeDee Lamb + 2027 R1 (~1.07) -> get Jaxon Smith-Njigba       | me +0.05w +0.0%pl +0.7%ch | opp -0.07w +0.0%pl | fut +279
+[sell CeeDee Lamb] send CeeDee Lamb                  -> get Dak Prescott + Josh Jacobs | me +0.17w +2.9%pl +2.1%ch | opp -0.38w -8.4%pl | fut +1142
+[sell Justin Jefferson] send Justin Jefferson             -> get Jadarian Price + Dak Prescott | me +0.01w +0.2%pl +0.3%ch | opp -0.22w -4.2%pl | fut +1350
+[sell DeVonta Smith] send DeVonta Smith                -> get Cam Ward + 2028 R5 (~pick 45) | me -0.15w -1.5%pl -1.4%ch | opp +0.51w +10.7%pl | fut +1227
+
+wrote roster.csv, targets.csv, trades.csv, portfolio.csv to C:/RProjects/ffsimulator/dev/league_sims/1312145437842497536/2026-08-22

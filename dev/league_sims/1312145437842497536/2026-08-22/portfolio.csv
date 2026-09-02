@@ -1,20 +1,19 @@
 metric,group,value
 posture,contend,0.851
 capital_now,players,79341
-capital_now,picks,19946
-capital_now,total,99287
-capital_next_mean,total,87886
+capital_now,picks,18520
+capital_now,total,97861
+capital_next_mean,total,86539
 capital_next_p10,downside,32673
 capital_next_p90,upside,96185
 value_at_risk,sum(cur*p_exit),262
 top3_concentration,share,0.25
 age_weighted_capital,years,26.3
-capital_by_verdict,SELL HIGH,38743
-capital_by_verdict,STASH (appreciating),16033
-capital_by_verdict,PARKED CHIP,14255
+capital_by_verdict,CORE,46058
+capital_by_verdict,SELL HIGH,16240
+capital_by_verdict,PARKED CHIP,9826
 capital_by_verdict,SWEETENER,3958
-capital_by_verdict,CORE,3916
-capital_by_verdict,hold,2436
+capital_by_verdict,hold,3259
 pos_allocation,WR,0.503
 pos_allocation,RB,0.204
 pos_allocation,QB,0.182
