@@ -1,0 +1,139 @@
+franchise_id,franchise_name,player_name,pos,prev_round,base_round,top2_prev,cost_source,op_ecr,adp_rank
+1,nickgalletti,Josh Allen,QB,1,1,TRUE,draft,1.03,1
+1,nickgalletti,Patrick Mahomes,QB,2,1,TRUE,draft,27.8,26
+1,nickgalletti,Jonathan Taylor,RB,3,2,FALSE,draft,24.4,21
+1,nickgalletti,Derrick Henry,RB,5,4,FALSE,draft,54.8,56
+1,nickgalletti,Brock Purdy,QB,6,5,FALSE,draft,22.57,20
+1,nickgalletti,Terry McLaurin,WR,6,5,FALSE,draft,66.34,67
+1,nickgalletti,Jeremiyah Love,RB,,8,FALSE,adp,58.91,59
+1,nickgalletti,Courtland Sutton,WR,9,8,FALSE,draft,101.57,101
+1,nickgalletti,Carnell Tate,WR,,11,FALSE,adp,87.48,85
+1,nickgalletti,Jaxson Dart,QB,14,13,FALSE,draft,24.63,22
+1,nickgalletti,Rico Dowdle,RB,,14,FALSE,adp,106.67,107
+1,nickgalletti,Alec Pierce,WR,,15,FALSE,adp,115.99,115
+1,nickgalletti,KC Concepcion,WR,,17,FALSE,adp,129.53,129
+1,nickgalletti,Jake Ferguson,TE,,17,FALSE,adp,130.59,132
+1,nickgalletti,Rashid Shaheed,WR,,17,FALSE,adp,155.93,151
+1,nickgalletti,Jonah Coleman,RB,,17,FALSE,adp,161.07,157
+1,nickgalletti,Ja'Kobi Lane,WR,,17,FALSE,adp,209.78,216
+2,plahaks,Ja'Marr Chase,WR,2,1,TRUE,draft,7.13,6
+2,plahaks,A.J. Brown,WR,3,2,FALSE,draft,27.1,25
+2,plahaks,Joe Burrow,QB,4,3,FALSE,draft,4.99,4
+2,plahaks,Dak Prescott,QB,4,3,FALSE,draft,15.13,15
+2,plahaks,Mike Evans,WR,4,3,FALSE,draft,76.37,75
+2,plahaks,James Cook,RB,6,5,FALSE,draft,29.74,27
+2,plahaks,George Kittle,TE,7,6,FALSE,draft,115.74,114
+2,plahaks,Quinshon Judkins,RB,9,8,FALSE,draft,82.16,82
+2,plahaks,Rome Odunze,WR,10,9,FALSE,draft,77.75,77
+2,plahaks,DJ Moore,WR,11,10,FALSE,draft,71.26,71
+2,plahaks,Colston Loveland,TE,12,11,FALSE,draft,53.8,54
+2,plahaks,Chase Brown,RB,13,12,FALSE,draft,32.31,31
+2,plahaks,Jadarian Price,RB,,12,FALSE,adp,92.52,89
+2,plahaks,Bo Nix,QB,14,13,FALSE,draft,24.95,23
+2,plahaks,Michael Pittman,WR,15,14,FALSE,draft,99.16,98
+2,plahaks,Stefon Diggs,WR,15,14,FALSE,draft,112.7,110
+2,plahaks,Jordan Mason,RB,15,14,FALSE,draft,128.96,127
+3,The Fighting Imps,Christian McCaffrey,RB,2,1,TRUE,draft,19.26,17
+3,The Fighting Imps,CeeDee Lamb,WR,1,1,TRUE,draft,20.82,18
+3,The Fighting Imps,Trey McBride,TE,4,3,FALSE,draft,37.06,36
+3,The Fighting Imps,Malik Nabers,WR,5,4,FALSE,draft,40.5,40
+3,The Fighting Imps,Chuba Hubbard,RB,5,4,FALSE,draft,115.33,113
+3,The Fighting Imps,Jayden Daniels,QB,7,6,FALSE,draft,6.92,5
+3,The Fighting Imps,RJ Harvey,RB,7,6,FALSE,draft,114.6,111
+3,The Fighting Imps,Rashee Rice,WR,8,7,FALSE,draft,40.79,41
+3,The Fighting Imps,Tyler Shough,QB,,7,FALSE,adp,49.91,49
+3,The Fighting Imps,Ladd McConkey,WR,9,8,FALSE,draft,51.55,51
+3,The Fighting Imps,Bhayshul Tuten,RB,,11,FALSE,adp,87.6,86
+3,The Fighting Imps,Zach Charbonnet,RB,12,11,FALSE,draft,159.33,156
+3,The Fighting Imps,Drake Maye,QB,14,13,FALSE,draft,3.52,3
+3,The Fighting Imps,Josh Downs,WR,15,14,FALSE,draft,105.56,105
+3,The Fighting Imps,Jonathon Brooks,RB,,14,FALSE,adp,108.35,108
+3,The Fighting Imps,Makai Lemon,WR,,16,FALSE,adp,124.03,121
+3,The Fighting Imps,Jordyn Tyson,WR,,17,FALSE,adp,142.38,141
+3,The Fighting Imps,Kaelon Black,RB,,17,FALSE,adp,219.51,230
+3,The Fighting Imps,Chris Bell,WR,,17,FALSE,adp,222.37,232
+4,Team Betes,Saquon Barkley,RB,1,1,TRUE,draft,40.42,39
+4,Team Betes,Kyren Williams,RB,2,1,TRUE,draft,59.49,60
+4,Team Betes,Drake London,WR,3,2,FALSE,draft,25.94,24
+4,Team Betes,Caleb Williams,QB,6,5,FALSE,draft,10.59,9
+4,Team Betes,Zay Flowers,WR,8,7,FALSE,draft,46.92,48
+4,Team Betes,Malik Willis,QB,,7,FALSE,adp,54.5,55
+4,Team Betes,DK Metcalf,WR,8,7,FALSE,draft,98.55,97
+4,Team Betes,Tony Pollard,RB,10,9,FALSE,draft,103.68,102
+4,Team Betes,Trevor Lawrence,QB,11,10,FALSE,draft,15.13,16
+4,Team Betes,Brock Bowers,TE,11,10,FALSE,draft,35.05,33
+4,Team Betes,Parker Washington,WR,,11,FALSE,adp,82.95,83
+4,Team Betes,Jaxon Smith-Njigba,WR,13,12,FALSE,draft,12.72,13
+4,Team Betes,Cam Skattebo,RB,14,13,FALSE,draft,77.81,78
+4,Team Betes,Bucky Irving,RB,15,14,FALSE,draft,79.35,80
+4,Team Betes,Luther Burden,WR,16,15,FALSE,draft,65.86,65
+4,Team Betes,Sam Darnold,QB,17,16,FALSE,draft,63.09,61
+4,Team Betes,Cyrus Allen,WR,,17,FALSE,adp,209.18,215
+5,Florida Man,Jahmyr Gibbs,RB,2,1,TRUE,draft,10.02,8
+5,Florida Man,Ashton Jeanty,RB,2,1,TRUE,draft,41.73,43
+5,Florida Man,Omarion Hampton,RB,3,2,FALSE,draft,41.07,42
+5,Florida Man,Marvin Harrison,WR,3,2,FALSE,draft,88.3,87
+5,Florida Man,Nico Collins,WR,5,4,FALSE,draft,29.9,28
+5,Florida Man,C.J. Stroud,QB,6,5,FALSE,draft,64.65,63
+5,Florida Man,Emeka Egbuka,WR,7,6,FALSE,draft,58.59,58
+5,Florida Man,George Pickens,WR,8,7,FALSE,draft,35.96,34
+5,Florida Man,Daniel Jones,QB,,8,FALSE,adp,64.71,64
+5,Florida Man,DeVonta Smith,WR,10,9,FALSE,draft,40.07,38
+5,Florida Man,Brian Thomas,WR,10,9,FALSE,draft,99.17,99
+5,Florida Man,Mark Andrews,TE,10,9,FALSE,draft,140.99,140
+5,Florida Man,Chris Godwin,WR,12,11,FALSE,draft,95.71,92
+5,Florida Man,Jaylen Warren,RB,13,12,FALSE,draft,96.98,95
+5,Florida Man,Kyle Pitts,TE,,12,FALSE,adp,98.13,96
+5,Florida Man,J.K. Dobbins,RB,17,16,FALSE,draft,116.76,117
+5,Florida Man,Kenyon Sadiq,TE,,17,FALSE,adp,205.92,212
+6,manshedHans,Lamar Jackson,QB,1,1,TRUE,draft,2.62,2
+6,manshedHans,Puka Nacua,WR,2,1,TRUE,draft,10.72,10
+6,manshedHans,Jared Goff,QB,1,1,TRUE,draft,31.85,30
+6,manshedHans,David Montgomery,RB,3,2,FALSE,draft,81.73,81
+6,manshedHans,Kyler Murray,QB,4,3,FALSE,draft,37.96,37
+6,manshedHans,Garrett Wilson,WR,4,3,FALSE,draft,46.01,47
+6,manshedHans,Davante Adams,WR,6,5,FALSE,draft,69.81,69
+6,manshedHans,Kenneth Walker,RB,7,6,FALSE,draft,41.97,44
+6,manshedHans,Jaylen Waddle,WR,8,7,FALSE,draft,51.49,50
+6,manshedHans,Tyler Warren,TE,10,9,FALSE,draft,73.39,72
+6,manshedHans,Christian Watson,WR,,10,FALSE,adp,77.92,79
+6,manshedHans,Rhamondre Stevenson,RB,,12,FALSE,adp,96.91,94
+6,manshedHans,Quentin Johnston,WR,,14,FALSE,adp,112.7,109
+6,manshedHans,Blake Corum,RB,,16,FALSE,adp,126.22,123
+6,manshedHans,De'Zhaun Stribling,WR,,17,FALSE,adp,142.71,142
+6,manshedHans,Juwan Johnson,TE,,17,FALSE,adp,143.98,143
+6,manshedHans,Keaton Mitchell,RB,,17,FALSE,adp,157.77,155
+7,London Higgins flln Downs,Amon-Ra St. Brown,WR,2,1,TRUE,draft,13.59,14
+7,London Higgins flln Downs,Justin Jefferson,WR,1,1,TRUE,draft,21.52,19
+7,London Higgins flln Downs,TreVeyon Henderson,RB,3,2,FALSE,draft,90.93,88
+7,London Higgins flln Downs,De'Von Achane,RB,4,3,FALSE,draft,36.53,35
+7,London Higgins flln Downs,Matthew Stafford,QB,,4,FALSE,adp,31.41,29
+7,London Higgins flln Downs,Tetairoa McMillan,WR,5,4,FALSE,draft,52.18,52
+7,London Higgins flln Downs,Breece Hall,RB,7,6,FALSE,draft,56.98,57
+7,London Higgins flln Downs,Justin Herbert,QB,8,7,FALSE,draft,12.24,12
+7,London Higgins flln Downs,Matthew Golden,WR,12,11,FALSE,draft,139.83,138
+7,London Higgins flln Downs,Jameson Williams,WR,14,13,FALSE,draft,74.62,73
+7,London Higgins flln Downs,Tucker Kraft,TE,14,13,FALSE,draft,100.09,100
+7,London Higgins flln Downs,Harold Fannin,TE,15,14,FALSE,draft,92.98,90
+7,London Higgins flln Downs,Michael Wilson,WR,,14,FALSE,adp,106.38,106
+7,London Higgins flln Downs,Bryce Young,QB,16,15,FALSE,draft,77.54,76
+7,London Higgins flln Downs,Travis Etienne,RB,17,16,FALSE,draft,66.92,68
+7,London Higgins flln Downs,Fernando Mendoza,QB,,16,FALSE,adp,124.67,122
+7,London Higgins flln Downs,MarShawn Lloyd,RB,,17,FALSE,adp,178.41,178
+8,Dagenais,Jalen Hurts,QB,1,1,TRUE,draft,7.15,7
+8,Dagenais,Bijan Robinson,RB,1,1,TRUE,draft,11.91,11
+8,Dagenais,Sam LaPorta,TE,4,3,FALSE,draft,104.35,103
+8,Dagenais,Tee Higgins,WR,5,4,FALSE,draft,53.61,53
+8,Dagenais,Chris Olave,WR,8,7,FALSE,draft,32.43,32
+8,Dagenais,Jordan Love,QB,8,7,FALSE,draft,45.63,45
+8,Dagenais,Javonte Williams,RB,,8,FALSE,adp,63.27,62
+8,Dagenais,D'Andre Swift,RB,12,11,FALSE,draft,75.44,74
+8,Dagenais,Wan'Dale Robinson,WR,,13,FALSE,adp,104.45,104
+8,Dagenais,Khalil Shakir,WR,15,14,FALSE,draft,135.45,134
+8,Dagenais,Baker Mayfield,QB,16,15,FALSE,draft,45.79,46
+8,Dagenais,Jakobi Meyers,WR,,15,FALSE,adp,119.51,118
+8,Dagenais,Jayden Reed,WR,,15,FALSE,adp,119.72,119
+8,Dagenais,Jalen Coker,WR,16,15,FALSE,draft,136.18,136
+8,Dagenais,Dalton Kincaid,TE,17,16,FALSE,draft,126.58,125
+8,Dagenais,Denzel Boston,WR,,17,FALSE,adp,156.59,153
+8,Dagenais,Brenton Strange,TE,,17,FALSE,adp,162.82,158
