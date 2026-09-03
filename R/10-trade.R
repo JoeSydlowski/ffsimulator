@@ -779,7 +779,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   adj_future_capital <- opp_score <- gettable <- opp_playoff_before <- NULL
   opp_value_gain <- opp_edge <- my_edge <- n_send <- n_recv <- NULL
   n <- adj_future_screen <- deal_id <- opp_surplus <- grade <- single_value <- NULL
-  core <- core_rank <- shape <- shape_rank <- n_send_players <- NULL
+  core <- core_rank <- shape <- shape_rank <- n_send_players <- prem <- fair_gap <- NULL
   opponent <- send_value <- send_ids <- recv_ids <- NULL
   waiver_gain <- backfill <- opp_drop <- NULL
 
@@ -869,7 +869,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     adj_future_capital = numeric(), give_back = logical(), score = numeric(),
     my_edge = numeric(), opp_edge = numeric(), opp_value_gain = numeric(),
     opp_surplus = numeric(), opp_score = numeric(), gettable = logical(),
-    grade = character(),
+    prem = numeric(), fair_gap = numeric(), grade = character(),
     backfill = character(), opp_drop = character(),
     send_ids = I(list()), recv_ids = I(list())
   )
@@ -1424,6 +1424,11 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     my_win_delta, my_playoff_delta, my_champ_delta,
     opp_win_delta, opp_playoff_delta, opp_champ_delta, opp_playoff_before,
     win_win, future_capital_delta, adj_future_capital, give_back, score,
+    # `prem` is the RAW overpay - what the package is worth over the single
+    # player, as a fraction of him. my_edge/opp_edge are that same number net of
+    # the shape-fair premium, which makes them easy to misread as the price
+    # itself ("+2% edge" is a 12% overpay when fair_premium is 0.10). Report both.
+    prem, fair_gap,
     my_edge, opp_edge, opp_value_gain, opp_surplus, opp_score, gettable, grade,
     backfill, opp_drop, send_ids, recv_ids)]
   return(as.data.frame(out))

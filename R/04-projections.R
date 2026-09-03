@@ -109,7 +109,10 @@ ffs_generate_projections <- function(adp_outcomes,
   ps <- ps[
     ,
     `:=`(
-      projected_score = ps$projection * ps$gp_model * (ps$week != ps$bye)
+      # see .ffs_plays_this_week(): a NULL-safe bye mask, because `bye` is NA for
+      # anyone without a team and `week != NA` is NA rather than TRUE
+      projected_score = ps$projection * ps$gp_model *
+        .ffs_plays_this_week(ps$week, ps$bye)
     )
   ]
   return(ps[])
@@ -167,12 +170,26 @@ ffs_generate_projections <- function(adp_outcomes,
       pos, scrape_date, fantasypros_id, player, team, bye, ecr, sd,
       draft_rank, week_rank, avg_week, prob_gp,
       gp_model = sapply(prob_gp, function(p) stats::rbinom(n = 1, size = 1, p = p)),
-      projection = sapply(week_outcomes, function(x) {if(length(x) == 0) return(0) else sample(x = x, size = 1)})
+      # drop NA outcomes before sampling, as v3 already does when it sorts its
+      # pools: an NA drawn here becomes an NA projected_score, and one NA score
+      # in a franchise-week makes that week's whole lineup unsolvable
+      projection = sapply(week_outcomes, function(x) {
+        x <- x[!is.na(x)]
+        if (length(x) == 0) return(0) else sample(x = x, size = 1)
+      })
     )
   ][
     ,
     `:=`(
-      projected_score = projection * gp_model * (week != bye)
+      # `bye` is NA for anyone without a team (FA), and `week != NA` is NA, not
+      # TRUE - which silently turned that player's whole season into NA scores.
+      projected_score = projection * gp_model * .ffs_plays_this_week(week, bye),
+      # A manager knows a bye is coming, so the lineup setter must too. avg_week
+      # is the tier average joined from adp_outcomes and carries no bye, so
+      # without this the rank-based optimiser starts a player on his bye and
+      # banks the zero.
+      avg_week = data.table::fifelse(.ffs_plays_this_week(week, bye) == 1,
+                                     avg_week, NA_real_)
     )
   ][
     order(season, week, pos, ecr)
@@ -317,7 +334,14 @@ ffs_generate_projections <- function(adp_outcomes,
   ][
     ,
     `:=`(
-      projected_score = projection * gp_model * (week != bye),
+      # see .ffs_plays_this_week(): `bye` is NA for FAs and `week != NA` is NA,
+      # which turned those players' whole seasons into NA scores
+      projected_score = projection * gp_model * .ffs_plays_this_week(week, bye),
+      # and the bye has to reach the LINEUP SETTER, not just the score. avg_week
+      # is the tier average from adp_outcomes and knows nothing about byes, so
+      # rank-based lineups were starting players on their bye for a certain zero.
+      avg_week = data.table::fifelse(.ffs_plays_this_week(week, bye) == 1,
+                                     avg_week, NA_real_),
       week_outcomes = NULL,
       u = NULL
     )
@@ -551,4 +575,20 @@ ffs_generate_projections <- function(adp_outcomes,
   ]
 
   return(draft_week_rank)
+}
+
+#' Does this player play in this week?
+#'
+#' `1` when the week is not the player's bye. A player with no team has no bye
+#' (`bye` is `NA`), and the obvious `week != bye` returns `NA` there rather than
+#' `TRUE` - which multiplied a free agent's entire season of projected scores
+#' into `NA`. Observed on a live league: two rostered players (both `team = "FA"`
+#' in the FantasyPros scrape) carried `NA` for all 28,000 of their simulated
+#' player-weeks, 0.8% of the whole roster_scores table.
+#'
+#' @param week,bye integer weeks; `bye` may be `NA`
+#' @return numeric `1`/`0`, never `NA`
+#' @keywords internal
+.ffs_plays_this_week <- function(week, bye) {
+  as.numeric(is.na(bye) | week != bye)
 }
