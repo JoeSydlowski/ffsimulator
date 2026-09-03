@@ -16,6 +16,17 @@ source(here::here("dev", "suite", "scoring_history_shim.R")); install_shim()
 ## ---- CONFIG -----------------------------------------------------------------
 # JML 1326464763936403456
 # Jon 1359546500786434048
+
+# as.logical("0") is NA, not FALSE - so FFS_RUN_TRADE_INTEL=0 does not disable a
+# step, it poisons the `if` that guards it and kills the run AFTER the expensive
+# simulation has finished. Accept the forms a caller actually types.
+env_flag <- function(var, default) {
+  v <- trimws(Sys.getenv(var, default))
+  if (v %in% c("0", "false", "FALSE", "F", "no", "")) return(FALSE)
+  if (v %in% c("1", "true", "TRUE", "T", "yes")) return(TRUE)
+  stop(var, "='", v, "' is not a recognised boolean")
+}
+
 config <- list(
   league_id = Sys.getenv("FFS_LEAGUE_ID", "1326464763936403456"),
   platform = "sleeper",
@@ -43,14 +54,18 @@ config <- list(
   # Top up any franchise that cannot field a required starter with the best
   # unrostered player there. Verified a no-op for JML and Jon (zero franchises
   # short at any position); it only bites in leagues with a K or DEF slot.
-  fill_missing_starters = as.logical(Sys.getenv("FFS_FILL_STARTERS", "TRUE")),
-  run_dynasty = TRUE,
-  run_trade_intel = TRUE,
+  fill_missing_starters = env_flag("FFS_FILL_STARTERS", "TRUE"),
+  run_dynasty = env_flag("FFS_RUN_DYNASTY", "TRUE"),
+  # FFS_RUN_TRADE_INTEL=0 refreshes only the simulation and the dynasty outlook.
+  # That is what player_trade_board.R needs - it reads simulation.rds and
+  # dynasty_outlook.csv and does its own, far deeper enumeration - so a board run
+  # against stale values should re-run those two steps rather than the whole suite.
+  run_trade_intel = env_flag("FFS_RUN_TRADE_INTEL", "TRUE"),
   # generic owner-context WAR for every rostered player (ff_wins_added).
   # Trade intelligence no longer uses it - the same leave-one-out signal is
   # computed per decision with ffs_player_value on the shared sim - so it is
   # off by default; flip on for a leaguewide war_players.csv.
-  run_war = as.logical(Sys.getenv("FFS_RUN_WAR", "FALSE")),
+  run_war = env_flag("FFS_RUN_WAR", "FALSE"),
   trade_top_n = as.integer(Sys.getenv("FFS_TRADE_TOP_N", "200"))
 )
 
@@ -127,8 +142,31 @@ for (t in c("wins", "rank", "points")) {
 }
 
 fr <- as.data.table(sim$franchises)
+# Match on franchise_name OR user_name. The default here is a USER name
+# (sox05syd), which happens to equal the franchise name in JML and Jon but not
+# in Goofball, where the franchise is "Rootin' Tuten" - so the default silently
+# worked in two leagues and hard-failed in the third, after the 6-minute
+# simulation had already run. Resolving both makes one default correct
+# everywhere, and config$my_team is rewritten to the franchise name so every
+# downstream script (which all match on franchise_name) agrees.
 me <- fr[franchise_name == config$my_team, franchise_id][1]
-if (is.na(me)) stop("my_team '", config$my_team, "' not found in franchises")
+if (is.na(me) && "user_name" %in% names(fr)) {
+  me <- fr[user_name == config$my_team, franchise_id][1]
+  if (!is.na(me)) {
+    resolved <- fr[franchise_id == me, franchise_name][1]
+    message("my_team '", config$my_team, "' matched on user_name -> franchise '",
+            resolved, "'")
+    config$my_team <- resolved
+    # rewrite the saved config too: player_trade_board.R and trade_intel.R read
+    # config$my_team from disk and match it on franchise_name, so leaving the
+    # user name in there would fail them the same way
+    saveRDS(config, file.path(out, "config.rds"))
+  }
+}
+if (is.na(me)) stop("my_team '", config$my_team, "' matches no franchise_name or ",
+                    "user_name. Available: ",
+                    paste(sprintf("%s (%s)", fr$franchise_name, fr$user_name),
+                          collapse = ", "))
 
 ## ---- 2. dynasty outlook --------------------------------------------------------
 

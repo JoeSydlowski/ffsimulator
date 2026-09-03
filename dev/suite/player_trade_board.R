@@ -31,13 +31,15 @@
 # league at production defaults: 42,246 evals / 1,571 ideas / 18 headline senders,
 # ~4.5 h search on 14 workers - an overnight job once the n=2000 confirm follows.
 #   FFS_MOVE_PLAYER="" Rscript dev/suite/player_trade_board.R
-# Other knobs: FFS_MY_TEAM, FFS_TRADE_NSIMS (search sim n, default 60),
+# Other knobs: FFS_MY_TEAM, FFS_TRADE_NSIMS (0 = the n=2000 standings sim; see
+#   the convergence table below before setting anything else),
 #   FFS_SEARCH_SIM (path to a cached search sim), FFS_PICK_SEASON (nearest pick
 #   year, default = soonest future draft), FFS_FAIR_BAND ("lo,hi" or "off" for
 #   the legacy bands), FFS_FAIR_PREMIUM, FFS_OPP_EDGE_TOL, FFS_BOARD_MAX_OPP_DROP,
 #   FFS_BOARD_SHAPES, FFS_TARGET_N, FFS_TRADE_SCREEN_N / _PER_OPP ("Inf" =
 #   exhaustive), FFS_TRADE_EVAL_MAX (safety cap, 40000), FFS_TRADE_WORKERS
-#   (parallel exact evals), FFS_BOARD_GIVEBACK, FFS_MIN_PIECE_VALUE.
+#   (parallel exact evals), FFS_BOARD_GIVEBACK, FFS_MIN_PIECE_VALUE,
+#   FFS_RECV_POS ("RB" / "RB,TE" - restrict what may come BACK), FFS_PICKS=0.
 #
 # CONSOLIDATION MODE - "turn two of my players into one better one". Two things
 # have to be forced, because both defaults work against it:
@@ -359,8 +361,16 @@ engine <- ffs_trade_engine(sim)
 # CACHED, because it depends only on (this simulation, me, target_n) and not on
 # any board knob. Re-running the board with different shapes, floors or waiver
 # settings - or after a crashed evaluation - should not pay 45 minutes again.
-tgt_cache <- file.path(league_dir,
-  sprintf("targets_n%d_t%d_f%s.rds", n_trade, target_n, me))
+# NOTE the cache lives in the dated REPORT folder, not the league folder: the
+# targets are exact valuations against one specific simulation.rds, so keying
+# them only on (n, target_n, franchise) would silently serve a stale scan to a
+# freshly refreshed simulation - which is exactly the mistake a refresh is for.
+# The simulation's mtime is in the key too, because re-running the suite on the
+# SAME DAY overwrites simulation.rds in place and the folder alone would not
+# notice. Cheap insurance: a wrong cache hit here is invisible and poisons
+# everything downstream.
+sim_stamp <- format(file.info(file.path(out, "simulation.rds"))$mtime, "%Y%m%d%H%M%S")
+tgt_cache <- file.path(out, sprintf("targets_t%d_f%s_%s.rds", target_n, me, sim_stamp))
 if (file.exists(tgt_cache)) {
   message("targets: ", tgt_cache)
   targets <- as.data.table(readRDS(tgt_cache))
@@ -371,6 +381,20 @@ if (file.exists(tgt_cache)) {
     ffs_trade_targets(sim, me, top_n = target_n, engine = engine, sides = "you"))
   saveRDS(targets, tgt_cache)
   message("cached ", nrow(targets), " targets to ", tgt_cache)
+}
+
+# FFS_RECV_POS restricts what may come BACK ("I want an RB"). Applied after the
+# cache so the expensive scan is shared across position-specific runs. Positions
+# come from the dynasty table, which covers every priced asset.
+recv_pos_want <- Sys.getenv("FFS_RECV_POS", "")
+if (nzchar(recv_pos_want)) {
+  want <- trimws(strsplit(recv_pos_want, ",")[[1]])
+  pos_by_id <- setNames(as.character(dyn$pos), as.character(dyn$player_id))
+  keep <- pos_by_id[as.character(targets$player_id)] %in% want
+  message("FFS_RECV_POS=", recv_pos_want, ": ", sum(keep), " of ", nrow(targets),
+          " targets kept")
+  targets <- targets[keep]
+  stopifnot("no targets left at that position" = nrow(targets) > 0)
 }
 
 message("building board: ",
@@ -424,6 +448,11 @@ setorder(board, -score)
 
 outb <- board[, .(team = franchise_name, sending, shape, send, receive,
   send_value = round(send_value), recv_value = round(recv_value),
+  # overpay = what I actually pay over the single player, as a % of him;
+  # fair = what the shape says I should pay. my_edge is just fair - overpay, and
+  # quoting only the edge hides the price: "+2% edge" is a 12% overpay at
+  # fair_premium = 0.10. opp_edge > 0 means they are getting more than fair.
+  overpay = round(100 * prem, 1), fair = round(100 * fair_gap, 1),
   gap_pct, my_edge = round(100 * my_edge, 1), opp_edge = round(100 * opp_edge, 1),
   mine_pl, opp_pl, fut, adj_fut = round(adj_future_capital),
   score = round(score, 1), grade,

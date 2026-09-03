@@ -1,0 +1,127 @@
+team,shape,send,receive,recv_pos,send_value,recv_value,my_edge,opp_edge,mine_pl,opp_pl,fut,adj_fut,score,grade,backfill,opp_drop,gettable,win_win
+JTNoel,2-for-1,Brian Thomas + Stefon Diggs,Carnell Tate,WR,4562,4292,-1.3,1.3,1.8,0.3,1140,1140,12.4,B,Aaron Rodgers,Jam Miller,TRUE,TRUE
+glamgoblin,2-for-1,Stefon Diggs + DeVonta Smith,Tetairoa McMillan,WR,5141,4708,-4.2,4.2,0.2,3.1,1079,1079,10.2,B,Aaron Rodgers,Garrett Nussmeier,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Stefon Diggs + Tyjae Spears,Kenyon Sadiq,TE,2711,2512,-2.9,2.9,1.4,1.6,947,903,9.9,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+JTNoel,2-for-1,Brian Thomas + Courtland Sutton,Carnell Tate,WR,4637,4292,-3,3,0.8,1.6,946,946,9.7,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+JTNoel,2-for-1,Brian Thomas + Dallas Goedert,Carnell Tate,WR,4514,4292,-0.2,0.2,-0.2,0.1,1156,1065,9.2,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+glamgoblin,2-for-1,Rashee Rice + Stefon Diggs,Tetairoa McMillan,WR,5016,4708,-1.5,1.5,0.4,2.9,915,915,9,C,Aaron Rodgers,Garrett Nussmeier,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Emmett Johnson + Stefon Diggs,Kenyon Sadiq,TE,2703,2512,-2.6,2.6,1,1.9,883,840,9,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+JTNoel,2-for-1,Brian Thomas + Jordan Mason,Carnell Tate,WR,4666,4292,-3.7,3.7,1.1,2,807,807,8.7,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Dallas Goedert + Tyjae Spears,Kenyon Sadiq,TE,2663,2512,-1,1,1.2,2.5,964,828,8.6,C,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+glamgoblin,2-for-1,Chris Bell + DeVonta Smith,Tetairoa McMillan,WR,4964,4708,-0.4,0.4,0.5,1,849,849,8.5,C,Aaron Rodgers,Garrett Nussmeier,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Stefon Diggs + Jaylen Warren,Harold Fannin,TE,3452,3245,-1.4,1.4,0.8,1.2,766,781,8.2,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Emmett Johnson + Dallas Goedert,Kenyon Sadiq,TE,2655,2512,-0.7,0.7,0.9,2.4,900,765,8.1,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+Goofball 3 Tokyo Drift,2-for-1,Brian Thomas + CeeDee Lamb,Jaxon Smith-Njigba,WR,9427,8769,-2.5,2.5,0.5,6.2,810,810,8.1,C,Aaron Rodgers,Drew Allar,TRUE,TRUE
+glamgoblin,2-for-1,Chris Rodriguez + DeVonta Smith,Tetairoa McMillan,WR,4962,4708,-0.4,0.4,-0.3,2.5,959,959,8.1,C,Aaron Rodgers,Garrett Nussmeier,TRUE,FALSE
+JTNoel,2-for-1,Sam Darnold + Courtland Sutton,Carnell Tate,WR,4526,4292,-0.5,0.5,-0.2,2.5,1232,929,8,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Chris Rodriguez + Dallas Goedert,Kenyon Sadiq,TE,2751,2512,-4.5,4.5,0.8,2.4,871,735,7.8,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Woody Marks + Tyjae Spears,Kenyon Sadiq,TE,2653,2512,-0.6,0.6,1.6,2.4,674,631,7.7,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Chris Bell + Dallas Goedert,Kenyon Sadiq,TE,2753,2512,-4.6,4.6,1.6,0.8,761,625,7.6,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+That's so Ravens,2-for-1,Eli Raridon + CeeDee Lamb,Jeremiyah Love,RB,7382,6824,-3.2,3.2,0.2,3.4,826,805,7.3,C,Aaron Rodgers,Eli Heidenreich,TRUE,FALSE
+glamgoblin,2-for-1,DeVonta Smith + Keaton Mitchell,Tetairoa McMillan,WR,4946,4708,-0.1,0.1,-0.4,3.4,868,868,7.2,C,Aaron Rodgers,Garrett Nussmeier,TRUE,FALSE
+Galletti,2-for-1,DeVonta Smith + Zach Charbonnet,George Pickens,WR,5347,5002,-1.9,1.9,0.6,2.5,689,689,7.2,C,Aaron Rodgers,Bauer Sharp,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Dallas Goedert + Keaton Mitchell,Kenyon Sadiq,TE,2735,2512,-3.9,3.9,1,3,779,644,7.2,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Chris Rodriguez + Woody Marks,Kenyon Sadiq,TE,2741,2512,-4.1,4.1,1.9,2,581,538,7.1,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+JTNoel,2-for-1,Rashee Rice + Eli Raridon,Carnell Tate,WR,4555,4292,-1.1,1.1,0.4,5.7,777,755,7.1,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+That's so Ravens,2-for-1,Rashee Rice + DeVonta Smith,Jeremiyah Love,RB,7179,6824,-0.2,0.2,0.1,4.8,783,783,7.1,C,Aaron Rodgers,Eli Heidenreich,TRUE,FALSE
+glamgoblin,2-for-1,Woody Marks + DeVonta Smith,Tetairoa McMillan,WR,5083,4708,-3,3,-0.1,2.8,807,807,7,C,Aaron Rodgers,Garrett Nussmeier,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Woody Marks + Emmett Johnson,Kenyon Sadiq,TE,2645,2512,-0.3,0.3,1.3,2,611,567,6.8,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+glamgoblin,2-for-1,Rashee Rice + Woody Marks,Tetairoa McMillan,WR,4958,4708,-0.3,0.3,0.5,2.8,642,642,6.7,C,Aaron Rodgers,Garrett Nussmeier,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Woody Marks + Stefon Diggs,KC Concepcion,WR,2920,2718,-2.4,2.4,0.6,1.9,609,609,6.5,C,Aaron Rodgers,Adam Randall,TRUE,TRUE
+JTNoel,2-for-1,Jordyn Tyson + Tyjae Spears,Carnell Tate,WR,4591,4292,-2,2,1.8,-0.1,524,524,6.4,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Woody Marks + Chris Bell,Kenyon Sadiq,TE,2743,2512,-4.2,4.2,2.1,0.4,471,428,6.3,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+glamgoblin,2-for-1,Rashee Rice + Courtland Sutton,Tetairoa McMillan,WR,5091,4708,-3.1,3.1,-0.2,4.4,722,722,6.2,C,Aaron Rodgers,Garrett Nussmeier,TRUE,FALSE
+JTNoel,2-for-1,Eli Raridon + Stefon Diggs,De'Zhaun Stribling,WR,2517,2340,-2.6,2.6,1.2,1.4,524,503,6.2,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Eli Raridon + Zach Charbonnet,Kenyon Sadiq,TE,2723,2512,-3.4,3.4,2.1,1.6,460,395,6.1,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+JTNoel,2-for-1,Sam Darnold + Jordan Mason,Carnell Tate,WR,4555,4292,-1.1,1.1,-0.9,3,1093,790,6.1,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Woody Marks + Keaton Mitchell,Kenyon Sadiq,TE,2725,2512,-3.5,3.5,1.6,1.9,490,446,6,C,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+Galletti,2-for-1,Blake Corum + DeVonta Smith,George Pickens,WR,5483,5002,-4.6,4.6,0.1,4.4,600,600,5.9,C,Aaron Rodgers,Bauer Sharp,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Stefon Diggs + Jaylen Warren,Bucky Irving,RB,3452,3175,-3.7,3.7,2.5,-0.3,383,383,5.9,C,Aaron Rodgers,Adam Randall,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Stefon Diggs + CeeDee Lamb,Amon-Ra St. Brown,WR,7843,7352,-1.7,1.7,1.8,-0.4,450,450,5.8,C,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Stefon Diggs + Jordan Mason,Kyle Pitts,TE,3082,2914,-0.8,0.8,2.9,-0.8,223,315,5.6,C,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Chris Rodriguez + Courtland Sutton,KC Concepcion,WR,2874,2718,-0.7,0.7,0.7,3.2,569,569,5.6,C,Aaron Rodgers,Adam Randall,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Chris Bell + Courtland Sutton,KC Concepcion,WR,2876,2718,-0.8,0.8,1.1,1.7,459,459,5.6,C,Aaron Rodgers,Adam Randall,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,Courtland Sutton + Jaylen Warren,Harold Fannin,TE,3527,3245,-3.7,3.7,0.2,2.9,573,587,5.4,C,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+JTNoel,2-for-1,Chris Rodriguez + Jordyn Tyson,Carnell Tate,WR,4679,4292,-4,4,1.6,-0.5,431,431,5.3,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+glamgoblin,2-for-1,Emmett Johnson + Tyjae Spears,Denzel Boston,WR,2436,2279,-1.9,1.9,1.7,2.2,338,338,5.2,C,Aaron Rodgers,Garrett Nussmeier,TRUE,TRUE
+JTNoel,2-for-1,Chris Rodriguez + Tyjae Spears,De'Zhaun Stribling,WR,2532,2340,-3.2,3.2,1.4,3.3,372,372,5.1,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+JTNoel,2-for-1,Chris Rodriguez + Emmett Johnson,De'Zhaun Stribling,WR,2524,2340,-2.9,2.9,1.9,3.1,308,308,5.1,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+glamgoblin,2-for-1,Rashee Rice + Jordan Mason,Tetairoa McMillan,WR,5120,4708,-3.8,3.8,-0.2,4.3,582,582,4.9,C,Aaron Rodgers,Garrett Nussmeier,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Jaylen Warren + Jordan Mason,Harold Fannin,TE,3556,3245,-4.6,4.6,0.9,1.3,433,448,4.9,C,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+JTNoel,2-for-1,Sam Darnold + Zach Charbonnet,Carnell Tate,WR,4657,4292,-3.5,3.5,-0.5,2,906,603,4.8,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+JTNoel,2-for-1,Chris Bell + Tyjae Spears,De'Zhaun Stribling,WR,2534,2340,-3.3,3.3,2,1.6,262,262,4.8,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+Galletti,2-for-1,Rashee Rice + Blake Corum,George Pickens,WR,5358,5002,-2.1,2.1,0.4,3.4,435,435,4.7,C,Aaron Rodgers,Bauer Sharp,TRUE,TRUE
+Goofball 3 Tokyo Drift,2-for-1,DeVonta Smith + Tyjae Spears,Nico Collins,WR,4874,4516,-2.9,2.9,3.5,0,141,141,4.7,C,Aaron Rodgers,Drew Allar,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Courtland Sutton + Keaton Mitchell,KC Concepcion,WR,2858,2718,-0.2,0.2,0.5,3.3,477,477,4.7,C,Aaron Rodgers,Adam Randall,TRUE,FALSE
+JTNoel,2-for-1,Jordyn Tyson + Keaton Mitchell,Carnell Tate,WR,4663,4292,-3.6,3.6,1.8,-0.4,340,340,4.6,C,Aaron Rodgers,Jam Miller,TRUE,FALSE
+That's so Ravens,2-for-1,Chris Rodriguez + Bhayshul Tuten,Quinshon Judkins,RB,3957,3740,-0.8,0.8,0.3,0.9,436,436,4.6,C,Aaron Rodgers,Eli Heidenreich,TRUE,TRUE
+JTNoel,2-for-1,Chris Bell + Emmett Johnson,De'Zhaun Stribling,WR,2526,2340,-2.9,2.9,2.4,1.2,199,199,4.6,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+That's so Ravens,2-for-1,Woody Marks + Bhayshul Tuten,Quinshon Judkins,RB,4078,3740,-4,4,1.6,0.4,284,284,4.5,C,Aaron Rodgers,Eli Heidenreich,TRUE,TRUE
+That's so Ravens,2-for-1,Bhayshul Tuten + Dallas Goedert,Quinshon Judkins,RB,4088,3740,-4.3,4.3,0.2,1.8,573,481,4.5,C,Aaron Rodgers,Eli Heidenreich,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Tyjae Spears + Zach Charbonnet,KC Concepcion,WR,2917,2718,-2.3,2.3,1,1.2,335,335,4.5,C,Aaron Rodgers,Adam Randall,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Courtland Sutton + Tyjae Spears,Parker Washington,WR,2786,2574,-3.2,3.2,1.6,-0.3,266,266,4.4,C,Aaron Rodgers,Adam Randall,TRUE,TRUE
+JTNoel,2-for-1,Tyjae Spears + Keaton Mitchell,De'Zhaun Stribling,WR,2516,2340,-2.5,2.5,1.5,3,280,280,4.4,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+Galletti,2-for-1,Stefon Diggs + Zach Charbonnet,Makai Lemon,WR,3184,3019,-0.5,0.5,0.7,3.1,348,348,4.3,C,Aaron Rodgers,Bauer Sharp,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Chris Rodriguez + Jordan Mason,KC Concepcion,WR,2903,2718,-1.8,1.8,0.6,1.4,429,429,4.3,C,Aaron Rodgers,Adam Randall,TRUE,FALSE
+That's so Ravens,2-for-1,Bhayshul Tuten + Keaton Mitchell,Quinshon Judkins,RB,3941,3740,-0.4,0.4,0.8,0.9,345,345,4.3,C,Aaron Rodgers,Eli Heidenreich,TRUE,TRUE
+Beef Blitzkrieg,2-for-1,Jaylen Warren + Jordan Mason,Jadarian Price,RB,3556,3372,-0.5,0.5,0.8,2.3,326,326,4.2,C,Aaron Rodgers,Kevin Coleman,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Blake Corum + Stefon Diggs,Sam LaPorta,TE,3320,3115,-1.6,1.6,1.7,-0.9,197,281,4.2,C,Aaron Rodgers,Adam Randall,TRUE,FALSE
+That's so Ravens,2-for-1,Bhayshul Tuten + Chris Bell,Quinshon Judkins,RB,3959,3740,-0.9,0.9,1.3,-0.6,327,327,4.2,C,Aaron Rodgers,Eli Heidenreich,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Chris Bell + Jordan Mason,KC Concepcion,WR,2905,2718,-1.9,1.9,1.4,0.3,319,319,4.2,C,Aaron Rodgers,Adam Randall,TRUE,FALSE
+JTNoel,2-for-1,Emmett Johnson + Keaton Mitchell,De'Zhaun Stribling,WR,2508,2340,-2.2,2.2,1.8,2.7,217,217,4.1,C,Aaron Rodgers,Jam Miller,TRUE,TRUE
+That's so Ravens,2-for-1,Brian Thomas + Chris Olave,Jeremiyah Love,RB,7275,6824,-1.6,1.6,1.7,2.8,198,198,4,D,Aaron Rodgers,Eli Heidenreich,TRUE,TRUE
+Goofball 3 Tokyo Drift,2-for-1,Emmett Johnson + DeVonta Smith,Nico Collins,WR,4866,4516,-2.8,2.8,3.2,-0.6,77,77,3.9,D,Aaron Rodgers,Drew Allar,TRUE,FALSE
+JTNoel,2-for-1,Woody Marks + Eli Raridon,De'Zhaun Stribling,WR,2459,2340,-0.1,0.1,1.4,1.9,252,230,3.9,D,Aaron Rodgers,Jam Miller,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Courtland Sutton + Jaylen Warren,Cam Skattebo,RB,3527,3247,-3.6,3.6,2.4,-0.1,172,172,3.9,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Woody Marks + Dallas Goedert,KC Concepcion,WR,2872,2718,-0.7,0.7,-0.8,1.1,626,534,3.9,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Blake Corum + Dallas Goedert,Sam LaPorta,TE,3272,3115,0,0,2,-0.8,214,206,3.9,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+Beef Blitzkrieg,2-for-1,Bhayshul Tuten + DeVonta Smith,Omarion Hampton,RB,6299,5941,-1,1,1.3,4.9,233,233,3.9,D,Aaron Rodgers,Kevin Coleman,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Emmett Johnson + Zach Charbonnet,KC Concepcion,WR,2909,2718,-2,2,1.4,-0.1,272,272,3.9,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Dallas Goedert + Jaylen Warren,Bucky Irving,RB,3404,3175,-2.2,2.2,1,-0.2,400,308,3.8,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Woody Marks + Jaylen Warren,Bucky Irving,RB,3394,3175,-1.9,1.9,2.7,-0.9,111,111,3.7,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Jordan Mason + Keaton Mitchell,KC Concepcion,WR,2887,2718,-1.2,1.2,0.7,0.9,338,338,3.6,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+Lubed up Johnsons,2-for-1,Bhayshul Tuten + Stefon Diggs,Ladd McConkey,WR,4136,3869,-1.9,1.9,1,-0.6,276,276,3.5,D,Aaron Rodgers,Justin Joly,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Courtland Sutton + CeeDee Lamb,Amon-Ra St. Brown,WR,7918,7352,-2.7,2.7,1.2,-0.1,257,257,3.5,D,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Dallas Goedert + CeeDee Lamb,Amon-Ra St. Brown,WR,7795,7352,-1,1,0.1,-0.8,467,375,3.4,D,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Courtland Sutton + Jordan Mason,Kyle Pitts,TE,3157,2914,-3.3,3.3,1.8,0.4,30,121,3.4,D,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+JTNoel,2-for-1,Eli Raridon + Dallas Goedert,De'Zhaun Stribling,WR,2469,2340,-0.5,0.5,-0.4,1.6,541,428,3.4,D,Aaron Rodgers,Jam Miller,TRUE,FALSE
+Full Time Dick Sucker,2-for-1,Dallas Goedert + Zach Charbonnet,Kyle Pitts,TE,3136,2914,-2.6,2.6,2.4,0.6,54,53,3.3,D,Aaron Rodgers,Kaleb Johnson,TRUE,TRUE
+glamgoblin,2-for-1,Woody Marks + Eli Raridon,Denzel Boston,WR,2459,2279,-2.9,2.9,1.4,0.9,188,167,3.3,D,Aaron Rodgers,Garrett Nussmeier,TRUE,TRUE
+Goofball 3 Tokyo Drift,2-for-1,Chris Rodriguez + DeVonta Smith,Nico Collins,WR,4962,4516,-4.9,4.9,2.9,0.8,48,48,3.3,D,Aaron Rodgers,Drew Allar,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Emmett Johnson + Courtland Sutton,Parker Washington,WR,2778,2574,-2.9,2.9,1.5,-0.6,203,203,3.3,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+That's so Ravens,2-for-1,Jaylen Warren + Zach Charbonnet,TreVeyon Henderson,RB,3658,3391,-2.9,2.9,1.5,0.6,176,176,3.1,D,Aaron Rodgers,Eli Heidenreich,TRUE,FALSE
+Galletti,2-for-1,Blake Corum + Stefon Diggs,Makai Lemon,WR,3320,3019,-5,5,0.7,5.9,259,259,3,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Goofball 3 Tokyo Drift,2-for-1,Blake Corum + DeVonta Smith,Colston Loveland,TE,5483,5207,-0.3,0.3,0.5,6.3,161,287,3,D,Aaron Rodgers,Drew Allar,TRUE,FALSE
+Beef Blitzkrieg,2-for-1,Jaylen Warren + Zach Charbonnet,Jadarian Price,RB,3658,3372,-3.5,3.5,1.2,1.4,139,139,3,D,Aaron Rodgers,Kevin Coleman,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Blake Corum + Courtland Sutton,Sam LaPorta,TE,3395,3115,-4,4,1.6,-0.1,4,87,2.9,D,Aaron Rodgers,Adam Randall,TRUE,TRUE
+Galletti,2-for-1,Emmett Johnson + Chris Olave,George Pickens,WR,5416,5002,-3.3,3.3,0.8,2.6,165,165,2.8,D,Aaron Rodgers,Bauer Sharp,TRUE,TRUE
+JTNoel,2-for-1,DeVonta Smith + Tyjae Spears,Tyler Warren,TE,4874,4560,-1.9,1.9,1,2.4,4,144,2.8,D,Aaron Rodgers,Jam Miller,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Blake Corum + Eli Raridon,KC Concepcion,WR,2859,2718,-0.2,0.2,0.4,-0.5,279,257,2.7,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+That's so Ravens,2-for-1,Justin Jefferson + Jaylen Warren,Puka Nacua,WR,8776,8271,-1.1,1.1,1.2,0.8,115,115,2.7,D,Aaron Rodgers,Eli Heidenreich,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Keaton Mitchell + Zach Charbonnet,KC Concepcion,WR,2989,2718,-5,5,0.9,0.3,151,151,2.7,D,Aaron Rodgers,Adam Randall,TRUE,TRUE
+K Stafford isn't Worthy,2-for-1,Courtland Sutton + Jaylen Warren,Rome Odunze,WR,3527,3275,-2.7,2.7,0.1,0.4,283,283,2.6,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+Galletti,2-for-1,Courtland Sutton + Zach Charbonnet,Makai Lemon,WR,3259,3019,-2.9,2.9,1.2,3.3,155,155,2.6,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Galletti,2-for-1,Dallas Goedert + Justin Jefferson,Brock Bowers,TE,8254,7686,-2.4,2.4,-0.4,4.6,251,321,2.5,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Galletti,2-for-1,Eli Raridon + Tyjae Spears,Jordan Addison,WR,2250,2098,-2.2,2.2,0.4,1.1,251,229,2.5,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Galletti,2-for-1,Chris Olave + Tyjae Spears,George Pickens,WR,5424,5002,-3.4,3.4,0.3,4.6,228,228,2.3,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Lubed up Johnsons,2-for-1,Justin Jefferson + DeVonta Smith,Ja'Marr Chase,WR,10465,9600,-4,4,0.4,3.1,147,147,2.2,D,Aaron Rodgers,Justin Joly,TRUE,TRUE
+Full Time Dick Sucker,2-for-1,CeeDee Lamb + Jordan Mason,Amon-Ra St. Brown,WR,7947,7352,-3.1,3.1,1.2,0,118,118,2.2,D,Aaron Rodgers,Kaleb Johnson,TRUE,FALSE
+Galletti,2-for-1,Emmett Johnson + Eli Raridon,Jordan Addison,WR,2242,2098,-1.9,1.9,0.7,-0.2,188,166,2.2,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Goofball 3 Tokyo Drift,2-for-1,DeVonta Smith + Jaylen Warren,Colston Loveland,TE,5615,5207,-2.8,2.8,-0.5,8.7,182,307,2.2,D,Aaron Rodgers,Drew Allar,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Chris Rodriguez + Jaylen Warren,Sam LaPorta,TE,3273,3115,-0.1,0.1,0.6,-0.7,97,181,2.2,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+K Stafford isn't Worthy,2-for-1,Dallas Goedert + Jaylen Warren,Sam LaPorta,TE,3404,3115,-4.3,4.3,0,1.5,234,226,2,D,Aaron Rodgers,Adam Randall,TRUE,FALSE
+That's so Ravens,2-for-1,Bhayshul Tuten + CeeDee Lamb,Puka Nacua,WR,9001,8271,-3.8,3.8,0.2,2.2,202,202,2,D,Aaron Rodgers,Eli Heidenreich,TRUE,FALSE
+Lubed up Johnsons,2-for-1,Bhayshul Tuten + Eli Raridon,Tucker Kraft,TE,3675,3434,-2,2,1,0.3,95,114,2,D,Aaron Rodgers,Justin Joly,TRUE,FALSE
+Galletti,2-for-1,Jordan Mason + Zach Charbonnet,Makai Lemon,WR,3288,3019,-3.9,3.9,1.2,1.5,15,15,1.8,D,Aaron Rodgers,Bauer Sharp,TRUE,TRUE
+Galletti,2-for-1,Blake Corum + Trey McBride,Brock Bowers,TE,8128,7686,-0.8,0.8,1,2.8,32,7,1.6,D,Aaron Rodgers,Bauer Sharp,TRUE,TRUE
+That's so Ravens,2-for-1,Blake Corum + Courtland Sutton,Marvin Harrison,WR,3395,3132,-3.4,3.4,0.4,1.3,71,71,1.5,D,Aaron Rodgers,Eli Heidenreich,TRUE,TRUE
+Lubed up Johnsons,2-for-1,Bhayshul Tuten + Dallas Goedert,Ladd McConkey,WR,4088,3869,-0.7,0.7,-0.5,-0.7,293,201,1.3,D,Aaron Rodgers,Justin Joly,TRUE,FALSE
+Lubed up Johnsons,2-for-1,Bhayshul Tuten + Courtland Sutton,Ladd McConkey,WR,4211,3869,-3.8,3.8,0.3,-0.2,83,83,1,D,Aaron Rodgers,Justin Joly,TRUE,FALSE
+Galletti,2-for-1,Emmett Johnson + Jaylen Warren,Makai Lemon,WR,3177,3019,-0.2,0.2,-0.7,4.5,189,189,1,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Galletti,2-for-1,Chris Olave + Keaton Mitchell,George Pickens,WR,5496,5002,-4.9,4.9,0.5,3.5,44,44,0.8,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+JTNoel,2-for-1,Rashee Rice + DeVonta Smith,Malik Nabers,WR,7179,6676,-2.5,2.5,-0.9,7.5,154,154,0.5,D,Aaron Rodgers,Jam Miller,TRUE,FALSE
+That's so Ravens,2-for-1,Woody Marks + Jaylen Warren,Marvin Harrison,WR,3394,3132,-3.4,3.4,0.4,0,12,12,0.5,D,Aaron Rodgers,Eli Heidenreich,TRUE,FALSE
+Galletti,2-for-1,Chris Bell + Jaylen Warren,Makai Lemon,WR,3275,3019,-3.5,3.5,-0.1,3,50,50,0.3,D,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Galletti,2-for-1,Trey McBride + Jaylen Warren,Brock Bowers,TE,8260,7686,-2.5,2.5,-0.7,5,53,27,-0.5,F,Aaron Rodgers,Bauer Sharp,TRUE,FALSE
+Beef Blitzkrieg,2-for-1,Bo Nix + Courtland Sutton,Omarion Hampton,RB,6389,5941,-2.5,2.5,0.7,-0.6,115,-258,-1.6,F,Aaron Rodgers,Kevin Coleman,TRUE,FALSE
+Goofball 3 Tokyo Drift,2-for-1,Sam Darnold + Jaylen Warren,Nico Collins,WR,4925,4516,-4.1,4.1,0,-0.7,70,-233,-2,F,Aaron Rodgers,Drew Allar,TRUE,FALSE
