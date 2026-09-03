@@ -388,9 +388,21 @@ ffs_trade_eval_many <- function(base_simulation, deals, engine = NULL,
                                        waiver = waiver, cut_to_size = cut_to_size),
                     error = function(e) e)
     if (!inherits(par, "error")) return(par)
-    # a dead worker (usually memory) must not lose the batch - finish in-process
+    # A dead worker (usually memory) must not lose the batch - finish in-process.
+    # But say so NOW and say what it costs: warning() is deferred in a
+    # non-interactive script, so this used to degrade a 2-hour parallel run into
+    # a 20-hour sequential one with nothing on stdout to show for it until the
+    # very end. The message goes to stderr immediately.
+    est <- n * 55 / 3600   # ~55 s/deal on an n=2000 sim, one core
+    message(sprintf(paste0(
+      "!! PARALLEL EVALUATION FAILED: %s\n",
+      "!! falling back to SEQUENTIAL for %d deals - expect roughly %.1f h on an\n",
+      "!! n=2000 simulation, against ~%.1f h on %d workers. Usually memory:\n",
+      "!! each worker holds its own copy of the simulation. Kill this and re-run\n",
+      "!! with fewer workers rather than waiting it out."),
+      conditionMessage(par), n, est, est / max(1L, workers), workers))
     warning("parallel evaluation failed (", conditionMessage(par),
-            "); falling back to sequential", call. = FALSE)
+            "); fell back to sequential", call. = FALSE)
     workers <- 1L
   }
 

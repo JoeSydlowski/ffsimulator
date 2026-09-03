@@ -351,12 +351,27 @@ screen_per_shape <- num_or_inf("FFS_SCREEN_PER_SHAPE", "0")
 # exact deal evaluation share it (each ffs_player_value call would otherwise
 # re-summarise the league and re-copy roster_scores)
 engine <- ffs_trade_engine(sim)
-# NOTE this is the run's big fixed cost - roughly 2s per target on an n=240
-# search sim, so ~13 min at target_n=400. sides="you" halves it by skipping the
-# owner-side valuation, which the package builder never reads.
-message("scanning ", target_n, " targets @ ", Sys.time())
-targets <- data.table::as.data.table(
-  ffs_trade_targets(sim, me, top_n = target_n, engine = engine, sides = "you"))
+# NOTE this is the run's big fixed cost, and it is sequential: ~15 s per target
+# on an n=2000 sim, so ~45 min for the ~220 players rostered elsewhere in a
+# 10-team league. sides="you" already halves it by skipping the owner-side
+# valuation the package builder never reads.
+#
+# CACHED, because it depends only on (this simulation, me, target_n) and not on
+# any board knob. Re-running the board with different shapes, floors or waiver
+# settings - or after a crashed evaluation - should not pay 45 minutes again.
+tgt_cache <- file.path(league_dir,
+  sprintf("targets_n%d_t%d_f%s.rds", n_trade, target_n, me))
+if (file.exists(tgt_cache)) {
+  message("targets: ", tgt_cache)
+  targets <- as.data.table(readRDS(tgt_cache))
+} else {
+  message("scanning ", target_n, " targets on the n=", n_trade, " sim @ ", Sys.time(),
+          " (sequential, ~15 s each - this is the run's big fixed cost)")
+  targets <- data.table::as.data.table(
+    ffs_trade_targets(sim, me, top_n = target_n, engine = engine, sides = "you"))
+  saveRDS(targets, tgt_cache)
+  message("cached ", nrow(targets), " targets to ", tgt_cache)
+}
 
 message("building board: ",
         if (whole_roster) "every asset" else paste("move", move_name),

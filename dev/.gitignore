@@ -11,3 +11,6 @@ data/
 # cached search sims (regenerable, ~20MB each) - the name encodes pos_filter and
 # fill_missing_starters so a sim built for the wrong lineup can't be reused
 league_sims/**/search_n*.rds
+
+# cached exact-valued target scans (regenerable; ~45 min on an n=2000 sim)
+league_sims/**/targets_n*.rds
