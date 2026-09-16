@@ -124,10 +124,25 @@ if (workers <= 1L && is.null(engine))
 dyn <- fread(file.path(out, "dynasty_outlook.csv"),
              colClasses = list(character = c("player_id", "fantasypros_id")))
 dyn[, player_id := as.character(player_id)]
+# Draft picks must reach ffs_deal_scores() the same way they reached the board,
+# or a pick is level-discounted here and move-discounted there, and the two grade
+# the same deal differently. player_trade_board.R writes pick_values.csv for this.
+pv_file <- file.path(out, "pick_values.csv")
+if (file.exists(pv_file)) {
+  pvv <- fread(pv_file, colClasses = list(character = "player_id"))
+  pvv <- pvv[!is.na(cur_value) & cur_value > 0]
+  dyn <- rbindlist(list(dyn, pvv[, .(player_id = as.character(player_id), player_name,
+                                     pos = "PICK", cur_value, next_value_mean)]), fill = TRUE)
+  message("picks: ", nrow(pvv), " priced draft picks joined for scoring")
+} else {
+  message("NOTE no pick_values.csv beside the board - picks will be level-discounted ",
+          "(legacy path); re-run player_trade_board.R to write it")
+}
 fmt <- tryCatch(as.character(ffsimulator:::.ffs_detect_qb_format(sim$lineup_constraints)),
                 error = function(e) "superflex")
 
 playoff_value <- as.numeric(Sys.getenv("FFS_TRADE_PLAYOFF_VALUE", "68"))
+fair_premium  <- as.numeric(Sys.getenv("FFS_FAIR_PREMIUM", "0.10"))
 opp_edge_tol  <- as.numeric(Sys.getenv("FFS_OPP_EDGE_TOL", "0.05"))
 max_opp_drop  <- as.numeric(Sys.getenv("FFS_BOARD_MAX_OPP_DROP", "0.15"))
 ckpt <- as.integer(Sys.getenv("FFS_CONFIRM_CHECKPOINT", "25"))
@@ -157,7 +172,12 @@ eval_chunk <- function(d) {
     b_opp = round(100 * op$playoff_pct_before, 1))
   # score both sides with the SAME function the board used, on n=2000 numbers -
   # board score and confirm score finally live on one scale
+  # fair_premium MUST match the board this is confirming, or `gettable` /
+  # `opp_edge` on the confirmed rows are judged by a different standard than the
+  # rows they came from. This was passed as nothing until 2026-09-07, i.e. always
+  # the package default, even for boards built at a different premium.
   ffs_deal_scores(r, dyn, my_haircut = ffsimulator:::.ffs_haircut(m$playoff_pct_before[1]),
+                  fair_premium = fair_premium,
                   playoff_value = playoff_value, format = fmt,
                   opp_edge_tol = opp_edge_tol, max_opp_drop = max_opp_drop)
 }

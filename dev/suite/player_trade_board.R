@@ -1,10 +1,20 @@
 # Move-a-player trade board: given ONE player you want to move, scan every team
 # for fair, realistic packages, and plot them so you can pick the best deal.
 #
-# The scan is EXHAUSTIVE by default: every package shape (1..3 pieces each way)
-# against every team, with no per-team cap, and every deal inside the fair band
-# gets an exact evaluation. What keeps that affordable is that the acceptance
-# test is sim-free, so it prunes before the expensive step.
+# The scan is EXHAUSTIVE by default: every package shape (up to 2 pieces each
+# way) against every team, with no per-team cap, and every deal inside the fair
+# band gets an exact evaluation. What keeps that affordable is that the
+# acceptance test is sim-free, so it prunes before the expensive step.
+#
+# WHEN THE BUDGET BINDS (eval_max < candidates) the evaluation is allocated
+# ROUND-ROBIN across (opponent x shape x headline asset x uses-a-pick) strata,
+# not taken off the top of the screen. Top-of-screen was deterministic
+# starvation: `screen` is add_gain-led and add_gain SUMS per-player upgrades, so
+# big packages, the single richest opponent and pick-carrying packages all win
+# the ordering at once. Measured 2026-09-07 on a 12-team whole-roster board with
+# eval_max=400: 350/400 one shape, 229/400 one opponent, 400/400 carrying my own
+# next 1st, 5 of 33 assets covered. The board now prints its own concentration
+# numbers so that failure mode is visible instead of silent.
 #
 # The board rules:
 #   * ONE value band, `FFS_FAIR_BAND` (default -5%..+5%), measured against the
@@ -36,6 +46,8 @@
 #   FFS_SEARCH_SIM (path to a cached search sim), FFS_PICK_SEASON (nearest pick
 #   year, default = soonest future draft), FFS_FAIR_BAND ("lo,hi" or "off" for
 #   the legacy bands), FFS_FAIR_PREMIUM, FFS_OPP_EDGE_TOL, FFS_BOARD_MAX_OPP_DROP,
+#   FFS_MAX_PICKS_SEND / _RECV (default 1 each; "Inf" to let packages carry any
+#   number of picks, 0 to forbid them on that side),
 #   FFS_BOARD_SHAPES, FFS_TARGET_N, FFS_TRADE_SCREEN_N / _PER_OPP ("Inf" =
 #   exhaustive), FFS_TRADE_EVAL_MAX (safety cap, 40000), FFS_TRADE_WORKERS
 #   (parallel exact evals), FFS_BOARD_GIVEBACK, FFS_MIN_PIECE_VALUE,
@@ -248,6 +260,12 @@ pv <- if (!use_picks) { message("FFS_PICKS=0: players only, no draft picks eithe
         format = fmt)),
       error = function(e) { message("picks unavailable (skipping gap-fillers): ",
                                     conditionMessage(e)); NULL })
+# Persist them next to the board. ffs_deal_scores() now prices a pick like a
+# player (keep its known cur_value, discount only the projected move), which it
+# can only do if the pick rows reach it - so confirm_trade_board.R reads this
+# file and appends it to the dynasty table. Without it the confirm silently falls
+# back to level-discounting picks and grades the same deals differently.
+if (!is.null(pv) && nrow(pv)) fwrite(pv, file.path(out, "pick_values.csv"))
 
 ## ---- board knobs ----------------------------------------------------------------
 # ONE band replaces the old even/uneven pair: my_edge is the deal's gap measured
@@ -255,7 +273,11 @@ pv <- if (!use_picks) { message("FFS_PICKS=0: players only, no draft picks eithe
 # the receiving side takes back, because a package must overpay the stud it is
 # traded for). The upper edge is how far over fair I am willing to try to take;
 # the lower edge stops enumerating deals where I overpay.
-fair_premium <- as.numeric(Sys.getenv("FFS_FAIR_PREMIUM", "0.05"))
+# 0.10 is the settled standard the production boards were built at; this script
+# read 0.05 until 2026-09-07, which priced every 2-for-1 as if the other owner
+# only demanded a 5% overpay to give up his stud. Now inherited from the package
+# default so board, confirm and intel cannot drift apart again.
+fair_premium <- as.numeric(Sys.getenv("FFS_FAIR_PREMIUM", "0.10"))
 fair_band <- as.numeric(strsplit(Sys.getenv("FFS_FAIR_BAND", "-0.05,0.05"), ",")[[1]])
 # How far below the shape-fair price the other owner will still deal. NOTE this
 # defaults to the SAME 5% as the upper edge of FFS_FAIR_BAND - they are the same
@@ -333,12 +355,28 @@ giveback <- as.integer(Sys.getenv("FFS_BOARD_GIVEBACK", "0")) == 1L
 # win target but ranks #76 on the proxy because my WR room is stacked, so top_n=50
 # would drop him. A deep scan exact-values him and lets Egbuka+Barkley+pick build.
 target_n <- as.integer(Sys.getenv("FFS_TARGET_N", "400"))
-# ALL shapes by default (1..3 pieces each way). must_send forces the moved player
-# into every send package, so 1-for-N is "just him" and 3-for-N packages him with
-# two more pieces. FFS_BOARD_SHAPES="1,2;2,2" narrows it.
-default_shapes <- paste(apply(expand.grid(1:3, 1:3), 1, paste, collapse = ","), collapse = ";")
+# Up to TWO pieces per side by default. must_send forces the moved player into
+# every send package, so 1-for-N is "just him" and 2-for-N packages him with one
+# more piece. FFS_BOARD_SHAPES="1,1;2,1" narrows it; "1,2;2,2;3,3" (etc) widens it
+# back to three-piece packages.
+#
+# Why not all nine shapes any more: three-piece packages dominate the screen
+# (`add_gain` SUMS per-player upgrades) and the enumeration (more slots to bury a
+# pick in), so on a budgeted scan they crowd everything else out - a 12-team
+# whole-roster board returned 350 of 400 deals as 3-for-3 and priced not one
+# 1-for-1. They are also the hardest deals to actually negotiate. The stratified
+# allocator now stops one shape monopolising the budget, but enumerating fewer
+# unrealistic shapes spends it better still.
+default_shapes <- paste(apply(expand.grid(1:2, 1:2), 1, paste, collapse = ","), collapse = ";")
 board_shapes <- lapply(strsplit(Sys.getenv("FFS_BOARD_SHAPES", default_shapes), ";")[[1]],
                        function(s) as.integer(strsplit(trimws(s), ",")[[1]]))
+# At most ONE draft pick per side by default. A pick is exempt from
+# min_piece_value, is added after min_recv_value, moves no bodies and adds no
+# win-gain, so it is the cheapest object that can close any overpay band -
+# uncapped, the nearest first appeared in 400 of 400 deals on the 2026-09-07 JML
+# board. FFS_MAX_PICKS_SEND=0 forces player-only packages out of your side.
+max_picks_send <- num_or_inf("FFS_MAX_PICKS_SEND", "1")
+max_picks_recv <- num_or_inf("FFS_MAX_PICKS_RECV", "1")
 # CONSOLIDATION knobs. min_piece_value exempts draft picks, so with a priced pick
 # set the cheapest way to satisfy any overpay band is "one real player + a pick"
 # and two-real-player packages barely enumerate: FFS_MIN_SEND_PLAYERS=2 is what
@@ -419,6 +457,7 @@ board <- as.data.table(ffs_build_trades(
   min_future_delta = -750, winwin_bonus = 0.5, verbose = TRUE, engine = engine,
   ceiling_weight = as.numeric(Sys.getenv("FFS_TRADE_CEILING_WEIGHT", "0")),
   min_send_players = min_send_players, screen_per_shape = screen_per_shape,
+  max_picks_send = max_picks_send, max_picks_recv = max_picks_recv,
   waiver = waiver_mode, cut_to_size = opp_cut,
   dedupe = TRUE, screen_n = screen_n, screen_per_opp = screen_per_opp,
   core_n = core_n, eval_max = eval_max, workers = workers, top_n = top_n))
@@ -457,6 +496,10 @@ outb <- board[, .(team = franchise_name, sending, shape, send, receive,
   mine_pl, opp_pl, fut, adj_fut = round(adj_future_capital),
   score = round(score, 1), grade,
   opp_surplus = round(opp_surplus), opp_score = round(opp_score, 1), gettable,
+  # Pareto rank on (my_playoff_delta, adj_future_capital), computed by
+  # ffs_build_trades over the FULL evaluated set before any score truncation.
+  # front == 1 means no other evaluated deal beats it on both objectives at once.
+  front,
   win_win, give_back, uses_pick,
   # the fourth and fifth assets in a 2-for-1: who I sign off the wire to refill
   # the spot, and who they release to fit the extra body. Both are already inside
@@ -545,6 +588,25 @@ if (length(plan_rows)) {
 } else {
   cat("\n== no disjoint plan: every gettable deal reuses an asset from a better one ==\n")
 }
+
+## ---- concentration: did the eval budget actually spread? -----------------------
+# A board can look full and still be one idea wearing 400 costumes. The
+# 2026-09-07 JML run evaluated 400 deals that were 87% one shape, 57% one
+# opponent, 100% carrying my own next 1st, and covered 5 of 33 assets - and
+# nothing in the output said so. Lead with the concentration numbers so a
+# degenerate board announces itself instead of having to be noticed.
+share <- function(x) { t <- sort(table(x), decreasing = TRUE)
+  sprintf("%s %d%% (%d distinct)", names(t)[1], round(100 * t[[1]] / length(x)), length(t)) }
+cat("\n== budget spread (watch for a board that is really one idea) ==\n")
+cat(sprintf("  deals        %d\n", nrow(board)))
+cat(sprintf("  fair premium %.0f%% per extra piece (fair_band %.0f%%..%+.0f%%)\n",
+            100 * fair_premium, 100 * fair_band[1], 100 * fair_band[2]))
+cat(sprintf("  top shape    %s\n", share(board$shape)))
+cat(sprintf("  top opponent %s of %d teams\n", share(board$franchise_name),
+            length(setdiff(frs$franchise_name, my_team))))
+cat(sprintf("  top sender   %s\n", share(board$sending)))
+cat(sprintf("  uses a pick  %d%% of deals\n", round(100 * mean(board$uses_pick))))
+cat(sprintf("  Pareto front %d of %d deals\n", sum(board$front == 1L), nrow(board)))
 
 ## ---- coverage: how exhaustively did each team actually get scanned? -------------
 cov <- merge(board[, .(deals = .N, gettable = sum(gettable), best = round(max(score), 1)),
