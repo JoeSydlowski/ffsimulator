@@ -29,10 +29,14 @@ source(here::here("dev", "suite", "scoring_history_shim.R")); install_shim()
 
 ## ---- CONFIG -----------------------------------------------------------------
 config <- list(
-  # Goofball | JML | Jon | Galletti
+  # every league sox05syd is in, from ffscrapr::sleeper_userleagues("sox05syd", 2026):
+  # Goofball (10, SF dynasty) | JML (12, 1QB dynasty) | Dynasty Dimwits (12, SF
+  # dynasty) | Galletti (8, SF keeper) | Ex-Athletes (12, SF REDRAFT) |
+  # Don't be Chopped (5, 1QB redraft - ff_schedule() cannot parse it, see below)
   league_ids = strsplit(Sys.getenv("FFS_LEAGUE_ID", paste(
-    "1312145437842497536", "1326464763936403456",
-    "1359546500786434048", "1339817277222031360", sep = ",")), ",")[[1]],
+    "1312145437842497536", "1326464763936403456", "1359546500786434048",
+    "1339817277222031360", "1389724668889399296", "1403227684191870976",
+    sep = ",")), ",")[[1]],
   platform = Sys.getenv("FFS_PLATFORM", "sleeper"),
   season   = as.integer(Sys.getenv("FFS_SEASON", "2026")),
   # matched against Sleeper user_name first, then franchise_name
@@ -121,16 +125,36 @@ run_league <- function(league_id) {
   }
 
   ## ---- SIMULATIONS ----------------------------------------------------------
+  # ffscrapr's Sleeper schedule parser trips over a week where some franchise has
+  # no opponent (odd-sized leagues). Fall back to random schedules over the weeks
+  # that are left - add/drop values still hold, but the playoff and championship
+  # columns no longer condition on the real slate or on games already played
+  actual_schedule <- config$actual_schedule
+  n_weeks <- 14L
+  if (actual_schedule && inherits(try(ffs_schedule(conn), silent = TRUE), "try-error")) {
+    playoff_start <- tryCatch(as.integer(
+      ffscrapr::sleeper_getendpoint(paste0("league/", league_id)
+        )$content$settings$playoff_week_start), error = function(e) 15L)
+    if (is.na(playoff_start)) playoff_start <- 15L
+    n_weeks <- max(1L, playoff_start - as.integer(nflreadr::get_current_week()))
+    actual_schedule <- FALSE
+    message("!! ff_schedule() failed for this league - simulating ", n_weeks,
+            " remaining weeks on RANDOM schedules. Playoff/championship deltas ",
+            "ignore the real slate and the games already played; the wins and ",
+            "points deltas are still the rest-of-season answer.")
+  }
+
   simulate_n <- function(n) {
     message("simulating ", n, " seasons @ ", Sys.time())
     s <- ff_simulate(
       conn,
       n_seasons = n,
+      n_weeks = n_weeks,
       version = config$version,
       lineup_method = config$lineup_method,
       replacement_level = config$replacement_level,
       fill_missing_starters = config$fill_missing_starters,
-      actual_schedule = config$actual_schedule,
+      actual_schedule = actual_schedule,
       pos_filter = config$pos_filter,
       return = "all"
     )
@@ -139,10 +163,20 @@ run_league <- function(league_id) {
   }
 
   sim_path <- file.path(out_root, "simulation.rds")
+  sim <- NULL
   if (config$reuse_sim && file.exists(sim_path)) {
-    message("reusing ", sim_path)
-    sim <- readRDS(sim_path)
-  } else {
+    cached <- readRDS(sim_path)
+    # a cached run at a smaller n must not silently stand in for the one asked for
+    if (isTRUE(cached$simulation_params$n_seasons >= config$n_sims)) {
+      message("reusing ", sim_path, " (n=", cached$simulation_params$n_seasons, ")")
+      sim <- cached
+    } else {
+      message("cached simulation is n=", cached$simulation_params$n_seasons,
+              ", below the requested n=", config$n_sims, " - re-simulating")
+    }
+    rm(cached)
+  }
+  if (is.null(sim)) {
     sim <- simulate_n(config$n_sims)
     saveRDS(sim, sim_path)
   }
@@ -249,4 +283,6 @@ for (lid in config$league_ids) {
   if (inherits(res, "try-error")) {
     message("league ", lid, " failed: ", conditionMessage(attr(res, "condition")))
   }
+  # an n=2000 simulation is several GB - do not carry one into the next league
+  gc()
 }

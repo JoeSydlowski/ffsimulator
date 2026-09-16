@@ -142,10 +142,43 @@ only run at value ≥ 300.
   confirmed on the n=400 standings sim.
 - `FFS_SELL_MAX` (default `4`) — how many SELLs get buyer scans + matchmaking.
 
-## Waiver wire (`dev/suite/waiver_wire.R`)
+## Waiver watchlist (`dev/suite/waiver_watchlist.R`) — the weekly one
 
-The weekly question — *who do I add, and who do I drop for him?* — answered in
-the same currency as everything else: the change in **your** simulated season.
+Every ranked player in every league, with each signal that says something
+different about him, and no simulation anywhere: it scrapes rather than
+simulates, so all six leagues take about ninety seconds.
+
+```
+Rscript dev/suite/waiver_watchlist.R
+```
+
+| Signal | Column | Why it is there |
+|---|---|---|
+| rankings | `pos_rank` `ecr` `ecr_delta` | **live** FantasyPros rest-of-season scrape via `ffpros` — `ffs_latest_rankings()` reads DynastyProcess's mirror, which was four days stale the day this was written |
+| market | `roster_pct` `trend_add` `trend_drop` | how much of the market owns him, and what Sleeper's whole user base claimed in the last 24h — the fastest signal there is |
+| usage | `snap_pct` `xfp_g` `fp_g` | what his team actually gives him; moves first when a role changes |
+| value | `redraft_value` `dynasty_value` | FantasyCalc, at each league's own size and format |
+
+Outputs to `dev/league_sims/waivers/<date>/`: `watchlist.csv` (all leagues, one
+table) and `waiver_watchlist.html` — a sortable page, one tab per league, with
+a Free agents / My roster / Everyone toggle so you can size a claim against
+your own bench. The `_artifact.html` twin is the same page shaped for
+publishing.
+
+`signal` averages the available components as percentile ranks **within
+position**, over free agents only. It is an opening sort, not a projection —
+every input is there to be sorted on itself.
+
+Rest-of-season pages are scored per league (`ros-ppr-rb` vs
+`ros-half-point-ppr-rb`), and each scrape and FantasyCalc pull is cached across
+leagues that share a format.
+
+## Waiver wire (`dev/suite/waiver_wire.R`) — when you want a move priced
+
+The watchlist says who is worth a look; this says what a specific swap is
+worth, in the same currency as everything else: the change in **your**
+simulated season. It costs a simulation per league, so it is for the shortlist,
+not the weekly sweep.
 
 ```
 Rscript dev/suite/waiver_wire.R                        # every league in the config
