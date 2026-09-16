@@ -30,9 +30,24 @@ reliability-adjusted future gain to the side doing the receiving
 }
 \description{
 Reliability discounts the projected \strong{move} (\code{next - cur}), not the whole
-level: a player's current market value is known, only next year's change is a
-projection. Draft picks are pure speculation, so their future value is
-level-discounted at \code{pick_reliability} - recovered as the residual of the raw
-future delta that the real players do not explain.
+level: an asset's current market value is known, only next year's change is a
+projection. \strong{This applies to draft picks too}, as long as they are present
+in \code{dynasty}: a pick's \code{cur_value} comes from the same FantasyCalc scrape that
+prices the players, so it is no more speculative a number - what is
+speculative is next year's move, and that is what \code{pick_reliability}
+discounts.
+}
+\details{
+Picks used to be \emph{level}-discounted (\code{pick_reliability * next}, with no
+current-value term), recovered as the residual of the raw future delta the
+real players did not explain. That made the two asset classes use different
+functional forms rather than different parameters, and it systematically
+under-charged sending a pick. Measured 2026-09-07 on a JML board: the owner's
+2027 1st was worth 3,467 with no projected move, and sending it was debited
+only 1,907 - a 1,560-point break, 13.8 score points at his exchange rate, on
+63 of 300 deals. It is a large part of why boards fill with pick-senders.
+
+The residual path survives for assets missing from \code{dynasty}, so a caller that
+passes players only still gets exactly its old numbers.
 }
 \keyword{internal}

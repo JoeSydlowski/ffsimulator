@@ -38,10 +38,24 @@
 #' Build the reliability-adjusted future-capital function for a dynasty table
 #'
 #' Reliability discounts the projected **move** (`next - cur`), not the whole
-#' level: a player's current market value is known, only next year's change is a
-#' projection. Draft picks are pure speculation, so their future value is
-#' level-discounted at `pick_reliability` - recovered as the residual of the raw
-#' future delta that the real players do not explain.
+#' level: an asset's current market value is known, only next year's change is a
+#' projection. **This applies to draft picks too**, as long as they are present
+#' in `dynasty`: a pick's `cur_value` comes from the same FantasyCalc scrape that
+#' prices the players, so it is no more speculative a number - what is
+#' speculative is next year's move, and that is what `pick_reliability`
+#' discounts.
+#'
+#' Picks used to be *level*-discounted (`pick_reliability * next`, with no
+#' current-value term), recovered as the residual of the raw future delta the
+#' real players did not explain. That made the two asset classes use different
+#' functional forms rather than different parameters, and it systematically
+#' under-charged sending a pick. Measured 2026-09-07 on a JML board: the owner's
+#' 2027 1st was worth 3,467 with no projected move, and sending it was debited
+#' only 1,907 - a 1,560-point break, 13.8 score points at his exchange rate, on
+#' 63 of 300 deals. It is a large part of why boards fill with pick-senders.
+#'
+#' The residual path survives for assets missing from `dynasty`, so a caller that
+#' passes players only still gets exactly its old numbers.
 #'
 #' @param dynasty a dynasty outlook with player_id, cur_value, next_value_mean, pos
 #' @param future_reliability named per-position vector; `NULL` uses [.ffs_future_reliability()]
@@ -65,25 +79,30 @@
     stats::setNames(as.character(dyn$pos), ids)
 
   rel_ids <- function(x) {
-    r <- future_reliability[pos_by_id[x]]
+    r <- ifelse(grepl("^PICK_", x), pick_reliability,
+                unname(future_reliability[pos_by_id[x]]))
     r[is.na(r)] <- future_certainty
     r
   }
-  reliable_next <- function(x) {
-    x <- x[!grepl("^PICK_", x)]
+  # every asset we can actually price, players and picks alike
+  known <- function(x) x[x %in% ids]
+  adj_level <- function(x) {
+    x <- known(x)
     if (!length(x)) return(0)
     cu <- cur_by_id[x]; nx <- nv_by_id[x]; rl <- rel_ids(x)
     cu[is.na(cu)] <- 0; nx[is.na(nx)] <- 0
     sum(cu + rl * (nx - cu))
   }
-  players_next <- function(x) {
-    x <- x[!grepl("^PICK_", x)]
-    sum(nv_by_id[x], na.rm = TRUE)
-  }
+  known_next <- function(x) sum(nv_by_id[known(x)], na.rm = TRUE)
   function(send_ids, recv_ids, future_capital_delta) {
-    praw <- players_next(recv_ids) - players_next(send_ids)
-    (reliable_next(recv_ids) - reliable_next(send_ids)) +
-      pick_reliability * (future_capital_delta - praw)
+    # Anything we could not price (picks absent from `dynasty`) is recovered as
+    # the residual of the raw future delta and level-discounted, which is the
+    # legacy behaviour and keeps an older caller's numbers unchanged. When picks
+    # ARE supplied the residual is zero and they go through adj_level() like any
+    # other asset.
+    kraw <- known_next(recv_ids) - known_next(send_ids)
+    (adj_level(recv_ids) - adj_level(send_ids)) +
+      pick_reliability * (future_capital_delta - kraw)
   }
 }
 
@@ -104,12 +123,12 @@
 #'
 #' @param send_value,recv_value summed current market (dynasty) value each way
 #' @param n_send,n_recv number of pieces each way
-#' @param fair_premium required overpay per extra piece (default 0.05)
+#' @param fair_premium required overpay per extra piece (default 0.10)
 #'
 #' @return a data.table with `prem`, `fair_gap`, `single_value`, `my_edge`, `opp_edge`
 #'
 #' @keywords internal
-.ffs_market_edge <- function(send_value, recv_value, n_send, n_recv, fair_premium = 0.05) {
+.ffs_market_edge <- function(send_value, recv_value, n_send, n_recv, fair_premium = 0.10) {
   # shapes may arrive as scalars (one shape for the whole batch) - recycle so
   # every branch below is elementwise
   len <- max(length(send_value), length(recv_value), length(n_send), length(n_recv))
@@ -175,7 +194,7 @@ ffs_deal_scores <- function(deals, dynasty,
                             future_certainty = 0.905, future_reliability = NULL,
                             pick_reliability = 0.55, format = "superflex",
                             pos_lookup = NULL,
-                            fair_premium = 0.05, opp_edge_tol = 0.05,
+                            fair_premium = 0.10, opp_edge_tol = 0.05,
                             max_opp_drop = 0.15,
                             opp_mode = c("market", "mirror"),
                             champ_weight = 0, winwin_bonus = 0, traj_weight = 0) {
@@ -307,7 +326,7 @@ ffs_deal_scores <- function(deals, dynasty,
 #'
 #' @keywords internal
 .ffs_band_ok <- function(send_value, recv_value, n_send, n_recv,
-                         fair_premium = 0.05, fair_band = NULL,
+                         fair_premium = 0.10, fair_band = NULL,
                          even_band = 0.15, uneven_gap = NULL,
                          consolidation_penalty = 0, uneven_shade = even_band) {
   if (!is.null(fair_band)) {

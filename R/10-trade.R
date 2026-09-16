@@ -212,6 +212,54 @@ ffs_player_value <- function(base_simulation, player_id, franchise_id,
   agg$player_id[seq_len(min(n, nrow(agg)))]
 }
 
+#' Stratum key for allocating a limited exact-evaluation budget
+#'
+#' A stratum is `(opponent, shape, headline sent asset, uses a pick)`. Those are
+#' exactly the four axes a top-of-screen truncation was measured to collapse: the
+#' screen is `add_gain`-led and `add_gain` sums per-player upgrades, so bigger
+#' packages, the single richest opponent, and pick-carrying packages (a pick is
+#' the cheapest object that closes a value band, and is exempt from
+#' `min_piece_value`) all dominate the ordering at once.
+#'
+#' @param deals the screened candidate table, with `send_ids`/`recv_ids` list
+#'   columns and an `opponent` column
+#' @param top_id function mapping a vector of asset ids to its most valuable id
+#' @return a character vector, one stratum key per deal
+#' @keywords internal
+.ffs_eval_strata <- function(deals, top_id) {
+  has_pick <- vapply(deals$send_ids, function(x) any(grepl("^PICK_", x)), logical(1)) |
+              vapply(deals$recv_ids, function(x) any(grepl("^PICK_", x)), logical(1))
+  paste(deals$opponent,
+        paste0(lengths(deals$send_ids), "-for-", lengths(deals$recv_ids)),
+        vapply(deals$send_ids, top_id, character(1)),
+        has_pick, sep = "#")
+}
+
+#' Spend an evaluation budget round-robin across strata
+#'
+#' Takes the best-screening candidate from every stratum, then the second best
+#' from every stratum, and so on until the budget is spent. Strata are visited
+#' best-first (by their top screen), so within a round the better ideas are still
+#' preferred - but no single idea, opponent or shape can take a second slot while
+#' another has none.
+#'
+#' @param strata character vector of stratum keys, one per candidate
+#' @param screen numeric screen score, one per candidate (higher is better)
+#' @param budget how many candidates to keep
+#' @return an integer vector of row indices into the original ordering
+#' @keywords internal
+.ffs_allocate_budget <- function(strata, screen, budget) {
+  i <- s <- sc <- rank_in <- top <- NULL
+  if (budget >= length(strata)) return(seq_along(strata))
+  dt <- data.table::data.table(i = seq_along(strata), s = strata, sc = screen)
+  data.table::setorder(dt, -sc)
+  dt[, rank_in := seq_len(.N), by = s]
+  dt[, top := max(sc), by = s]
+  # round number first, then stratum quality, then the candidate's own screen
+  data.table::setorder(dt, rank_in, -top, -sc)
+  sort(dt$i[seq_len(min(budget, nrow(dt)))])
+}
+
 #' Resolve the roster churn a deal implies for both sides
 #'
 #' @param waiver_idx a [.ffs_waiver_index()] table (may be empty)
@@ -570,6 +618,13 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20,
 #'   TE 0.42). Applied per-deal to the actual players moving, so acquiring
 #'   unreliable-future QBs is discounted vs reliable RB/WR future.
 #' @param pick_reliability future-value reliability for draft picks (default 0.55).
+#' @param max_picks_send,max_picks_recv most draft picks allowed in the sent /
+#'   received package (default `Inf`). Picks are exempt from `min_piece_value`
+#'   and are added after `min_recv_value` is applied, and a pick moves no bodies
+#'   and adds no win-gain, so it is always the cheapest way to satisfy the
+#'   shape-fair overpay band - left uncapped, the nearest first-rounder appears
+#'   in nearly every enumerated package. Set to `1` (or `0`) to force the search
+#'   toward player-for-player deals.
 #' @param pick_for_pick allow deals that are draft picks on BOTH sides (default
 #'   `FALSE`). Such deals have no roster impact at all - `my_win_delta` is
 #'   identically 0 - and their pricing leans entirely on projecting a future
@@ -583,9 +638,23 @@ ffs_trade_targets <- function(base_simulation, franchise_id, top_n = 20,
 #' @param gettable_cut deprecated, and ignored unless `opp_mode = "mirror"`.
 #'   Gettability is now the market test described under `opp_edge_tol`.
 #' @param fair_premium the overpay a multi-player package must carry per extra
-#'   piece, as a fraction of the single side's value (default `0.05`). A premium
-#'   player is worth more than a package of equal summed value, so a 1-for-2 is
-#'   *fair* at a +5pct gap, not at 0. See [.ffs_market_edge()].
+#'   piece, as a fraction of the single side's value (default `0.10`). A premium
+#'   player is worth more than a package of equal summed value, so a 2-for-1 is
+#'   *fair* at a +10pct gap, not at 0. See [.ffs_market_edge()].
+#'
+#'   **0.10 is the settled figure**, not a guess: it is what the production
+#'   boards have been built at. It used to default to 0.05 here while
+#'   `trade_chain_eval.R` hardcoded 0.10 to match those boards, and
+#'   `confirm_trade_board.R` / `trade_intel.R` passed nothing at all and so
+#'   silently re-scored at 0.05 - meaning a board and its own confirmation
+#'   judged `gettable` by different standards. One default, inherited
+#'   everywhere, is what stops that recurring.
+#'
+#'   Note it only enters through `fair_gap = fair_premium * abs(n_recv -
+#'   n_send)`, so it is inert on even shapes (1-for-1, 2-for-2) and moves only
+#'   uneven ones. It never touches your own `score`; it moves `my_edge`,
+#'   `opp_edge`, `opp_surplus` and `gettable` - and, because `fair_band` is
+#'   applied at enumeration, it also changes which deals are generated at all.
 #' @param fair_band optional `c(lo, hi)` band on `my_edge` (the deal's gap
 #'   relative to the shape-fair price) applied at enumeration, e.g. `c(-0.05,
 #'   0.05)`. One interpretable parameter in place of `even_band`/`uneven_gap`:
@@ -738,7 +807,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                              value_band = 0.15, uneven_shade = value_band,
                              consolidation_penalty = 0, max_opp_drop = 0.15,
                              winwin_bonus = 0, uneven_require_winwin = FALSE,
-                             fair_premium = 0.05, fair_band = NULL,
+                             fair_premium = 0.10, fair_band = NULL,
                              opp_edge_tol = 0.05, opp_mode = c("market", "mirror"),
                              shapes = list(c(1, 1), c(2, 1), c(1, 2)),
                              future_weight = 0, min_future_delta = -Inf,
@@ -751,6 +820,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
                              gettable_cut = -3,
                              opponents = NULL, must_send = NULL, picks = NULL,
                              pick_for_pick = FALSE,
+                             max_picks_send = Inf, max_picks_recv = Inf,
                              require_positive_target = TRUE,
                              even_band = value_band, uneven_gap = NULL,
                              max_gap = Inf, min_piece_value = 0,
@@ -781,7 +851,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   n <- adj_future_screen <- deal_id <- opp_surplus <- grade <- single_value <- NULL
   core <- core_rank <- shape <- shape_rank <- n_send_players <- prem <- fair_gap <- NULL
   opponent <- send_value <- send_ids <- recv_ids <- NULL
-  waiver_gain <- backfill <- opp_drop <- NULL
+  waiver_gain <- backfill <- opp_drop <- front <- NULL
 
   opp_mode <- match.arg(opp_mode)
   waiver <- match.arg(waiver)
@@ -856,8 +926,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   # them), and drive both the pre-eval screen and the final reliability weighting
   pos_lu <- rs[, list(pos = pos[1]), by = player_id]
   pos_by_id2 <- stats::setNames(pos_lu$pos, pos_lu$player_id)
-  screen_adj_fn <- .ffs_adj_future_fn(dyn, future_reliability, pick_reliability,
-                                      future_certainty, pos_lookup = pos_by_id2)
+  # NB screen_adj_fn is built below, once dyn_all carries the priced picks
 
   empty <- data.frame(
     opponent = character(), send = character(), receive = character(),
@@ -870,6 +939,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     my_edge = numeric(), opp_edge = numeric(), opp_value_gain = numeric(),
     opp_surplus = numeric(), opp_score = numeric(), gettable = logical(),
     prem = numeric(), fair_gap = numeric(), grade = character(),
+    front = integer(),
     backfill = character(), opp_drop = character(),
     send_ids = I(list()), recv_ids = I(list())
   )
@@ -885,6 +955,23 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     opp_picks <- pk[franchise_id != fid &  !is.na(cur_value) & cur_value > 0]
     if (!is.null(opponents)) opp_picks <- opp_picks[franchise_id %in% opponents]
   }
+
+  # The dynasty table used for SCORING carries the picks as well as the players,
+  # so .ffs_adj_future_fn() can price a pick the same way it prices a player -
+  # keeping its known current market value and discounting only the projected
+  # move. Without these rows it falls back to level-discounting picks off the
+  # residual, which under-charges sending one (see .ffs_adj_future_fn()).
+  dyn_all <- dyn
+  if (!is.null(picks) && nrow(picks)) {
+    pk_rows <- data.table::as.data.table(picks)[!is.na(cur_value) & cur_value > 0]
+    if (nrow(pk_rows)) dyn_all <- data.table::rbindlist(list(
+      dyn, pk_rows[, list(player_id, player_name, pos = "PICK",
+                          cur_value, next_value_mean)]), fill = TRUE)
+  }
+  # the pre-eval screen must value a pick exactly as the final score does, or the
+  # screen promotes deals the score then marks down
+  screen_adj_fn <- .ffs_adj_future_fn(dyn_all, future_reliability, pick_reliability,
+                                      future_certainty, pos_lookup = pos_by_id2)
 
   # incoming candidates: priced, owned elsewhere, and (by default) win-additive.
   # An exhaustive scan wants the second filter off: a player who adds no starts
@@ -1049,6 +1136,20 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     if (nrow(deals) == 0) return(empty)
   }
 
+  # cap how many draft picks a package may carry. Picks are exempt from
+  # min_piece_value (:mine construction) and are appended AFTER min_recv_value is
+  # applied, so they clear both junk floors by construction; and because a pick
+  # adds no bodies and no win-gain, dropping one into a package is always the
+  # cheapest way to satisfy `fair_premium * abs(n_recv - n_send)`. Left uncapped,
+  # the owner's nearest first - the most valuable pick there is, since disc(1) = 1
+  # - ends up in essentially every enumerated package. Measured: 400 of 400.
+  if (is.finite(max_picks_send) || is.finite(max_picks_recv)) {
+    n_picks <- function(x) vapply(x, function(i) sum(grepl("^PICK_", i)), integer(1))
+    deals <- deals[n_picks(send_ids) <= max_picks_send &
+                   n_picks(recv_ids) <= max_picks_recv]
+    if (nrow(deals) == 0) return(empty)
+  }
+
   # hard floor: refuse deals that sacrifice too much future value
   deals <- deals[future_capital_delta >= min_future_delta]
   # uniform fairness ceiling on top of the per-shape bands
@@ -1141,16 +1242,19 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   # `core_n` per core preserves every distinct idea while cutting the eval budget
   # by an order of magnitude; `screen_per_opp` cannot do this because it caps at
   # the wrong granularity (a team, not an idea).
+  # market value for every tradeable asset on either side, picks included. Used
+  # by the core cap below AND by the stratified eval allocator, so it is built
+  # once here rather than inside either.
+  cur_all <- c(stats::setNames(inc$cur_value, as.character(inc$player_id)),
+               stats::setNames(mine_all$cur_value, as.character(mine_all$player_id)))
+  cur_all <- cur_all[!duplicated(names(cur_all))]
+  top_id <- function(ids) {
+    v <- cur_all[ids]
+    v[is.na(v)] <- 0
+    ids[which.max(v)]
+  }
+
   if (is.finite(core_n) && core_n > 0L && nrow(deals) > 1) {
-    # market value for every tradeable asset on either side, picks included
-    cur_all <- c(stats::setNames(inc$cur_value, as.character(inc$player_id)),
-                 stats::setNames(mine_all$cur_value, as.character(mine_all$player_id)))
-    cur_all <- cur_all[!duplicated(names(cur_all))]
-    top_id <- function(ids) {
-      v <- cur_all[ids]
-      v[is.na(v)] <- 0
-      ids[which.max(v)]
-    }
     deals[, core := paste(opponent,
                           vapply(send_ids, top_id, character(1)),
                           vapply(recv_ids, top_id, character(1)), sep = "#")]
@@ -1210,12 +1314,34 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     return(as.data.frame(deals))
   }
 
-  # safety cap so a mis-set band cannot silently launch a multi-day run
+  # safety cap so a mis-set band cannot silently launch a multi-day run.
+  #
+  # STRATIFIED, not top-of-list. Truncating on raw screen order is deterministic
+  # starvation, not bad luck: `screen` is led by `add_gain`, which SUMS per-player
+  # upgrades, so a 3-piece package outranks every 1-for-1 and the single opponent
+  # holding the biggest upgrade takes the whole budget. Measured on a 12-team
+  # whole-roster board with eval_max = 400: 350/400 were one shape, 229/400 one
+  # opponent, 400/400 carried the owner's own next 1st, and 5 of 33 assets ever
+  # appeared - while `screen_per_shape` was set, because that guarantee is only
+  # applied when screen_n/screen_per_opp are finite and this script leaves both Inf.
+  #
+  # Instead fill the budget ROUND-ROBIN across strata, best-by-screen within each,
+  # so every (opponent x shape x headline asset x uses-a-pick) combination that
+  # produced a candidate gets priced before any combination gets a second look.
   if (is.finite(eval_max) && nrow(deals) > eval_max) {
+    n_before_cap <- nrow(deals)
+    strata <- .ffs_eval_strata(deals, top_id)
+    deals <- deals[.ffs_allocate_budget(strata, deals$screen, eval_max)]
     warning(sprintf(
-      "%d deals passed the band; capping the exact evaluation at eval_max = %d (by screen order). Tighten fair_band or raise eval_max.",
-      nrow(deals), as.integer(eval_max)), call. = FALSE)
-    deals <- deals[seq_len(eval_max)]
+      "%d deals passed the band; capping the exact evaluation at eval_max = %d (stratified over %d strata, not top-of-screen). Tighten fair_band or raise eval_max.",
+      n_before_cap, as.integer(eval_max), data.table::uniqueN(strata)), call. = FALSE)
+    if (verbose) {
+      sh <- paste0(lengths(deals$send_ids), "-for-", lengths(deals$recv_ids))
+      message("  budget spread: ", data.table::uniqueN(deals$opponent), " opponents, ",
+              data.table::uniqueN(sh), " shapes, ",
+              data.table::uniqueN(vapply(deals$send_ids, top_id, character(1))),
+              " headline assets")
+    }
   }
 
   if (verbose) message("exact-evaluating ", nrow(deals), " deals",
@@ -1365,7 +1491,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   # odds vetoing only a large drop.
   if (score_mode == "rate") {
     deals <- ffs_deal_scores(
-      deals, dyn, my_haircut = my_haircut, playoff_value = playoff_value,
+      deals, dyn_all, my_haircut = my_haircut, playoff_value = playoff_value,
       future_certainty = future_certainty, future_reliability = future_reliability,
       pick_reliability = pick_reliability, pos_lookup = pos_by_id2,
       fair_premium = fair_premium, opp_edge_tol = opp_edge_tol,
@@ -1374,7 +1500,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
       traj_weight = traj_weight)
   } else {
     # legacy z-blend: deal-set dependent, kept for reproducing older boards
-    adj_fn <- .ffs_adj_future_fn(dyn, future_reliability, pick_reliability,
+    adj_fn <- .ffs_adj_future_fn(dyn_all, future_reliability, pick_reliability,
                                  future_certainty, pos_lookup = pos_by_id2)
     deals[, adj_future_capital := vapply(seq_len(.N), function(i)
       adj_fn(send_ids[[i]], recv_ids[[i]], future_capital_delta[i]), numeric(1))]
@@ -1413,6 +1539,26 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 
   data.table::setorder(deals, -score, -my_win_delta)
 
+  # Pareto rank on the two objectives that are actually being traded off, computed
+  # on the FULL evaluated set - before top_n truncates by score. `score` collapses
+  # win-now and future at one exchange rate (playoff_value / my_haircut); the
+  # frontier is the weight-free view, i.e. which deals could be optimal under ANY
+  # weighting. Computing it downstream on the returned board would only ever give
+  # the frontier of the top-score slice, which is not the same set.
+  deals[, front := ffs_pareto_front(
+    data.frame(my_playoff_delta = my_playoff_delta,
+               adj_future_capital = adj_future_capital))]
+  if (verbose) {
+    sh <- paste0(lengths(deals$send_ids), "-for-", lengths(deals$recv_ids))
+    message("evaluated ", nrow(deals), " deals | ",
+            data.table::uniqueN(deals$opponent), " opponents | shapes: ",
+            paste(sprintf("%s x%d", names(table(sh)), table(sh)), collapse = ", "))
+    message("  ", sum(deals$front == 1L), " on the Pareto frontier | ",
+            sum(deals$gettable %in% TRUE), " gettable | ",
+            sum(vapply(deals$send_ids, function(x) any(grepl("^PICK_", x)), logical(1))),
+            " send a pick")
+  }
+
   # dedup: collapse deals that differ only by throw-in filler or draft-pick YEAR
   # (same pick slot) to the best-scoring representative, so near-identical ideas
   # do not flood the board. Pick ids "PICK_<season>_<round>_<of>" -> "PICK_R<round>_<of>".
@@ -1430,7 +1576,7 @@ ffs_build_trades <- function(base_simulation, franchise_id,
     # itself ("+2% edge" is a 12% overpay when fair_premium is 0.10). Report both.
     prem, fair_gap,
     my_edge, opp_edge, opp_value_gain, opp_surplus, opp_score, gettable, grade,
-    backfill, opp_drop, send_ids, recv_ids)]
+    front, backfill, opp_drop, send_ids, recv_ids)]
   return(as.data.frame(out))
 }
 

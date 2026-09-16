@@ -15,7 +15,7 @@ ffs_build_trades(
   max_opp_drop = 0.15,
   winwin_bonus = 0,
   uneven_require_winwin = FALSE,
-  fair_premium = 0.05,
+  fair_premium = 0.1,
   fair_band = NULL,
   opp_edge_tol = 0.05,
   opp_mode = c("market", "mirror"),
@@ -38,6 +38,8 @@ ffs_build_trades(
   must_send = NULL,
   picks = NULL,
   pick_for_pick = FALSE,
+  max_picks_send = Inf,
+  max_picks_recv = Inf,
   require_positive_target = TRUE,
   even_band = value_band,
   uneven_gap = NULL,
@@ -113,9 +115,22 @@ drop deals that are not \code{win_win} (default \code{FALSE}). Prefer \code{winw
 for a soft lean; this is the strict version.}
 
 \item{fair_premium}{the overpay a multi-player package must carry per extra
-piece, as a fraction of the single side's value (default \code{0.05}). A premium
-player is worth more than a package of equal summed value, so a 1-for-2 is
-\emph{fair} at a +5pct gap, not at 0. See \code{\link[=.ffs_market_edge]{.ffs_market_edge()}}.}
+piece, as a fraction of the single side's value (default \code{0.10}). A premium
+player is worth more than a package of equal summed value, so a 2-for-1 is
+\emph{fair} at a +10pct gap, not at 0. See \code{\link[=.ffs_market_edge]{.ffs_market_edge()}}.
+
+\strong{0.10 is the settled figure}, not a guess: it is what the production
+boards have been built at. It used to default to 0.05 here while
+\code{trade_chain_eval.R} hardcoded 0.10 to match those boards, and
+\code{confirm_trade_board.R} / \code{trade_intel.R} passed nothing at all and so
+silently re-scored at 0.05 - meaning a board and its own confirmation
+judged \code{gettable} by different standards. One default, inherited
+everywhere, is what stops that recurring.
+
+Note it only enters through \code{fair_gap = fair_premium * abs(n_recv - n_send)}, so it is inert on even shapes (1-for-1, 2-for-2) and moves only
+uneven ones. It never touches your own \code{score}; it moves \code{my_edge},
+\code{opp_edge}, \code{opp_surplus} and \code{gettable} - and, because \code{fair_band} is
+applied at enumeration, it also changes which deals are generated at all.}
 
 \item{fair_band}{optional \code{c(lo, hi)} band on \code{my_edge} (the deal's gap
 relative to the shape-fair price) applied at enumeration, e.g. \code{c(-0.05, 0.05)}. One interpretable parameter in place of \code{even_band}/\code{uneven_gap}:
@@ -193,6 +208,14 @@ identically 0 - and their pricing leans entirely on projecting a future
 draft slot from this season's simulated standings, so they tend to crowd a
 contender's board with arbitrage rather than actionable moves. Player-for-
 picks and picks-for-player deals are unaffected either way.}
+
+\item{max_picks_send, max_picks_recv}{most draft picks allowed in the sent /
+received package (default \code{Inf}). Picks are exempt from \code{min_piece_value}
+and are added after \code{min_recv_value} is applied, and a pick moves no bodies
+and adds no win-gain, so it is always the cheapest way to satisfy the
+shape-fair overpay band - left uncapped, the nearest first-rounder appears
+in nearly every enumerated package. Set to \code{1} (or \code{0}) to force the search
+toward player-for-player deals.}
 
 \item{require_positive_target}{when \code{TRUE} (default) only players who add wins
 on their own (\code{value_to_you > 0}) can be received. Set \code{FALSE} for an

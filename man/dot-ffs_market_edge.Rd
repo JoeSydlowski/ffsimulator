@@ -4,14 +4,14 @@
 \alias{.ffs_market_edge}
 \title{Market edge on a trade, relative to the shape-fair price}
 \usage{
-.ffs_market_edge(send_value, recv_value, n_send, n_recv, fair_premium = 0.05)
+.ffs_market_edge(send_value, recv_value, n_send, n_recv, fair_premium = 0.1)
 }
 \arguments{
 \item{send_value, recv_value}{summed current market (dynasty) value each way}
 
 \item{n_send, n_recv}{number of pieces each way}
 
-\item{fair_premium}{required overpay per extra piece (default 0.05)}
+\item{fair_premium}{required overpay per extra piece (default 0.10)}
 }
 \value{
 a data.table with \code{prem}, \code{fair_gap}, \code{single_value}, \code{my_edge}, \code{opp_edge}

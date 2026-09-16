@@ -14,7 +14,7 @@ ffs_deal_scores(
   pick_reliability = 0.55,
   format = "superflex",
   pos_lookup = NULL,
-  fair_premium = 0.05,
+  fair_premium = 0.1,
   opp_edge_tol = 0.05,
   max_opp_drop = 0.15,
   opp_mode = c("market", "mirror"),

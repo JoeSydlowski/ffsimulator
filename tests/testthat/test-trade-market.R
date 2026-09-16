@@ -37,13 +37,15 @@ test_that("the market opponent model ignores playoff dings but vetoes a gutting"
     my_playoff_delta = 0.04, opp_playoff_delta = opp_pl)
 
   # a routine deal at the fair price that costs them 4% of playoff odds: they
-  # take it - this is the case the old mirror model wrongly refused
-  ok <- ffs_deal_scores(mk(-0.04), dyn, max_opp_drop = 0.15)
+  # take it - this is the case the old mirror model wrongly refused.
+  # fair_premium is pinned to the 5% this fixture was built for (8000 * 1.05 =
+  # 8400), so the test measures the playoff veto and not the premium default.
+  ok <- ffs_deal_scores(mk(-0.04), dyn, max_opp_drop = 0.15, fair_premium = 0.05)
   expect_true(ok$gettable)
   expect_equal(ok$my_edge, 0, tolerance = 1e-8)
 
   # same deal that guts them (-20%): vetoed
-  bad <- ffs_deal_scores(mk(-0.20), dyn, max_opp_drop = 0.15)
+  bad <- ffs_deal_scores(mk(-0.20), dyn, max_opp_drop = 0.15, fair_premium = 0.05)
   expect_false(bad$gettable)
 
   # priced well over fair: refused on value, whatever it does to their odds
@@ -52,6 +54,23 @@ test_that("the market opponent model ignores playoff dings but vetoes a gutting"
     send_value = 6000, recv_value = 8200, future_capital_delta = 0,
     my_playoff_delta = 0.04, opp_playoff_delta = 0.02)
   expect_false(ffs_deal_scores(rich, dyn)$gettable)
+})
+
+test_that("every entry point shares one fair_premium default", {
+  # 0.10 is the settled overpay the production boards are built at. It used to
+  # default to 0.05 in the package while trade_chain_eval.R hardcoded 0.10 and
+  # confirm_trade_board.R passed nothing at all, so a board and its own
+  # confirmation graded `gettable` on different standards without saying so.
+  expect_equal(eval(formals(ffs_deal_scores)$fair_premium), 0.10)
+  expect_equal(eval(formals(ffs_build_trades)$fair_premium), 0.10)
+  expect_equal(eval(formals(.ffs_market_edge)$fair_premium), 0.10)
+  expect_equal(eval(formals(.ffs_band_ok)$fair_premium), 0.10)
+
+  # and it is inert on even shapes, which is why it can be changed without
+  # touching a 1-for-1 or 2-for-2 board
+  expect_equal(.ffs_market_edge(1000, 1000, 2, 2)$fair_gap, 0)
+  expect_equal(.ffs_market_edge(1000, 1000, 1, 1)$fair_gap, 0)
+  expect_equal(.ffs_market_edge(1000, 1100, 2, 1)$fair_gap, 0.10)
 })
 
 test_that("opp_surplus is measured against the fair price, not the raw value gap", {
@@ -144,4 +163,35 @@ test_that("ffs_build_trades enumerates, scores and gates end to end", {
   expect_true(all(b$opp_edge >= -0.05 - 1e-9))
   # opp_score is the surplus priced in playoff points
   expect_equal(b$opp_score, b$opp_surplus / 68, tolerance = 1e-8)
+})
+
+test_that("a draft pick is move-discounted like a player when it is priced", {
+  # A pick's cur_value comes from the same market scrape as a player's, so only
+  # its projected MOVE is speculative. The near pick appreciates none (disc(1)=1),
+  # so sending it should cost its full market value - not 0.55 of it.
+  players <- data.frame(
+    player_id = c("p1", "p2"), pos = c("WR", "RB"),
+    cur_value = c(4000, 4000), next_value_mean = c(4000, 4000))
+  pick <- data.frame(
+    player_id = "PICK_2027_1_x", pos = "PICK",
+    cur_value = 3467, next_value_mean = 3467)
+  withpick <- rbind(players, pick)
+
+  # send the pick, receive nothing: future_capital_delta is -next(pick)
+  f_new <- .ffs_adj_future_fn(withpick, format = "1qb")
+  expect_equal(f_new("PICK_2027_1_x", character(0), -3467), -3467)
+
+  # legacy path (pick absent from the table) level-discounts it, unchanged
+  f_old <- .ffs_adj_future_fn(players, format = "1qb")
+  expect_equal(f_old("PICK_2027_1_x", character(0), -3467), 0.55 * -3467)
+
+  # a far pick still has its MOVE discounted, keeping its known level
+  far <- data.frame(player_id = "PICK_2029_1_x", pos = "PICK",
+                    cur_value = 2189, next_value_mean = 2487)
+  f_far <- .ffs_adj_future_fn(rbind(players, far), format = "1qb")
+  expect_equal(f_far(character(0), "PICK_2029_1_x", 2487),
+               2189 + 0.55 * (2487 - 2189))
+
+  # players are untouched by the change
+  expect_equal(f_new(character(0), "p1", 4000), 4000)
 })

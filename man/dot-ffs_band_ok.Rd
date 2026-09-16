@@ -9,7 +9,7 @@
   recv_value,
   n_send,
   n_recv,
-  fair_premium = 0.05,
+  fair_premium = 0.1,
   fair_band = NULL,
   even_band = 0.15,
   uneven_gap = NULL,
