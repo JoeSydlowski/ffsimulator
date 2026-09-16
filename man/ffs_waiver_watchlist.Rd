@@ -15,8 +15,8 @@ ffs_waiver_watchlist(
   pos_filter = c("QB", "RB", "WR", "TE"),
   my_franchise = NULL,
   include_unranked = TRUE,
-  unranked_min_snap = 0.35,
-  unranked_min_xfp = 5
+  unranked_min_snap = 0,
+  unranked_min_xfp = 0
 )
 }
 \arguments{

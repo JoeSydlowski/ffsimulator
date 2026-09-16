@@ -338,6 +338,7 @@ td.sig{text-align:left; width:104px}
 .delta.up{color:var(--up)} .delta.down{color:var(--down)}
 .dim{color:var(--ink-3)}
 .empty{padding:28px 14px; color:var(--ink-3); text-align:center}
+.visually-hidden{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
 
 .legend{margin-top:22px; border-top:1px solid var(--line); padding-top:16px}
 .legend h2{
@@ -354,6 +355,69 @@ td.sig{text-align:left; width:104px}
   white-space:nowrap; font-weight:500;
 }
 .legend dd{margin:0; font-size:12.5px; color:var(--ink-2)}
+/* --- depth views ------------------------------------------------------- */
+.views{margin-left:auto; align-self:center}
+.teamsel{
+  font:inherit; font-size:13px; padding:5px 10px; border-radius:8px;
+  border:1px solid var(--line-strong); background:var(--surface); color:var(--ink);
+}
+.posblock{margin-bottom:20px}
+.posblock h3{
+  font-family:Archivo,sans-serif; font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ink-3); margin:0 0 6px; padding-left:2px;
+}
+.dhead,.drow{
+  display:grid; grid-template-columns:minmax(150px,1.6fr) 104px repeat(4,62px);
+  gap:8px; align-items:center; padding:7px 10px;
+}
+.dhead{
+  font-family:Archivo,sans-serif; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-3); padding-bottom:4px;
+}
+.dhead span:not(:first-child),.drow span:not(:first-child){text-align:right}
+.drow{border-top:1px solid var(--line); font-size:13px}
+.drow .num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+.drow.is-fa{background:var(--accent-soft)}
+.drow.is-mine{background:var(--mine-soft)}
+.drow .who{display:flex; align-items:baseline; gap:7px; min-width:0}
+.drow .who b{font-weight:500}
+.drow .tag{
+  font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.04em;
+  text-transform:uppercase; padding:1px 5px; border-radius:3px; white-space:nowrap;
+}
+.tag.fa{color:var(--accent-ink); border:1px solid var(--accent)}
+.tag.own{color:var(--ink-3); border:1px solid var(--line-strong)}
+.tag.mine{color:var(--mine); border:1px solid var(--mine)}
+.share{display:flex; align-items:center; gap:6px}
+.share .track{flex:1; height:5px; border-radius:3px; background:var(--surface-2); overflow:hidden}
+.share .fill{display:block; height:100%; background:var(--bar); border-right:2px solid var(--accent)}
+
+.gridwrap{overflow-x:auto}
+.grid{display:grid; gap:6px; min-width:760px}
+.gridrow{display:grid; gap:6px; align-items:stretch}
+.gridhead{
+  font-family:Archivo,sans-serif; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-3); padding:0 8px 2px; align-self:end;
+}
+.owncell{
+  display:flex; align-items:center; font-size:12.5px; font-weight:600;
+  padding:8px; border-radius:6px; background:var(--surface-2);
+}
+.owncell.mine{background:var(--mine-soft); color:var(--mine)}
+.owncell.fa{background:var(--accent-soft); color:var(--accent-ink)}
+.slot{
+  background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:6px 8px; min-height:46px;
+}
+.slot.empty-slot{background:transparent; border-style:dashed; opacity:.5}
+.slot.fa{background:var(--accent-soft); border-color:var(--accent)}
+.slot.mine{background:var(--mine-soft); border-color:var(--mine)}
+.slot .nm{display:block; font-size:12.5px; font-weight:500; line-height:1.25}
+.slot .mt{
+  display:block; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  color:var(--ink-3); margin-top:2px;
+}
+.slot .nm.un{font-style:italic}
 @media (max-width:520px){
   h1{font-size:19px}
   .wrap{padding-inline:12px}
@@ -374,6 +438,11 @@ body_bits <- paste0(
 
   <div class="leaguebar">
     <div class="facts" id="facts"></div>
+    <div class="seg views" id="views" role="group" aria-label="View">
+      <button type="button" data-view="board" aria-pressed="true">Board</button>
+      <button type="button" data-view="nfl" aria-pressed="false">NFL depth</button>
+      <button type="button" data-view="league" aria-pressed="false">League depth</button>
+    </div>
   </div>
 
   <div class="controls">
@@ -383,11 +452,13 @@ body_bits <- paste0(
       <button type="button" data-scope="mine" aria-pressed="false">My roster</button>
       <button type="button" data-scope="all" aria-pressed="false">Everyone</button>
     </div>
+    <label class="visually-hidden" for="team">NFL team</label>
+    <select class="teamsel" id="team" hidden></select>
     <div class="chips" id="poschips" role="group" aria-label="Position"></div>
     <input id="q" type="search" placeholder="Search player or team" autocomplete="off">
   </div>
 
-  <div class="tablewrap">
+  <div class="tablewrap" id="boardwrap">
     <table id="tbl">
       <thead><tr id="hrow"></tr></thead>
       <tbody id="tbody"></tbody>
@@ -395,10 +466,14 @@ body_bits <- paste0(
     <div class="empty" id="empty" hidden>Nothing matches those filters.</div>
   </div>
 
+  <div id="nflwrap" hidden></div>
+  <div id="leaguewrap" class="gridwrap" hidden></div>
+
   <section class="legend">
     <h2>What the columns mean</h2>
     <dl>
-      <div><dt>Signal</dt><dd>Average of the percentile ranks below, taken <em>within position</em> against the free agents &mdash; your own players are scored on that same scale, so the default view sorts a claim and the man you&rsquo;d cut in one list. An opening sort, not a projection.</dd></div>
+      <div><dt>Signal</dt><dd>Average of the percentile ranks below, taken <em>within position</em> across everyone in the league, rostered and free alike &mdash; so a claim and the man you&rsquo;d cut sort in one list. An opening sort, not a projection.</dd></div>
+      <div><dt>The three views</dt><dd><b>Board</b> is the sortable table. <b>NFL depth</b> takes one real team and stacks its players by snap share, so a backfield reads as a backfield. <b>League depth</b> lays out every franchise&rsquo;s stack at one position in rest-of-season rank order, with the wire on the bottom row in green.</dd></div>
       <div><dt>mine / unranked</dt><dd><span class="tag-mine">mine</span> is on your roster. <span class="unranked">unranked</span> means FantasyPros lists no rest-of-season rank for him at all &mdash; he is here because his snaps or the Sleeper market say he is playing.</dd></div>
       <div><dt>Rank</dt><dd>FantasyPros rest-of-season consensus, with the week&rsquo;s movement.</dd></div>
       <div><dt>Own%</dt><dd>Share of all leagues that roster him. High and still free here is the classic miss.</dd></div>
@@ -417,7 +492,8 @@ body_bits <- paste0(
 (function(){
   var D = JSON.parse(document.getElementById("data").textContent);
   var meta = D.meta, leagues = D.leagues;
-  var state = {league:0, scope:"compare", pos:"ALL", q:"", sort:"signal", dir:-1};
+  var state = {league:0, view:"board", scope:"compare", pos:"ALL", team:null,
+               q:"", sort:"signal", dir:-1};
 
   document.getElementById("prov").innerHTML =
     "week <b>" + meta.week + "</b> &middot; " + meta.season +
@@ -508,7 +584,140 @@ body_bits <- paste0(
     return out;
   }
 
+  // ---- NFL depth: one team, grouped by position, ordered by the snaps -------
+  function drawNfl(){
+    var L = leagues[state.league];
+    var order = ["QB","RB","WR","TE"];
+    var rows = L.rows.filter(function(r){
+      if(r.team !== state.team) return false;
+      if(state.pos!=="ALL" && r.pos!==state.pos) return false;
+      if(state.q && (r.player+" "+(r.team||"")).toLowerCase().indexOf(state.q)===-1) return false;
+      return true;
+    });
+    var by = {};
+    rows.forEach(function(r){ (by[r.pos] = by[r.pos] || []).push(r); });
+    var html = order.filter(function(p){ return by[p] && by[p].length; }).map(function(p){
+      var list = by[p].sort(function(a,b){
+        var as = a.snap_pct, bs = b.snap_pct;
+        if(as==null && bs==null) return (b.proj||0)-(a.proj||0);
+        if(as==null) return 1;
+        if(bs==null) return -1;
+        if(bs!==as) return bs-as;
+        return (b.proj||0)-(a.proj||0);
+      });
+      var body = list.map(function(r){
+        var tag = r.mine ? "<span class=\\"tag mine\\">mine</span>" :
+          (r.status==="free agent" ? "<span class=\\"tag fa\\">free</span>" :
+           "<span class=\\"tag own\\">"+esc(r.rostered_by)+"</span>");
+        var sp = r.snap_pct==null ? "<span class=\\"dim\\">&mdash;</span>" :
+          "<span class=\\"share\\"><span class=\\"track\\"><span class=\\"fill\\" style=\\"width:"+
+          Math.max(2,Math.round(r.snap_pct*100))+"%\\"></span></span><span class=\\"num\\">"+
+          Math.round(r.snap_pct*100)+"</span></span>";
+        var n = function(v,d){ return v==null ? "<span class=\\"dim\\">&mdash;</span>" : v.toFixed(d); };
+        var rank = r.pos_rank==null ? "<span class=\\"dim\\">&mdash;</span>" : (r.pos+r.pos_rank);
+        return "<div class=\\"drow"+(r.mine?" is-mine":(r.status==="free agent"?" is-fa":""))+"\\">"+
+          "<span class=\\"who\\"><b>"+esc(r.player)+"</b>"+tag+"</span>"+
+          "<span>"+sp+"</span>"+
+          "<span class=\\"num\\">"+n(r.xfp_g,1)+"</span>"+
+          "<span class=\\"num\\">"+n(r.proj,1)+"</span>"+
+          "<span class=\\"num\\">"+rank+"</span>"+
+          "<span class=\\"num\\">"+n(r.roster_pct,1)+"</span></div>";
+      }).join("");
+      return "<div class=\\"posblock\\"><h3>"+p+"</h3>"+
+        "<div class=\\"tablewrap\\"><div class=\\"dhead\\"><span>Player</span><span>Snap%</span>"+
+        "<span>xFP/g</span><span>Proj</span><span>Rank</span><span>Own%</span></div>"+
+        body+"</div></div>";
+    }).join("");
+    document.getElementById("nflwrap").innerHTML = html ||
+      "<div class=\\"empty\\">No players for that team and position.</div>";
+  }
+
+  // ---- League depth: each franchise stack at one position ----------------
+  function drawLeague(){
+    var L = leagues[state.league];
+    var pos = state.pos==="ALL" ? "RB" : state.pos;
+    // depth order is the rest-of-season consensus, which discriminates among
+    // starters far better than the blended signal; unranked players fall to the
+    // back of the stack, ordered by what they project for this week
+    var bySig = function(a,b){
+      var ar = a.pos_rank, br = b.pos_rank;
+      if(ar!=null && br!=null && ar!==br) return ar-br;
+      if(ar!=null && br==null) return -1;
+      if(ar==null && br!=null) return 1;
+      return (b.proj==null?-1:b.proj) - (a.proj==null?-1:a.proj);
+    };
+    var mine = null, teams = {};
+    L.rows.forEach(function(r){
+      if(r.pos!==pos || r.status!=="rostered") return;
+      (teams[r.rostered_by] = teams[r.rostered_by] || []).push(r);
+      if(r.mine) mine = r.rostered_by;
+    });
+    var names = Object.keys(teams).sort(function(a,b){
+      if(a===mine) return -1;
+      if(b===mine) return 1;
+      return teams[b].length - teams[a].length;
+    });
+    var fas = L.rows.filter(function(r){ return r.pos===pos && r.status==="free agent"; }).sort(bySig);
+    var cols = Math.min(8, Math.max.apply(null, names.map(function(n){ return teams[n].length; })
+                 .concat([Math.min(fas.length,6), 1])));
+    var tmpl = "grid-template-columns:150px repeat("+cols+",minmax(118px,1fr))";
+
+    var slot = function(r, kind){
+      if(!r) return "<div class=\\"slot empty-slot\\"></div>";
+      var meta = [r.pos_rank!=null ? (r.pos+r.pos_rank) : "unranked",
+                  r.proj!=null ? r.proj.toFixed(1) : null].filter(Boolean).join(" &middot; ");
+      return "<div class=\\"slot "+kind+"\\"><span class=\\"nm"+(r.ranked===false?" un":"")+"\\">"+
+        esc(r.player)+"</span><span class=\\"mt\\">"+meta+"</span></div>";
+    };
+    var head = "<div class=\\"gridrow\\" style=\\""+tmpl+"\\"><span class=\\"gridhead\\">"+
+      esc(L.my_team? "Franchise":"Franchise")+"</span>"+
+      Array.apply(null,{length:cols}).map(function(_,i){
+        return "<span class=\\"gridhead\\">"+pos+(i+1)+"</span>"; }).join("")+"</div>";
+
+    var body = names.map(function(n){
+      var list = teams[n].slice().sort(bySig);
+      var isMine = n===mine;
+      return "<div class=\\"gridrow\\" style=\\""+tmpl+"\\">"+
+        "<div class=\\"owncell"+(isMine?" mine":"")+"\\">"+esc(n)+"</div>"+
+        Array.apply(null,{length:cols}).map(function(_,i){
+          return slot(list[i], isMine?"mine":""); }).join("")+"</div>";
+    }).join("");
+
+    var faRow = "<div class=\\"gridrow\\" style=\\""+tmpl+"\\">"+
+      "<div class=\\"owncell fa\\">Free agents</div>"+
+      Array.apply(null,{length:cols}).map(function(_,i){
+        return slot(fas[i], "fa"); }).join("")+"</div>";
+
+    document.getElementById("leaguewrap").innerHTML =
+      "<div class=\\"grid\\">"+head+body+faRow+"</div>";
+  }
+
   function draw(){
+    var L = leagues[state.league];
+    // controls that only make sense in one view
+    document.getElementById("scope").hidden = state.view!=="board";
+    document.getElementById("team").hidden = state.view!=="nfl";
+    document.getElementById("q").hidden = state.view==="league";
+    document.getElementById("boardwrap").hidden = state.view!=="board";
+    document.getElementById("nflwrap").hidden = state.view!=="nfl";
+    document.getElementById("leaguewrap").hidden = state.view!=="league";
+    if(state.view==="nfl"){ drawNfl(); }
+    if(state.view==="league"){ drawLeague(); }
+    if(state.view!=="board"){ drawFacts(); return; }
+    drawBoard();
+  }
+
+  function drawFacts(){
+    var L = leagues[state.league];
+    document.getElementById("facts").innerHTML =
+      "<b>"+esc(L.my_team||"&mdash;")+"</b> <span class=\\"dot\\">/</span> " +
+      esc(L.type)+" <span class=\\"dot\\">&middot;</span> "+esc(L.qb)+
+      " <span class=\\"dot\\">&middot;</span> "+L.ppr+" ppr"+
+      " <span class=\\"dot\\">&middot;</span> "+L.teams+" teams"+
+      " <span class=\\"dot\\">&middot;</span> <b>"+L.n_fa+"</b> free agents";
+  }
+
+  function drawBoard(){
     var L = leagues[state.league];
     document.getElementById("facts").innerHTML =
       "<b>"+esc(L.my_team||"&mdash;")+"</b> <span class=\\"dot\\">/</span> " +
@@ -555,6 +764,22 @@ body_bits <- paste0(
     var b = e.target.closest(".chip"); if(!b) return;
     state.pos = b.dataset.pos;
     [].forEach.call(chips.children, function(c){ c.setAttribute("aria-pressed", c===b); });
+    draw();
+  });
+
+  var teamsel = document.getElementById("team");
+  var TEAMS = leagues[0].rows.reduce(function(a,r){
+    if(r.team && a.indexOf(r.team)===-1) a.push(r.team); return a; }, []).sort();
+  teamsel.innerHTML = TEAMS.map(function(t){
+    return "<option value=\\""+t+"\\">"+t+"</option>"; }).join("");
+  state.team = TEAMS[0];
+  teamsel.value = state.team;
+  teamsel.addEventListener("change", function(){ state.team = teamsel.value; draw(); });
+
+  document.getElementById("views").addEventListener("click", function(e){
+    var b = e.target.closest("button[data-view]"); if(!b) return;
+    state.view = b.dataset.view;
+    [].forEach.call(this.children, function(c){ c.setAttribute("aria-pressed", c===b); });
     draw();
   });
 

@@ -297,8 +297,8 @@ ffs_waiver_watchlist <- function(conn,
                                  pos_filter = c("QB", "RB", "WR", "TE"),
                                  my_franchise = NULL,
                                  include_unranked = TRUE,
-                                 unranked_min_snap = 0.35,
-                                 unranked_min_xfp = 5) {
+                                 unranked_min_snap = 0,
+                                 unranked_min_xfp = 0) {
   fantasypros_id <- pos <- ecr <- status <- mine <- signal <- NULL
   rostered_by <- franchise_id <- player <- team <- ranked <- pkey <- NULL
 
@@ -322,12 +322,25 @@ ffs_waiver_watchlist <- function(conn,
     extra <- list()
     if (!is.null(usage)) {
       u <- data.table::as.data.table(usage)
+      # anyone who has taken a snap this season, not just the ones over a
+      # threshold - a 16%-snap back-up is exactly who a depth chart is for
+      # strictly greater than the threshold, so the zero defaults mean "has
+      # played", not "exists in the id map"
       u <- u[!is.na(fantasypros_id) & pos %in% pos_filter &
                !as.character(fantasypros_id) %in% r$fantasypros_id &
-               (get("snap_pct_recent") >= unranked_min_snap |
-                  get("exp_pts_recent") >= unranked_min_xfp)]
+               (data.table::fcoalesce(as.numeric(get("games_recent")), 0) >= 1 |
+                  data.table::fcoalesce(get("snap_pct_recent"), 0) > unranked_min_snap |
+                  data.table::fcoalesce(get("exp_pts_recent"), 0) > unranked_min_xfp)]
       if (nrow(u)) extra[["usage"]] <- u[, list(
         fantasypros_id = as.character(fantasypros_id), player, pos, team)]
+    }
+    if (!is.null(values)) {
+      vv <- data.table::as.data.table(values)
+      vv <- vv[!is.na(fantasypros_id) & pos %in% pos_filter &
+                 !as.character(fantasypros_id) %in% r$fantasypros_id]
+      if (nrow(vv)) extra[["values"]] <- vv[, list(
+        fantasypros_id = as.character(fantasypros_id),
+        player = get("player_name"), pos, team = as.character(team))]
     }
     tr_add <- trending[["add"]]
     if (!is.null(tr_add) && NROW(tr_add) && "player" %in% names(tr_add)) {
@@ -435,13 +448,13 @@ ffs_waiver_watchlist <- function(conn,
     out <- .ffs_attach(out, pr, "proj")
   }
 
-  # Every player is scored against the FREE AGENT distribution at his own
-  # position, rostered players included: the question a waiver board answers is
-  # "where would this guy sit if he were available", which is what makes a
-  # rostered player and a claim comparable in one sorted list.
+  # Percentile within position over EVERY player in the league, rostered and
+  # free alike. Scoring against the free agents alone reads better in principle
+  # ("where would he sit if he were available") but saturates: every startable
+  # rostered player beats the whole wire and lands on 0.98, so a roster cannot
+  # be ranked against itself and a depth chart comes out in ties.
   comps <- intersect(c("ecr", "proj", "xfp_g", "snap_pct", "roster_pct", "trend_add"),
                      names(out))
-  fa <- out$status == "free agent"
   parts <- lapply(comps, function(cc) {
     v <- rep(NA_real_, nrow(out))
     x <- as.numeric(out[[cc]])
@@ -450,10 +463,9 @@ ffs_waiver_watchlist <- function(conn,
     if (cc == "trend_add") x <- data.table::fifelse(is.na(x), 0, x)
     if (cc == "ecr") x <- -x           # a lower consensus rank is a better one
     for (p in unique(out$pos)) {
-      ref <- stats::na.omit(x[fa & out$pos == p])
       idx <- which(out$pos == p & !is.na(x))
-      if (!length(ref) || !length(idx)) next
-      v[idx] <- vapply(x[idx], function(xi) mean(ref <= xi), numeric(1))
+      if (!length(idx)) next
+      v[idx] <- data.table::frank(x[idx], ties.method = "average") / length(idx)
     }
     v
   })
