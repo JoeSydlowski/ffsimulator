@@ -59,6 +59,10 @@ projections <- tryCatch(
                           pos_filter = config$pos_filter),
   error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
 
+message("fantasypros weekly rankings ...")
+weekly <- tryCatch(ffs_latest_rankings(type = "week"),
+                   error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
+
 message("sleeper player file (injuries + NFL depth chart) ...")
 sleeper_players <- tryCatch(ffs_sleeper_players(pos_filter = config$pos_filter),
                             error = function(e) {
@@ -123,6 +127,7 @@ build_league <- function(league_id) {
     values = fc_for(if (superflex) 2 else 1, teams, ppr),
     trending = trending,
     projections = projections,
+    weekly = weekly,
     sleeper_players = sleeper_players,
     lineups = tryCatch(ffs_sleeper_lineups(league_id, week = week),
                        error = function(e) NULL),
@@ -133,6 +138,7 @@ build_league <- function(league_id) {
   list(
     id = league_id,
     name = lname,
+    slots = slots[!slots %in% c("BN", "IR", "TAXI")],
     type = ltype,
     qb = if (superflex) "superflex" else "1QB",
     ppr = ppr,
@@ -162,7 +168,7 @@ fwrite(rbindlist(lapply(leagues, function(l)
 # columns the page shows, in order; everything else stays in the CSV
 show <- c("player", "pos", "team", "bye", "status", "rostered_by", "mine", "ranked", "signal",
           "pos_rank", "ecr", "ecr_delta", "roster_pct", "trend_add", "trend_drop",
-          "proj", "injury", "starting", "slot", "slot_no", "nfl_depth",
+          "proj", "wk_rank", "injury", "starting", "slot", "slot_no", "nfl_depth",
           "snap_pct", "xfp_g", "fp_g", "redraft_value", "dynasty_value")
 
 payload <- lapply(leagues, function(l) {
@@ -171,6 +177,7 @@ payload <- lapply(leagues, function(l) {
   d <- d[, show, with = FALSE]
   # jsonlite writes NA as null, which the page treats as "no data"
   list(id = l$id, name = l$name, type = l$type, qb = l$qb, ppr = l$ppr,
+       slots = l$slots,
        teams = l$teams, my_team = l$my_team,
        n_fa = sum(d$status == "free agent"),
        rows = d)
@@ -426,6 +433,12 @@ td.sig{text-align:left; width:104px}
   color:var(--ink-3); margin-top:2px;
 }
 .slot .nm.un{font-style:italic}
+.slot .mt b{color:var(--ink); font-weight:600}
+.slot .ownedby{display:block; font-size:10px; color:var(--ink-3); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.slot.own{background:var(--surface)}
+.posmini{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-3); margin-left:6px}
+.likely{display:block; font-size:10.5px; color:var(--accent-ink); margin-top:1px}
+.benchhead{font-family:Archivo,sans-serif; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-bottom:2px}
 .inj{
   margin-left:6px; font-family:"IBM Plex Mono",monospace; font-size:9.5px;
   letter-spacing:.04em; text-transform:uppercase; color:var(--down);
@@ -502,8 +515,6 @@ body_bits <- paste0(
       <button type="button" data-scope="mine" aria-pressed="false">My roster</button>
       <button type="button" data-scope="all" aria-pressed="false">Everyone</button>
     </div>
-    <label class="visually-hidden" for="team">NFL team</label>
-    <select class="teamsel" id="team" hidden></select>
     <div class="chips" id="poschips" role="group" aria-label="Position"></div>
     <input id="q" type="search" placeholder="Search player or team" autocomplete="off">
   </div>
@@ -557,6 +568,7 @@ body_bits <- paste0(
     {k:"signal",        h:"Signal",  type:"sig"},
     {k:"pos_rank",      h:"Rank",    type:"rank"},
     {k:"proj",          h:"Proj",    type:"num1"},
+    {k:"wk_rank",       h:"Wk rank", type:"posrank"},
     {k:"roster_pct",    h:"Own%",    type:"pct1"},
     {k:"trend_add",     h:"Adds",    type:"count"},
     {k:"trend_drop",    h:"Drops",   type:"count"},
@@ -601,6 +613,7 @@ body_bits <- paste0(
       }
       return "<td>"+esc(row.pos)+v+ds+"</td>";
     }
+    if(col.type==="posrank") return "<td>"+esc(row.pos)+v+"</td>";
     if(col.type==="pct1") return "<td>"+v.toFixed(1)+"</td>";
     if(col.type==="frac") return "<td>"+Math.round(v*100)+"</td>";
     if(col.type==="num1") return "<td>"+v.toFixed(1)+"</td>";
@@ -636,17 +649,22 @@ body_bits <- paste0(
   }
 
   // shared cell: a player in a depth slot, shaded by what he projects -------
-  function slotCell(r, maxProj, kind){
+  // a player in a depth slot. Colour says one thing only - can I have him -
+  // and every number carries its own label.
+  function slotCell(r, _unused, kind){
     if(!r) return "<div class=\\"slot empty-slot\\"></div>";
-    var heat = (r.proj!=null && maxProj>0) ? Math.round(Math.min(1, r.proj/maxProj)*55) : 0;
-    var bg = heat>0 ? " style=\\"background:color-mix(in srgb, var(--accent) "+heat+"%, var(--surface))\\"" : "";
-    var meta = [r.proj!=null ? r.proj.toFixed(1) : null,
-                r.snap_pct!=null ? Math.round(r.snap_pct*100)+"%" : null,
-                r.pos_rank!=null ? (r.pos+r.pos_rank) : null].filter(Boolean).join(" &middot; ");
+    var bits = [];
+    if(r.proj!=null) bits.push("<b>"+r.proj.toFixed(1)+"</b> proj");
+    if(r.wk_rank!=null) bits.push("<b>"+r.pos+r.wk_rank+"</b> wk");
+    if(r.snap_pct!=null) bits.push("<b>"+Math.round(r.snap_pct*100)+"%</b> snap");
     var inj = r.injury ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" : "";
-    return "<div class=\\"slot "+kind+"\\""+bg+"><span class=\\"nm"+(r.ranked===false?" un":"")+"\\">"+
-      esc(r.player)+inj+"</span><span class=\\"mt\\">"+meta+"</span></div>";
+    var own = (kind==="" && r.rostered_by) ?
+      "<span class=\\"ownedby\\">"+esc(r.rostered_by)+"</span>" : "";
+    return "<div class=\\"slot "+kind+"\\"><span class=\\"nm"+(r.ranked===false?" un":"")+"\\">"+
+      esc(r.player)+inj+"</span><span class=\\"mt\\">"+bits.join(" &middot; ")+"</span>"+own+"</div>";
   }
+
+  function kindOf(r){ return !r ? "" : (r.mine ? "mine" : (r.status==="free agent" ? "fa" : "")); }
 
   function depthSort(a,b){
     var ad = a.nfl_depth, bd = b.nfl_depth;
@@ -658,46 +676,45 @@ body_bits <- paste0(
     return (b.proj==null?-1:b.proj) - (a.proj==null?-1:a.proj);
   }
 
-  // ---- NFL depth: every team at one position, in the NFL depth order -------
+  function gridHead(first, pos, cols, tmpl){
+    return "<div class=\\"gridrow\\" style=\\""+tmpl+"\\"><span class=\\"gridhead\\">"+first+"</span>"+
+      Array.apply(null,{length:cols}).map(function(_,i){
+        return "<span class=\\"gridhead\\">"+pos+(i+1)+"</span>"; }).join("")+"</div>";
+  }
+
+  // ---- NFL depth: every team at one position, in NFL depth-chart order -----
   function drawNfl(){
     var L = leagues[state.league];
     var pos = state.pos==="ALL" ? "RB" : state.pos;
-    var byTeam = {}, maxProj = 0;
+    var byTeam = {};
     L.rows.forEach(function(r){
-      if(r.pos!==pos || !r.team) return;
+      if(r.pos!==pos || !r.team || r.team==="FA") return;
       if(state.q && (r.player+" "+r.team).toLowerCase().indexOf(state.q)===-1) return;
       (byTeam[r.team] = byTeam[r.team] || []).push(r);
-      if(r.proj!=null && r.proj>maxProj) maxProj = r.proj;
     });
     var teams = Object.keys(byTeam).sort();
     var cols = Math.min(5, Math.max.apply(null, teams.map(function(t){
       return byTeam[t].length; }).concat([1])));
-    var tmpl = "grid-template-columns:78px repeat("+cols+",minmax(132px,1fr))";
-    var head = "<div class=\\"gridrow\\" style=\\""+tmpl+"\\"><span class=\\"gridhead\\">Team</span>"+
-      Array.apply(null,{length:cols}).map(function(_,i){
-        return "<span class=\\"gridhead\\">"+pos+(i+1)+"</span>"; }).join("")+"</div>";
+    var tmpl = "grid-template-columns:70px repeat("+cols+",minmax(150px,1fr))";
     var body = teams.map(function(t){
       var list = byTeam[t].slice().sort(depthSort);
       return "<div class=\\"gridrow\\" style=\\""+tmpl+"\\">"+
         "<div class=\\"owncell\\">"+esc(t)+"</div>"+
         Array.apply(null,{length:cols}).map(function(_,i){
-          var r = list[i];
-          var kind = !r ? "" : (r.mine ? "mine" : (r.status==="free agent" ? "fa" : ""));
-          return slotCell(r, maxProj, kind); }).join("")+"</div>";
+          return slotCell(list[i], 0, kindOf(list[i])); }).join("")+"</div>";
     }).join("");
     document.getElementById("nflwrap").innerHTML = teams.length ?
-      ("<div class=\\"grid\\">"+head+body+"</div>") :
+      ("<div class=\\"grid\\">"+gridHead("Team", pos, cols, tmpl)+body+"</div>") :
       "<div class=\\"empty\\">Nothing matches that search.</div>";
   }
 
-  // ---- League depth: each franchise stack at one position ----------------
+  // ---- League depth: each franchise stack at one position ------------------
   function drawLeague(){
     var L = leagues[state.league];
     var pos = state.pos==="ALL" ? "RB" : state.pos;
-    // depth order is the rest-of-season consensus, which discriminates among
-    // starters far better than the blended signal; unranked players fall to the
-    // back of the stack, ordered by what they project for this week
-    var bySig = function(a,b){
+    // stack order is the rest-of-season consensus, which separates starters far
+    // better than the blended signal; unranked men fall to the back
+    var byRank = function(a,b){
       var ar = a.pos_rank, br = b.pos_rank;
       if(ar!=null && br!=null && ar!==br) return ar-br;
       if(ar!=null && br==null) return -1;
@@ -715,116 +732,156 @@ body_bits <- paste0(
       if(b===mine) return 1;
       return teams[b].length - teams[a].length;
     });
-    var fas = L.rows.filter(function(r){ return r.pos===pos && r.status==="free agent"; }).sort(bySig);
+    var fas = L.rows.filter(function(r){ return r.pos===pos && r.status==="free agent"; }).sort(byRank);
     var cols = Math.min(8, Math.max.apply(null, names.map(function(n){ return teams[n].length; })
                  .concat([Math.min(fas.length,6), 1])));
-    var tmpl = "grid-template-columns:150px repeat("+cols+",minmax(118px,1fr))";
-
-    var maxProj = 0;
-    L.rows.forEach(function(r){ if(r.pos===pos && r.proj!=null && r.proj>maxProj) maxProj = r.proj; });
-    var slot = function(r, kind){ return slotCell(r, maxProj, kind); };
-    var head = "<div class=\\"gridrow\\" style=\\""+tmpl+"\\"><span class=\\"gridhead\\">"+
-      esc(L.my_team? "Franchise":"Franchise")+"</span>"+
-      Array.apply(null,{length:cols}).map(function(_,i){
-        return "<span class=\\"gridhead\\">"+pos+(i+1)+"</span>"; }).join("")+"</div>";
-
+    var tmpl = "grid-template-columns:150px repeat("+cols+",minmax(150px,1fr))";
     var body = names.map(function(n){
-      var list = teams[n].slice().sort(bySig);
+      var list = teams[n].slice().sort(byRank);
       var isMine = n===mine;
       return "<div class=\\"gridrow\\" style=\\""+tmpl+"\\">"+
         "<div class=\\"owncell"+(isMine?" mine":"")+"\\">"+esc(n)+"</div>"+
         Array.apply(null,{length:cols}).map(function(_,i){
-          return slot(list[i], isMine?"mine":""); }).join("")+"</div>";
+          return slotCell(list[i], 0, isMine?"mine":"own"); }).join("")+"</div>";
     }).join("");
-
     var faRow = "<div class=\\"gridrow\\" style=\\""+tmpl+"\\">"+
       "<div class=\\"owncell fa\\">Free agents</div>"+
       Array.apply(null,{length:cols}).map(function(_,i){
-        return slot(fas[i], "fa"); }).join("")+"</div>";
-
+        return slotCell(fas[i], 0, "fa"); }).join("")+"</div>";
     document.getElementById("leaguewrap").innerHTML =
-      "<div class=\\"grid\\">"+head+body+faRow+"</div>";
+      "<div class=\\"grid\\">"+gridHead("Franchise", pos, cols, tmpl)+body+faRow+"</div>";
   }
 
-  // ---- Lineups: what everyone is actually starting this week ---------------
+  // ---- Lineups: what is set, what they will probably set, and the bench ----
+  var OUT_STATUS = ["Out","IR","Doubtful","Sus","PUP","NA","COV"];
+  function isOut(r){ return !!r.injury && OUT_STATUS.indexOf(r.injury)!==-1; }
+  function onBye(r){ return r.bye!=null && r.bye===meta.week; }
+  function unavailable(r){ return isOut(r) || onBye(r); }
+  function fits(slot, pos){
+    if(slot===pos) return true;
+    if(slot==="FLEX") return ["RB","WR","TE"].indexOf(pos)!==-1;
+    if(slot==="SUPER_FLEX"||slot==="SUPERFLEX") return ["QB","RB","WR","TE"].indexOf(pos)!==-1;
+    if(slot==="REC_FLEX") return ["WR","TE"].indexOf(pos)!==-1;
+    if(slot==="WRRB_FLEX"||slot==="WRRB-FLEX") return ["WR","RB"].indexOf(pos)!==-1;
+    return false;
+  }
+  // greedy best-available fill: the lineup a manager who was paying attention
+  // would set, which is what you are really playing against
+  function projectLineup(roster, slots){
+    var pool = roster.filter(function(r){ return !unavailable(r) && r.proj!=null; })
+                     .sort(function(a,b){ return b.proj-a.proj; });
+    var taken = {}, picks = [];
+    slots.forEach(function(sl){
+      var pick = null;
+      for(var i=0;i<pool.length;i++){
+        var r = pool[i];
+        if(taken[r.player] || !fits(sl, r.pos)) continue;
+        pick = r; taken[r.player] = true; break;
+      }
+      picks.push({slot: sl, player: pick});
+    });
+    return picks;
+  }
+
   function drawLineups(){
     var L = leagues[state.league];
-    var hurt = function(r){
-      return r.injury && ["Out","IR","Doubtful","Sus","PUP","NA"].indexOf(r.injury)!==-1;
-    };
-    var onBye = function(r){ return r.bye!=null && r.bye===meta.week; };
-
-    // what my own lineup projects at each position - anything on another
-    // manager bench that clears it is a player who would start for me
-    var myFloor = {};
-    L.rows.forEach(function(r){
-      if(!r.mine || !r.starting || r.proj==null) return;
-      if(myFloor[r.pos]==null || r.proj < myFloor[r.pos]) myFloor[r.pos] = r.proj;
-    });
-
+    var slots = L.slots || [];
     var teams = {};
     L.rows.forEach(function(r){
       if(r.status!=="rostered" || !r.rostered_by) return;
       (teams[r.rostered_by] = teams[r.rostered_by] || []).push(r);
     });
+    var myName = null;
+    Object.keys(teams).forEach(function(n){
+      if(teams[n].some(function(r){return r.mine;})) myName = n;
+    });
+    // the weakest starter in MY likely lineup at each position: anything on
+    // another bench that clears it is a player who would start for me
+    var myFloor = {};
+    if(myName){
+      projectLineup(teams[myName], slots).forEach(function(p){
+        if(!p.player || p.player.proj==null) return;
+        var pos = p.player.pos;
+        if(myFloor[pos]==null || p.player.proj < myFloor[pos]) myFloor[pos] = p.player.proj;
+      });
+    }
     var names = Object.keys(teams).sort(function(a,b){
-      var am = teams[a].some(function(r){return r.mine;});
-      var bm = teams[b].some(function(r){return r.mine;});
-      if(am!==bm) return am ? -1 : 1;
+      if(a===myName) return -1;
+      if(b===myName) return 1;
       return a.localeCompare(b);
     });
 
     var html = names.map(function(n){
       var roster = teams[n];
-      var isMine = roster.some(function(r){return r.mine;});
-      var starters = roster.filter(function(r){ return r.starting; })
+      var isMine = n===myName;
+      var set = roster.filter(function(r){ return r.starting; })
         .sort(function(a,b){ return (a.slot_no||99)-(b.slot_no||99); });
-      var bench = roster.filter(function(r){ return !r.starting; })
+      var likely = projectLineup(roster, slots);
+      var likelyIds = {};
+      likely.forEach(function(p){ if(p.player) likelyIds[p.player.player] = p.slot; });
+      var bench = roster.filter(function(r){ return !likelyIds[r.player]; })
         .sort(function(a,b){ return (b.proj==null?-1:b.proj)-(a.proj==null?-1:a.proj); });
-
-      var flags = starters.filter(function(r){ return hurt(r) || onBye(r); });
       var steals = isMine ? [] : bench.filter(function(r){
-        return r.proj!=null && myFloor[r.pos]!=null && r.proj > myFloor[r.pos];
+        return r.proj!=null && !unavailable(r) && myFloor[r.pos]!=null && r.proj > myFloor[r.pos];
       }).slice(0,4);
+      var broken = set.filter(unavailable);
 
-      var chip = "";
-      if(flags.length) chip += "<span class=\\"chipflag bad\\">"+flags.length+" starter"+
-        (flags.length>1?"s":"")+" out or on bye</span>";
-      if(steals.length) chip += "<span class=\\"chipflag good\\">"+steals.length+
+      var chips = "";
+      if(!set.length) chips += "<span class=\\"chipflag bad\\">no lineup set</span>";
+      if(broken.length) chips += "<span class=\\"chipflag bad\\">"+broken.length+
+        " starter"+(broken.length>1?"s":"")+" out or on bye</span>";
+      if(steals.length) chips += "<span class=\\"chipflag good\\">"+steals.length+
         " benched who would start for you</span>";
 
-      var lines = starters.map(function(r){
-        var why = hurt(r) ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" :
-                  (onBye(r) ? "<span class=\\"inj\\">BYE</span>" : "");
-        return "<div class=\\"lrow"+((hurt(r)||onBye(r))?" bad":"")+"\\">"+
-          "<span class=\\"slotname\\">"+esc(r.slot||"")+"</span>"+
-          "<span class=\\"who\\"><b>"+esc(r.player)+"</b>"+why+"</span>"+
-          "<span class=\\"num\\">"+(r.proj==null?"&mdash;":r.proj.toFixed(1))+"</span></div>";
+      var setBy = {};
+      set.forEach(function(r){ setBy[r.slot_no] = r; });
+      var lines = likely.map(function(p, i){
+        var cur = setBy[i+1];
+        var pick = p.player;
+        var swap = (cur && pick && cur.player!==pick.player) || (!cur && pick);
+        var shown = cur || pick;
+        if(!shown) return "<div class=\\"lrow\\"><span class=\\"slotname\\">"+esc(p.slot)+
+          "</span><span class=\\"who dim\\">empty</span><span class=\\"num\\">&mdash;</span></div>";
+        var why = isOut(shown) ? "<span class=\\"inj\\">"+esc(shown.injury)+"</span>" :
+                  (onBye(shown) ? "<span class=\\"inj\\">BYE</span>" : "");
+        var alt = (swap && pick) ? "<span class=\\"likely\\">likely "+esc(pick.player)+
+          " "+(pick.proj!=null?pick.proj.toFixed(1):"")+"</span>" : "";
+        return "<div class=\\"lrow"+(cur&&unavailable(cur)?" bad":"")+"\\">"+
+          "<span class=\\"slotname\\">"+esc(p.slot)+"</span>"+
+          "<span class=\\"who\\"><b>"+esc(shown.player)+"</b><span class=\\"posmini\\">"+
+          esc(shown.pos)+"</span>"+why+alt+"</span>"+
+          "<span class=\\"num\\">"+(shown.proj==null?"&mdash;":shown.proj.toFixed(1))+"</span></div>";
       }).join("");
 
-      var stealLines = steals.length ? ("<div class=\\"steals\\">"+steals.map(function(r){
-        return "<div class=\\"lrow good\\"><span class=\\"slotname\\">BN</span>"+
-          "<span class=\\"who\\"><b>"+esc(r.player)+"</b><span class=\\"tag fa\\">"+
-          esc(r.pos)+" &gt; your "+r.proj.toFixed(1)+" vs "+myFloor[r.pos].toFixed(1)+
-          "</span></span><span class=\\"num\\">"+r.proj.toFixed(1)+"</span></div>";
-      }).join("")+"</div>") : "";
+      var benchTop = bench.slice(0, 6);
+      var benchLines = benchTop.length ? ("<div class=\\"steals\\"><div class=\\"benchhead\\">Bench</div>"+
+        benchTop.map(function(r){
+          var isSteal = steals.indexOf(r)!==-1;
+          var why = isOut(r) ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" :
+                    (onBye(r) ? "<span class=\\"inj\\">BYE</span>" : "");
+          var tag = isSteal ? "<span class=\\"tag fa\\">beats your "+
+            myFloor[r.pos].toFixed(1)+"</span>" : "";
+          return "<div class=\\"lrow"+(isSteal?" good":"")+"\\">"+
+            "<span class=\\"slotname\\">BN</span><span class=\\"who\\"><b>"+esc(r.player)+
+            "</b><span class=\\"posmini\\">"+esc(r.pos)+"</span>"+why+tag+"</span>"+
+            "<span class=\\"num\\">"+(r.proj==null?"&mdash;":r.proj.toFixed(1))+"</span></div>";
+        }).join("")+"</div>") : "";
 
-      var total = starters.reduce(function(s,r){ return s + (r.proj||0); }, 0);
+      var total = likely.reduce(function(s,p){ return s + (p.player&&p.player.proj||0); }, 0);
       return "<div class=\\"lineup"+(isMine?" mine":"")+"\\">"+
-        "<h3>"+esc(n)+"<span class=\\"tot\\">"+total.toFixed(1)+" proj</span></h3>"+
-        (chip?("<div class=\\"chiprow\\">"+chip+"</div>"):"")+
-        lines+stealLines+"</div>";
+        "<h3>"+esc(n)+"<span class=\\"tot\\">"+total.toFixed(1)+" likely proj</span></h3>"+
+        (chips?("<div class=\\"chiprow\\">"+chips+"</div>"):"")+
+        lines+benchLines+"</div>";
     }).join("");
 
     document.getElementById("lineupwrap").innerHTML = html ||
-      "<div class=\\"empty\\">No lineups set for this league yet.</div>";
+      "<div class=\\"empty\\">No rosters for this league.</div>";
   }
 
   function draw(){
     var L = leagues[state.league];
     // controls that only make sense in one view
     document.getElementById("scope").hidden = state.view!=="board";
-    document.getElementById("team").hidden = state.view!=="nfl";
     document.getElementById("q").hidden = (state.view==="league" || state.view==="lineups");
     document.getElementById("poschips").hidden = state.view==="lineups";
     document.getElementById("boardwrap").hidden = state.view!=="board";
@@ -898,14 +955,6 @@ body_bits <- paste0(
     draw();
   });
 
-  var teamsel = document.getElementById("team");
-  var TEAMS = leagues[0].rows.reduce(function(a,r){
-    if(r.team && a.indexOf(r.team)===-1) a.push(r.team); return a; }, []).sort();
-  teamsel.innerHTML = TEAMS.map(function(t){
-    return "<option value=\\""+t+"\\">"+t+"</option>"; }).join("");
-  state.team = TEAMS[0];
-  teamsel.value = state.team;
-  teamsel.addEventListener("change", function(){ state.team = teamsel.value; draw(); });
 
   document.getElementById("views").addEventListener("click", function(e){
     var b = e.target.closest("button[data-view]"); if(!b) return;

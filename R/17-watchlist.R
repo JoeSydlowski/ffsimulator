@@ -412,6 +412,7 @@ ffs_waiver_watchlist <- function(conn,
                                  values = NULL,
                                  trending = NULL,
                                  projections = NULL,
+                                 weekly = NULL,
                                  sleeper_players = NULL,
                                  lineups = NULL,
                                  ppr = 1,
@@ -422,6 +423,7 @@ ffs_waiver_watchlist <- function(conn,
                                  unranked_min_xfp = 0) {
   fantasypros_id <- pos <- ecr <- status <- mine <- signal <- NULL
   rostered_by <- franchise_id <- player <- team <- ranked <- pkey <- NULL
+  wk_rank <- NULL
 
   if (is.null(ros)) ros <- ffs_ros_rankings(pos_filter = pos_filter)
   r <- data.table::as.data.table(ros)[pos %in% pos_filter & !is.na(ecr)]
@@ -559,6 +561,23 @@ ffs_waiver_watchlist <- function(conn,
     out <- .ffs_attach(out, tr, nm)
   }
 
+  if (!is.null(weekly) && NROW(weekly)) {
+    wk <- data.table::as.data.table(weekly)
+    wk <- wk[, list(fantasypros_id = as.character(fantasypros_id),
+                    pkey = .ffs_pkey(player, pos),
+                    wk_ecr = suppressWarnings(as.numeric(get("ecr"))))]
+    wk <- unique(wk[!is.na(get("wk_ecr"))], by = "pkey")
+    out <- .ffs_attach(out, wk, "wk_ecr")
+    # a positional rank for the week reads better than a raw consensus number
+    out[, wk_rank := {
+      v <- rep(NA_integer_, .N)
+      ok <- !is.na(get("wk_ecr"))
+      if (any(ok)) v[ok] <- as.integer(data.table::frank(get("wk_ecr")[ok],
+                                                         ties.method = "first"))
+      v
+    }, by = "pos"]
+  }
+
   if (!is.null(projections) && NROW(projections)) {
     pr <- data.table::as.data.table(projections)
     col <- if (ppr >= 1) "proj_ppr" else if (ppr > 0) "proj_half_ppr" else "proj_std"
@@ -617,11 +636,15 @@ ffs_waiver_watchlist <- function(conn,
   out[, signal := round(rowMeans(m, na.rm = TRUE), 3)]
   out[is.nan(signal), signal := NA_real_]
 
+  # FantasyPros writes GBP/KCC/LVR/NEP/NOS/SFO/TBB where Sleeper and nflverse
+  # write GB/KC/LV/NE/NO/SF/TB, so the same NFL team would not group together
+  out[, team := nflreadr::clean_team_abbrs(as.character(team), keep_non_matches = TRUE)]
+
   data.table::setorderv(out, c("status", "signal"), c(1L, -1L))
   front <- intersect(c("player", "pos", "team", "status", "rostered_by", "mine",
                        "ranked", "signal", "pos_rank", "ecr", "ecr_delta", "roster_pct",
                        "trend_add", "trend_drop",
-                       "proj", "snap_pct", "xfp_g", "fp_g", "injury",
+                       "proj", "wk_rank", "wk_ecr", "snap_pct", "xfp_g", "fp_g", "injury",
                        "starting", "slot", "nfl_depth", "nfl_depth_pos",
                        "fpoe", "games", "redraft_value", "dynasty_value",
                        "value_trend_30d", "bye", "sd", "fantasypros_id"), names(out))
