@@ -31,7 +31,10 @@ config <- list(
     sep = ",")), ",")[[1]],
   season   = as.integer(Sys.getenv("FFS_SEASON", "2026")),
   my_team  = Sys.getenv("FFS_MY_TEAM", "sox05syd"),
-  pos_filter = strsplit(Sys.getenv("FFS_POS_FILTER", "QB,RB,WR,TE"), ",")[[1]],
+  # the upper bound; each league is narrowed to what it actually starts
+  pos_filter = strsplit(Sys.getenv("FFS_POS_FILTER", "QB,RB,WR,TE,K,DST"), ",")[[1]],
+  # snaps and expected points only exist for the skill positions
+  usage_pos = c("QB", "RB", "WR", "TE"),
   lookback = as.integer(Sys.getenv("FFS_LOOKBACK", "3")),
   trend_hours = as.integer(Sys.getenv("FFS_TREND_HOURS", "24"))
 )
@@ -42,7 +45,8 @@ dir.create(out, recursive = TRUE, showWarnings = FALSE)
 
 ## ---- SHARED SIGNALS (fetched once, reused by every league) -------------------
 message("usage signals (snaps + expected points) ...")
-usage <- tryCatch(ffs_usage_signals(season = config$season, lookback = config$lookback),
+usage <- tryCatch(ffs_usage_signals(season = config$season, lookback = config$lookback,
+                                    pos_filter = config$usage_pos),
                   error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
 
 
@@ -111,8 +115,19 @@ build_league <- function(league_id) {
   if (!length(ppr) || is.na(ppr)) ppr <- 1
   ltype <- c("redraft", "keeper", "dynasty")[as.integer(raw$settings$type) + 1L]
   if (!length(ltype) || is.na(ltype)) ltype <- "redraft"
+
+  # only carry the positions this league actually starts: Goofball is the one
+  # with a K and a DEF slot, and a kicker on a JML board would be noise
+  lg_pos <- unique(unlist(list(
+    QB = "QB", RB = "RB", WR = "WR", TE = "TE", K = "K", DEF = "DST", DST = "DST",
+    FLEX = c("RB", "WR", "TE"), REC_FLEX = c("WR", "TE"), WRRB_FLEX = c("WR", "RB"),
+    SUPER_FLEX = c("QB", "RB", "WR", "TE"), SUPERFLEX = c("QB", "RB", "WR", "TE")
+  )[intersect(c("QB", "RB", "WR", "TE", "K", "DEF", "DST", "FLEX", "REC_FLEX",
+                "WRRB_FLEX", "SUPER_FLEX", "SUPERFLEX"), slots)]))
+  lg_pos <- intersect(config$pos_filter, unname(lg_pos))
+  if (!length(lg_pos)) lg_pos <- intersect(config$pos_filter, c("QB", "RB", "WR", "TE"))
   cli::cli_rule("{lname} - {ltype}{
-    if (superflex) ' superflex' else ' 1QB'}, {ppr} ppr, {teams} teams")
+    if (superflex) ' superflex' else ' 1QB'}, {ppr} ppr, {teams} teams, {paste(lg_pos, collapse = '/')}")
 
   who <- as.data.table(ffscrapr::ff_franchises(conn))
   keys <- intersect(c("user_name", "franchise_name"), names(who))
@@ -133,7 +148,7 @@ build_league <- function(league_id) {
     lineups = tryCatch(ffs_sleeper_lineups(league_id, week = week),
                        error = function(e) NULL),
     ppr = ppr,
-    pos_filter = config$pos_filter,
+    pos_filter = lg_pos,
     my_franchise = my_id))
 
   list(

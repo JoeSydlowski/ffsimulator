@@ -4,10 +4,12 @@
 \alias{.ffs_pkey}
 \title{A name-and-position key, for when a FantasyPros id moves}
 \usage{
-.ffs_pkey(player, pos)
+.ffs_pkey(player, pos, team = NULL)
 }
 \arguments{
 \item{player, pos}{player name and position vectors}
+
+\item{team}{team abbreviations, used for defenses}
 }
 \value{
 a character key
@@ -17,5 +19,10 @@ FantasyPros re-issues player ids: their live rest-of-season page had Roman
 Wilson as 28896 while every id map still carried 26160, which silently cost
 him his snaps, his values and - worse - would have shown a rostered player as
 a free agent. Every join in the watchlist therefore falls back to this key.
+}
+\details{
+Team defenses have no stable name across sources - FantasyPros calls one
+"Seattle Seahawks", Sleeper keys it \code{"SEA"} and leaves \code{full_name} empty - so
+a defense keys on its (normalised) team abbreviation instead.
 }
 \keyword{internal}

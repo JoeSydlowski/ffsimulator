@@ -55,7 +55,7 @@ ffs_ros_rankings <- function(season = nflreadr::most_recent_season(),
     data.table::data.table(
       fantasypros_id = as.character(x$fantasypros_id),
       player = x$player_name,
-      pos = toupper(p),
+      pos = .ffs_pos(p),
       team = x$team,
       bye = suppressWarnings(as.integer(x$player_bye_week)),
       ecr = suppressWarnings(as.numeric(x$ecr)),
@@ -131,7 +131,7 @@ ffs_sleeper_trending <- function(type = c("add", "drop"),
   ids <- unique(ids[!is.na(sleeper_id) & !is.na(fantasypros_id),
                     list(sleeper_id = as.character(sleeper_id),
                          fantasypros_id = as.character(fantasypros_id),
-                         player = get("name"), pos = get("position"),
+                         player = get("name"), pos = .ffs_pos(get("position")),
                          team = get("team"))],
                 by = "sleeper_id")
   out <- merge(dt, ids, by = "sleeper_id", all.x = TRUE)
@@ -182,9 +182,11 @@ ffs_sleeper_projections <- function(season = nflreadr::most_recent_season(),
                       proj_std = numeric(0), week = integer(0))
 
   rows <- lapply(pos_filter, function(p) {
+    # Sleeper's endpoint spells a team defense DEF; everything else here is DST
+    ep <- if (.ffs_pos(p) == "DST") "DEF" else toupper(p)
     url <- sprintf(
       "https://api.sleeper.app/projections/nfl/%d/%d?season_type=regular&position[]=%s&order_by=ppr",
-      as.integer(season), as.integer(week), toupper(p))
+      as.integer(season), as.integer(week), ep)
     resp <- tryCatch(httr::GET(url), error = function(e) e)
     if (inherits(resp, "error") || httr::status_code(resp) != 200) {
       cli::cli_alert_warning("Sleeper projections unavailable for {p} week {week}")
@@ -197,7 +199,7 @@ ffs_sleeper_projections <- function(season = nflreadr::most_recent_season(),
     gv <- function(nm) if (nm %in% names(x)) suppressWarnings(as.numeric(x[[nm]])) else NA_real_
     out <- data.table::data.table(
       sleeper_id = as.character(x$player_id),
-      pos = toupper(p),
+      pos = .ffs_pos(p),
       team = if ("team" %in% names(x)) as.character(x$team) else NA_character_,
       proj_ppr = gv("stats.pts_ppr"),
       proj_half_ppr = gv("stats.pts_half_ppr"),
@@ -257,13 +259,24 @@ ffs_sleeper_players <- function(pos_filter = c("QB", "RB", "WR", "TE")) {
     v <- p[[f]]
     if (is.null(v) || !length(v)) NA else v[[1]]
   }
-  keep <- Filter(function(p) isTRUE(toupper(pick(p, "position")) %in% pos_filter), raw)
+  want <- .ffs_pos(pos_filter)
+  keep <- Filter(function(p) isTRUE(.ffs_pos(pick(p, "position")) %in% want), raw)
   if (!length(keep)) return(data.frame())
+
+  # a team defense has no full_name - Sleeper splits it into "Tampa Bay" +
+  # "Buccaneers" - so build one, or the row comes back nameless
+  name_of <- function(p) {
+    full <- pick(p, "full_name")
+    if (!is.na(full) && nzchar(full)) return(as.character(full))
+    parts <- c(pick(p, "first_name"), pick(p, "last_name"))
+    parts <- parts[!is.na(parts) & nzchar(parts)]
+    if (length(parts)) paste(parts, collapse = " ") else NA_character_
+  }
 
   out <- data.table::data.table(
     sleeper_id = vapply(keep, function(p) as.character(pick(p, "player_id")), character(1)),
-    player = vapply(keep, function(p) as.character(pick(p, "full_name")), character(1)),
-    pos = vapply(keep, function(p) toupper(as.character(pick(p, "position"))), character(1)),
+    player = vapply(keep, name_of, character(1)),
+    pos = vapply(keep, function(p) .ffs_pos(pick(p, "position")), character(1)),
     team = vapply(keep, function(p) as.character(pick(p, "team")), character(1)),
     injury = vapply(keep, function(p) as.character(pick(p, "injury_status")), character(1)),
     injury_body_part = vapply(keep, function(p) as.character(pick(p, "injury_body_part")), character(1)),
@@ -350,12 +363,36 @@ ffs_sleeper_lineups <- function(league_id, week = NULL) {
 #' him his snaps, his values and - worse - would have shown a rostered player as
 #' a free agent. Every join in the watchlist therefore falls back to this key.
 #'
+#' Team defenses have no stable name across sources - FantasyPros calls one
+#' "Seattle Seahawks", Sleeper keys it `"SEA"` and leaves `full_name` empty - so
+#' a defense keys on its (normalised) team abbreviation instead.
+#'
 #' @param player,pos player name and position vectors
+#' @param team team abbreviations, used for defenses
 #' @return a character key
 #' @keywords internal
-.ffs_pkey <- function(player, pos) {
-  paste(nflreadr::clean_player_names(as.character(player), lowercase = TRUE),
-        toupper(as.character(pos)))
+.ffs_pkey <- function(player, pos, team = NULL) {
+  p <- .ffs_pos(pos)
+  key <- paste(nflreadr::clean_player_names(as.character(player), lowercase = TRUE), p)
+  if (!is.null(team)) {
+    tm <- nflreadr::clean_team_abbrs(as.character(team), keep_non_matches = TRUE)
+    key <- data.table::fifelse(p == "DST" & !is.na(tm) & nzchar(tm),
+                               paste(tm, "DST"), key)
+  }
+  key
+}
+
+#' One spelling per position
+#'
+#' Sleeper says `DEF`, FantasyPros says `DST`, and a join on position silently
+#' drops every defense when the two meet.
+#'
+#' @param pos a position vector
+#' @return the same vector, upper-cased, with team defenses as `"DST"`
+#' @keywords internal
+.ffs_pos <- function(pos) {
+  p <- toupper(as.character(pos))
+  data.table::fifelse(p %in% c("DEF", "D/ST", "DEFENSE"), "DST", p)
 }
 
 #' Attach columns from a signal table by id, falling back to name + position
@@ -454,14 +491,14 @@ ffs_waiver_watchlist <- function(conn,
   if (is.null(ros)) ros <- ffs_ros_rankings(pos_filter = pos_filter)
   r <- data.table::as.data.table(ros)[pos %in% pos_filter & !is.na(ecr)]
   r <- unique(r[!is.na(fantasypros_id)], by = "fantasypros_id")
-  r[, `:=`(ranked = TRUE, pkey = .ffs_pkey(player, pos))]
+  r[, `:=`(ranked = TRUE, pkey = .ffs_pkey(player, pos, team))]
 
   rosters <- data.table::as.data.table(ffs_rosters(conn))
   # rookies lag in dp_playerids; match them to the rankings by name
   rosters <- data.table::as.data.table(
     ffs_backfill_fp_ids(rosters, r[, list(player, pos, fantasypros_id)]))
   rosters <- rosters[pos %in% pos_filter]
-  rosters[, pkey := .ffs_pkey(get("player_name"), pos)]
+  rosters[, pkey := .ffs_pkey(get("player_name"), pos, get("team"))]
 
   # FantasyPros ranks a fixed number of players per position, so a back-up who
   # has just taken over a starting job is simply absent - Drew Lock was playing
@@ -505,7 +542,7 @@ ffs_waiver_watchlist <- function(conn,
       # dedupe on the name key, not the id: several rows can share a missing id,
       # and unique(by = "fantasypros_id") would collapse them into one player
       ex <- data.table::rbindlist(extra, use.names = TRUE, fill = TRUE)
-      ex[, pkey := .ffs_pkey(player, pos)]
+      ex[, pkey := .ffs_pkey(player, pos, team)]
       ex <- unique(ex, by = "pkey")
       # a player whose FantasyPros id has moved (see .ffs_pkey) is already on the
       # board under his ranked row - do not add him a second time as "unranked"
@@ -542,9 +579,35 @@ ffs_waiver_watchlist <- function(conn,
 
   owned <- rosters[, list(
     fantasypros_id = as.character(fantasypros_id),
-    pkey = .ffs_pkey(get("player_name"), pos),
+    pkey = .ffs_pkey(get("player_name"), pos, get("team")),
     rostered_by = get("franchise_name"),
     owner_id = as.character(franchise_id))]
+
+  # ffs_rosters() returns no team defenses at all, so every DST would read as a
+  # free agent while nine of ten Goofball franchises actually roster one. The
+  # lineup feed carries every rostered platform id, so use it to fill ownership
+  # in for anyone the roster table missed.
+  if (!is.null(lineups) && NROW(lineups) && !is.null(sleeper_players) &&
+      NROW(sleeper_players)) {
+    fr <- data.table::as.data.table(ffs_franchises(conn))[
+      , list(owner_id = as.character(franchise_id),
+             rostered_by = get("franchise_name"))]
+    sp <- data.table::as.data.table(sleeper_players)[
+      , list(sleeper_id = as.character(get("sleeper_id")),
+             pkey = .ffs_pkey(get("player"), get("pos"), get("team")),
+             fantasypros_id = as.character(fantasypros_id))]
+    lu_own <- merge(data.table::as.data.table(lineups)[
+      , list(owner_id = as.character(get("franchise_id")),
+             sleeper_id = as.character(get("sleeper_id")))],
+      sp, by = "sleeper_id")
+    lu_own <- merge(lu_own, fr, by = "owner_id")
+    lu_own <- lu_own[!pkey %in% owned$pkey,
+                     list(fantasypros_id, pkey, rostered_by, owner_id)]
+    if (nrow(lu_own)) {
+      owned <- data.table::rbindlist(list(owned, unique(lu_own, by = "pkey")),
+                                     use.names = TRUE)
+    }
+  }
 
   out <- data.table::copy(r)
   out <- .ffs_attach(out, owned, c("rostered_by", "owner_id"))
@@ -559,7 +622,7 @@ ffs_waiver_watchlist <- function(conn,
                         "fpoe_recent", "snap_trend", "exp_pts_trend"), names(u))
     u <- u[, keep, with = FALSE]
     u[, `:=`(fantasypros_id = as.character(fantasypros_id),
-             pkey = .ffs_pkey(player, pos))]
+             pkey = .ffs_pkey(player, pos, team))]
     data.table::setnames(u,
       c("games_recent", "snap_pct_recent", "exp_pts_recent", "fpts_recent", "fpoe_recent"),
       c("games", "snap_pct", "xfp_g", "fp_g", "fpoe"), skip_absent = TRUE)
@@ -571,7 +634,7 @@ ffs_waiver_watchlist <- function(conn,
   if (!is.null(values)) {
     v <- data.table::as.data.table(values)
     v <- v[, list(fantasypros_id = as.character(fantasypros_id),
-                  pkey = .ffs_pkey(get("player_name"), pos),
+                  pkey = .ffs_pkey(get("player_name"), pos, get("team")),
                   dynasty_value = get("value"),
                   redraft_value = get("redraft_value"),
                   value_trend_30d = get("trend_30day"))]
@@ -585,7 +648,7 @@ ffs_waiver_watchlist <- function(conn,
     tr <- data.table::as.data.table(tr)
     nm <- paste0("trend_", tt)
     tr <- tr[, list(fantasypros_id = as.character(fantasypros_id),
-                    pkey = if ("player" %in% names(tr)) .ffs_pkey(player, pos) else NA_character_,
+                    pkey = if ("player" %in% names(tr)) .ffs_pkey(player, pos, team) else NA_character_,
                     count = as.integer(get("count")))]
     data.table::setnames(tr, "count", nm)
     out <- .ffs_attach(out, tr, nm)
@@ -594,7 +657,7 @@ ffs_waiver_watchlist <- function(conn,
   if (!is.null(weekly) && NROW(weekly)) {
     wk <- data.table::as.data.table(weekly)
     wk <- wk[, list(fantasypros_id = as.character(fantasypros_id),
-                    pkey = .ffs_pkey(player, pos),
+                    pkey = .ffs_pkey(player, pos, team),
                     wk_ecr = suppressWarnings(as.numeric(get("ecr"))))]
     wk <- unique(wk[!is.na(get("wk_ecr"))], by = "pkey")
     out <- .ffs_attach(out, wk, "wk_ecr")
@@ -613,7 +676,7 @@ ffs_waiver_watchlist <- function(conn,
     col <- if (ppr >= 1) "proj_ppr" else if (ppr > 0) "proj_half_ppr" else "proj_std"
     if (!col %in% names(pr)) col <- "proj_ppr"
     pr <- pr[, list(fantasypros_id = as.character(fantasypros_id),
-                    pkey = .ffs_pkey(player, pos),
+                    pkey = .ffs_pkey(player, pos, team),
                     proj = round(as.numeric(get(col)), 1))]
     out <- .ffs_attach(out, pr, "proj")
   }
@@ -621,7 +684,7 @@ ffs_waiver_watchlist <- function(conn,
   if (!is.null(sleeper_players) && NROW(sleeper_players)) {
     sp <- data.table::as.data.table(sleeper_players)
     sp <- sp[, list(fantasypros_id = as.character(fantasypros_id),
-                    pkey = .ffs_pkey(player, pos),
+                    pkey = .ffs_pkey(player, pos, team),
                     injury = get("injury"), nfl_depth = get("nfl_depth"),
                     nfl_depth_pos = get("nfl_depth_pos"))]
     out <- .ffs_attach(out, sp, c("injury", "nfl_depth", "nfl_depth_pos"))
