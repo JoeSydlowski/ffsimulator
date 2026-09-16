@@ -8,3 +8,12 @@ docs
 inst/doc
 /doc/
 /Meta/
+
+# raw per-draft dumps from the draft sweep - regenerable, tens of MB each
+dev/league_sims/**/my_drafts.csv
+dev/league_sims/**/search_by_board.csv
+dev/league_sims/**/confirm_by_board.csv
+
+# run logs - kept on disk, not in history
+dev/league_sims/*.log
+dev/league_sims/**/*.log

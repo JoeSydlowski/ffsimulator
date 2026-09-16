@@ -1,6 +1,0 @@
-Warning message:
-package 'testthat' was built under R version 4.4.2 
-scoring-history shim installed (nflverse stats_player path)
-simulating 2000 seasons @ 2026-09-03 14:46:10.894395
-── Starting simulation 2026-09-03 14:46:10 ─────────────────────────────────────
-ℹ Importing data✔ Importing data ... done

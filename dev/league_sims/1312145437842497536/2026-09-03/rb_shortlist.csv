@@ -1,0 +1,13 @@
+rank,pareto,team,send,receive,overpay,fair,opp_edge,send_value,recv_value,mine_pl,opp_pl,fut,adj_fut,score,grade,win_win,backfill,opp_drop
+1,TRUE,That's so Ravens,Brian Thomas + Keaton Mitchell,Quinshon Judkins,10.2,10,0.2,4102,3721,2,-0.4,205,205,3.8,D,FALSE,Aaron Rodgers,Eli Heidenreich
+2,TRUE,That's so Ravens,Bhayshul Tuten + Courtland Sutton,Quinshon Judkins,12.2,10,2.2,4174,3721,0.5,2.4,344,344,3.5,D,TRUE,Aaron Rodgers,Eli Heidenreich
+3,FALSE,That's so Ravens,Chris Rodriguez + Brian Thomas,Quinshon Judkins,12.4,10,2.4,4183,3721,1.8,0,197,197,3.5,D,FALSE,Aaron Rodgers,Eli Heidenreich
+4,FALSE,K Stafford isn't Worthy,Courtland Sutton + Jaylen Warren,Bucky Irving,10.8,10,0.8,3458,3121,1.2,2.1,196,196,2.9,D,TRUE,Aaron Rodgers,Adam Randall
+5,FALSE,K Stafford isn't Worthy,Jaylen Warren + Jordan Mason,Bucky Irving,11.2,10,1.2,3472,3121,2,1.3,54,54,2.5,D,TRUE,Aaron Rodgers,Adam Randall
+6,FALSE,That's so Ravens,Sam Darnold + Keaton Mitchell,Quinshon Judkins,10.3,10,0.3,4106,3721,0.5,-0.6,629,233,2.5,D,FALSE,Aaron Rodgers,Eli Heidenreich
+7,FALSE,That's so Ravens,Chris Rodriguez + Sam Darnold,Quinshon Judkins,12.5,10,2.5,4187,3721,0.4,-0.4,621,225,2.3,D,FALSE,Aaron Rodgers,Eli Heidenreich
+8,TRUE,Beef Blitzkrieg,Brian Thomas + DeVonta Smith,Omarion Hampton,11.2,10,1.2,6427,5778,2.1,2.5,19,19,2.2,D,TRUE,Aaron Rodgers,Kevin Coleman
+9,FALSE,That's so Ravens,Bhayshul Tuten + Jordan Mason,Quinshon Judkins,12.6,10,2.6,4188,3721,0.3,2,203,203,2.1,D,TRUE,Aaron Rodgers,Eli Heidenreich
+10,FALSE,That's so Ravens,Courtland Sutton + Jaylen Warren,TreVeyon Henderson,14.5,10,4.5,3458,3021,1.4,2,78,78,2.1,D,TRUE,Aaron Rodgers,Eli Heidenreich
+11,FALSE,Beef Blitzkrieg,Sam Darnold + DeVonta Smith,Omarion Hampton,11.3,10,1.3,6431,5778,1.5,0.9,443,47,1.9,D,TRUE,Aaron Rodgers,Kevin Coleman
+12,FALSE,Galletti,Bhayshul Tuten + Dallas Goedert,Breece Hall,11.4,10,1.4,4069,3651,0.9,0.9,3,-96,0,D,TRUE,Aaron Rodgers,Bauer Sharp
