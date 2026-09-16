@@ -89,14 +89,15 @@ ffs_ros_rankings <- function(season = nflreadr::most_recent_season(),
 #' @param lookback_hours the window Sleeper aggregates over (default 24)
 #' @param limit how many players to return (default 200)
 #'
-#' @return a dataframe: `fantasypros_id`, `sleeper_id`, `count`
+#' @return a dataframe: `fantasypros_id`, `sleeper_id`, `player`, `pos`, `team`,
+#'   `count`
 #' @export
 ffs_sleeper_trending <- function(type = c("add", "drop"),
                                  lookback_hours = 24L,
                                  limit = 200L) {
   rlang::check_installed(c("httr", "jsonlite"), "to read Sleeper trending players")
   type <- rlang::arg_match(type)
-  sleeper_id <- fantasypros_id <- NULL
+  sleeper_id <- fantasypros_id <- player <- pos <- team <- NULL
 
   url <- sprintf(
     "https://api.sleeper.app/v1/players/nfl/trending/%s?lookback_hours=%d&limit=%d",
@@ -110,7 +111,8 @@ ffs_sleeper_trending <- function(type = c("add", "drop"),
   raw <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"))
   if (!NROW(raw)) {
     return(data.frame(fantasypros_id = character(0), sleeper_id = character(0),
-                      count = integer(0)))
+                      player = character(0), pos = character(0),
+                      team = character(0), count = integer(0)))
   }
   dt <- data.table::data.table(sleeper_id = as.character(raw$player_id),
                                count = as.integer(raw$count))
@@ -118,11 +120,13 @@ ffs_sleeper_trending <- function(type = c("add", "drop"),
   ids <- data.table::as.data.table(ffscrapr::dp_playerids())
   ids <- unique(ids[!is.na(sleeper_id) & !is.na(fantasypros_id),
                     list(sleeper_id = as.character(sleeper_id),
-                         fantasypros_id = as.character(fantasypros_id))],
+                         fantasypros_id = as.character(fantasypros_id),
+                         player = get("name"), pos = get("position"),
+                         team = get("team"))],
                 by = "sleeper_id")
   out <- merge(dt, ids, by = "sleeper_id", all.x = TRUE)
   data.table::setorderv(out, "count", -1L)
-  as.data.frame(out[, list(fantasypros_id, sleeper_id, count)])
+  as.data.frame(out[, list(fantasypros_id, sleeper_id, player, pos, team, count)])
 }
 
 #' Weekly waiver watchlist for a league
@@ -155,10 +159,15 @@ ffs_sleeper_trending <- function(type = c("add", "drop"),
 #'   [ffs_sleeper_trending()], or `NULL`
 #' @param pos_filter positions to include
 #' @param my_franchise optional franchise_id: marks your own players `mine`
+#' @param include_unranked also carry players FantasyPros does not rank at all,
+#'   when the usage or market data says they are live (default `TRUE`). Their
+#'   ranking columns are blank and `ranked` is `FALSE`
+#' @param unranked_min_snap,unranked_min_xfp how much usage an unranked player
+#'   needs to earn a row: snap share, or expected points per game
 #'
-#' @return a dataframe, one row per ranked player: identity, `status`
-#'   (`"free agent"` / `"rostered"`), `rostered_by`, `mine`, and the signal
-#'   columns above
+#' @return a dataframe, one row per player: identity, `status`
+#'   (`"free agent"` / `"rostered"`), `rostered_by`, `mine`, `ranked`, and the
+#'   signal columns above
 #' @export
 ffs_waiver_watchlist <- function(conn,
                                  ros = NULL,
@@ -166,13 +175,52 @@ ffs_waiver_watchlist <- function(conn,
                                  values = NULL,
                                  trending = NULL,
                                  pos_filter = c("QB", "RB", "WR", "TE"),
-                                 my_franchise = NULL) {
+                                 my_franchise = NULL,
+                                 include_unranked = TRUE,
+                                 unranked_min_snap = 0.35,
+                                 unranked_min_xfp = 5) {
   fantasypros_id <- pos <- ecr <- status <- mine <- signal <- NULL
-  rostered_by <- franchise_id <- player <- NULL
+  rostered_by <- franchise_id <- player <- team <- ranked <- NULL
 
   if (is.null(ros)) ros <- ffs_ros_rankings(pos_filter = pos_filter)
   r <- data.table::as.data.table(ros)[pos %in% pos_filter & !is.na(ecr)]
   r <- unique(r[!is.na(fantasypros_id)], by = "fantasypros_id")
+  r[, ranked := TRUE]
+
+  # FantasyPros ranks a fixed number of players per position, so a back-up who
+  # has just taken over a starting job is simply absent - Drew Lock was playing
+  # 90% of Seattle's snaps and sat outside all 66 ranked QBs. Anyone the usage
+  # data or the Sleeper market says is live gets a row, with blank rankings.
+  if (isTRUE(include_unranked)) {
+    extra <- list()
+    if (!is.null(usage)) {
+      u <- data.table::as.data.table(usage)
+      u <- u[!is.na(fantasypros_id) & pos %in% pos_filter &
+               !as.character(fantasypros_id) %in% r$fantasypros_id &
+               (get("snap_pct_recent") >= unranked_min_snap |
+                  get("exp_pts_recent") >= unranked_min_xfp)]
+      if (nrow(u)) extra[["usage"]] <- u[, list(
+        fantasypros_id = as.character(fantasypros_id), player, pos, team)]
+    }
+    tr_add <- trending[["add"]]
+    if (!is.null(tr_add) && NROW(tr_add) && "player" %in% names(tr_add)) {
+      t <- data.table::as.data.table(tr_add)
+      t <- t[!is.na(fantasypros_id) & pos %in% pos_filter &
+               !as.character(fantasypros_id) %in% r$fantasypros_id]
+      if (nrow(t)) extra[["trending"]] <- t[, list(
+        fantasypros_id = as.character(fantasypros_id), player, pos, team)]
+    }
+    if (length(extra)) {
+      ex <- unique(data.table::rbindlist(extra, use.names = TRUE, fill = TRUE),
+                   by = "fantasypros_id")
+      ex[, `:=`(ecr = NA_real_, sd = NA_real_, pos_rank = NA_integer_,
+                bye = NA_integer_, roster_pct = NA_real_, ecr_delta = NA_real_,
+                scrape_date = r$scrape_date[[1]], source = r$source[[1]],
+                ranked = FALSE)]
+      r <- data.table::rbindlist(list(r, ex), use.names = TRUE, fill = TRUE)
+      cli::cli_alert_info("{nrow(ex)} unranked player{?s} carried in on usage or market signal")
+    }
+  }
 
   rosters <- data.table::as.data.table(ffs_rosters(conn))
   # rookies lag in dp_playerids; match them to the rankings by name
@@ -221,24 +269,24 @@ ffs_waiver_watchlist <- function(conn,
     out <- merge(out, tr, by = "fantasypros_id", all.x = TRUE)
   }
 
-  # percentile within position, over free agents only - a signal is about how a
-  # player stacks up against what you could actually claim instead of him
-  pctl <- function(x, higher_is_better = TRUE) {
-    v <- if (higher_is_better) x else -x
-    r <- data.table::frank(v, na.last = "keep", ties.method = "average")
-    (r - 1) / pmax(1, sum(!is.na(v)) - 1)
-  }
+  # Every player is scored against the FREE AGENT distribution at his own
+  # position, rostered players included: the question a waiver board answers is
+  # "where would this guy sit if he were available", which is what makes a
+  # rostered player and a claim comparable in one sorted list.
   comps <- intersect(c("ecr", "xfp_g", "snap_pct", "roster_pct", "trend_add"), names(out))
   fa <- out$status == "free agent"
   parts <- lapply(comps, function(cc) {
     v <- rep(NA_real_, nrow(out))
-    x <- out[[cc]]
+    x <- as.numeric(out[[cc]])
     # trending counts are absent for the vast majority - a missing count is a
     # zero, not an unknown; every other input stays NA and drops out of the mean
-    if (cc == "trend_add") x <- data.table::fifelse(is.na(x), 0, as.numeric(x))
+    if (cc == "trend_add") x <- data.table::fifelse(is.na(x), 0, x)
+    if (cc == "ecr") x <- -x           # a lower consensus rank is a better one
     for (p in unique(out$pos)) {
-      idx <- which(fa & out$pos == p)
-      if (length(idx)) v[idx] <- pctl(x[idx], higher_is_better = cc != "ecr")
+      ref <- stats::na.omit(x[fa & out$pos == p])
+      idx <- which(out$pos == p & !is.na(x))
+      if (!length(ref) || !length(idx)) next
+      v[idx] <- vapply(x[idx], function(xi) mean(ref <= xi), numeric(1))
     }
     v
   })
@@ -248,7 +296,7 @@ ffs_waiver_watchlist <- function(conn,
 
   data.table::setorderv(out, c("status", "signal"), c(1L, -1L))
   front <- intersect(c("player", "pos", "team", "status", "rostered_by", "mine",
-                       "signal", "pos_rank", "ecr", "ecr_delta", "roster_pct",
+                       "ranked", "signal", "pos_rank", "ecr", "ecr_delta", "roster_pct",
                        "trend_add", "trend_drop", "snap_pct", "xfp_g", "fp_g",
                        "fpoe", "games", "redraft_value", "dynasty_value",
                        "value_trend_30d", "bye", "sd", "fantasypros_id"), names(out))

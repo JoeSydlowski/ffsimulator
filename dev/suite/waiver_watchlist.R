@@ -79,23 +79,21 @@ fc_for <- function(num_qbs, num_teams, ppr) {
 ## ---- PER LEAGUE --------------------------------------------------------------
 build_league <- function(league_id) {
   conn <- ffscrapr::sleeper_connect(season = config$season, league_id = league_id)
-  info <- as.data.table(ffscrapr::ff_league(conn))
-  superflex <- grepl("SF|2QB|superflex", info$qb_type[[1]], ignore.case = TRUE)
-  ppr <- suppressWarnings(as.numeric(sub("_ppr.*$", "", info$scoring_flags[[1]])))
-  if (is.na(ppr)) ppr <- 1
-  teams <- as.integer(info$franchise_count[[1]])
-  # ff_league() leaves league_type blank on some leagues; Sleeper's own setting
-  # (0 redraft / 1 keeper / 2 dynasty) always has it
-  ltype <- info$league_type[[1]]
-  if (is.na(ltype) || !nzchar(trimws(ltype))) {
-    ltype <- tryCatch({
-      t <- as.integer(ffscrapr::sleeper_getendpoint(
-        paste0("league/", league_id))$content$settings$type)
-      c("redraft", "keeper", "dynasty")[t + 1L]
-    }, error = function(e) "redraft")
-    if (is.na(ltype)) ltype <- "redraft"
-  }
-  cli::cli_rule("{info$league_name[[1]]} - {ltype}{
+
+  # Read the settings off Sleeper's own league object rather than ff_league():
+  # ffscrapr builds its columns from whatever the payload happens to carry, and
+  # on one of these leagues it returns no league_type column at all, which took
+  # the whole league out of the run.
+  raw <- ffscrapr::sleeper_getendpoint(paste0("league/", league_id))$content
+  lname <- raw$name
+  teams <- as.integer(raw$total_rosters)
+  slots <- unlist(raw$roster_positions)
+  superflex <- any(slots %in% c("SUPER_FLEX", "SUPERFLEX")) || sum(slots == "QB") > 1
+  ppr <- suppressWarnings(as.numeric(raw$scoring_settings$rec))
+  if (!length(ppr) || is.na(ppr)) ppr <- 1
+  ltype <- c("redraft", "keeper", "dynasty")[as.integer(raw$settings$type) + 1L]
+  if (!length(ltype) || is.na(ltype)) ltype <- "redraft"
+  cli::cli_rule("{lname} - {ltype}{
     if (superflex) ' superflex' else ' 1QB'}, {ppr} ppr, {teams} teams")
 
   who <- as.data.table(ffscrapr::ff_franchises(conn))
@@ -116,7 +114,7 @@ build_league <- function(league_id) {
 
   list(
     id = league_id,
-    name = info$league_name[[1]],
+    name = lname,
     type = ltype,
     qb = if (superflex) "superflex" else "1QB",
     ppr = ppr,
@@ -144,7 +142,7 @@ fwrite(rbindlist(lapply(leagues, function(l)
 
 ## ---- PAGE --------------------------------------------------------------------
 # columns the page shows, in order; everything else stays in the CSV
-show <- c("player", "pos", "team", "bye", "status", "rostered_by", "mine", "signal",
+show <- c("player", "pos", "team", "bye", "status", "rostered_by", "mine", "ranked", "signal",
           "pos_rank", "ecr", "ecr_delta", "roster_pct", "trend_add", "trend_drop",
           "snap_pct", "xfp_g", "fp_g", "redraft_value", "dynasty_value")
 
@@ -306,7 +304,16 @@ td.name{
 }
 td.name .sub{display:block; font-size:11px; color:var(--ink-3); font-weight:400}
 td.name .owner{color:var(--ink-2)}
+tr.is-mine td{background:var(--mine-soft)}
 tr.is-mine td.name{box-shadow:inset 3px 0 0 var(--mine)}
+tr.is-mine:hover td{background:var(--mine-soft); filter:brightness(.98)}
+.tag-mine{
+  display:inline-block; margin-left:7px; padding:1px 6px; border-radius:4px;
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--mine); border:1px solid var(--mine);
+  vertical-align:1px; font-weight:500;
+}
+.unranked{color:var(--mine); font-style:italic}
 .pos{
   display:inline-block; min-width:30px; text-align:center; font-size:11px; font-weight:600;
   font-family:"IBM Plex Mono",monospace; padding:2px 5px; border-radius:4px;
@@ -360,7 +367,8 @@ body_bits <- paste0(
 
   <div class="controls">
     <div class="seg" id="scope" role="group" aria-label="Which players">
-      <button type="button" data-scope="fa" aria-pressed="true">Free agents</button>
+      <button type="button" data-scope="compare" aria-pressed="true">My roster + free agents</button>
+      <button type="button" data-scope="fa" aria-pressed="false">Free agents</button>
       <button type="button" data-scope="mine" aria-pressed="false">My roster</button>
       <button type="button" data-scope="all" aria-pressed="false">Everyone</button>
     </div>
@@ -379,7 +387,8 @@ body_bits <- paste0(
   <section class="legend">
     <h2>What the columns mean</h2>
     <dl>
-      <div><dt>Signal</dt><dd>Average of the percentile ranks below, taken <em>within position</em> against the other free agents. An opening sort, not a projection.</dd></div>
+      <div><dt>Signal</dt><dd>Average of the percentile ranks below, taken <em>within position</em> against the free agents &mdash; your own players are scored on that same scale, so the default view sorts a claim and the man you&rsquo;d cut in one list. An opening sort, not a projection.</dd></div>
+      <div><dt>mine / unranked</dt><dd><span class="tag-mine">mine</span> is on your roster. <span class="unranked">unranked</span> means FantasyPros lists no rest-of-season rank for him at all &mdash; he is here because his snaps or the Sleeper market say he is playing.</dd></div>
       <div><dt>Rank</dt><dd>FantasyPros rest-of-season consensus, with the week&rsquo;s movement.</dd></div>
       <div><dt>Rost%</dt><dd>Share of all leagues that roster him. High and still free here is the classic miss.</dd></div>
       <div><dt>Adds / Drops</dt><dd>Sleeper claims across every league in the window. Moves hours after news, days before rankings.</dd></div>
@@ -396,7 +405,7 @@ body_bits <- paste0(
 (function(){
   var D = JSON.parse(document.getElementById("data").textContent);
   var meta = D.meta, leagues = D.leagues;
-  var state = {league:0, scope:"fa", pos:"ALL", q:"", sort:"signal", dir:-1};
+  var state = {league:0, scope:"compare", pos:"ALL", q:"", sort:"signal", dir:-1};
 
   document.getElementById("prov").innerHTML =
     "week <b>" + meta.week + "</b> &middot; " + meta.season +
@@ -431,8 +440,10 @@ body_bits <- paste0(
     var v = row[col.k];
     if(col.type==="name"){
       var sub = [row.team||"FA", row.bye?("bye "+row.bye):null].filter(Boolean).join(" &middot; ");
-      if(row.status!=="free agent") sub += " &middot; <span class=\\"owner\\">"+esc(row.rostered_by)+"</span>";
-      return "<td class=\\"name\\"><span class=\\"pos\\">"+esc(row.pos)+"</span> "+esc(row.player)+
+      if(row.ranked===false) sub += " &middot; <span class=\\"unranked\\">unranked</span>";
+      if(row.status!=="free agent" && !row.mine) sub += " &middot; <span class=\\"owner\\">"+esc(row.rostered_by)+"</span>";
+      var tag = row.mine ? "<span class=\\"tag-mine\\">mine</span>" : "";
+      return "<td class=\\"name\\"><span class=\\"pos\\">"+esc(row.pos)+"</span> "+esc(row.player)+tag+
              "<span class=\\"sub\\">"+sub+"</span></td>";
     }
     if(col.type==="sig"){
@@ -460,6 +471,8 @@ body_bits <- paste0(
 
   function rows(){
     var L = leagues[state.league], out = L.rows.filter(function(r){
+      // the default view: what I could claim, next to what I would cut for him
+      if(state.scope==="compare" && r.status!=="free agent" && !r.mine) return false;
       if(state.scope==="fa" && r.status!=="free agent") return false;
       if(state.scope==="mine" && !r.mine) return false;
       if(state.pos!=="ALL" && r.pos!==state.pos) return false;

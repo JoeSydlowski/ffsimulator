@@ -18,7 +18,8 @@ ffs_sleeper_trending(
 \item{limit}{how many players to return (default 200)}
 }
 \value{
-a dataframe: \code{fantasypros_id}, \code{sleeper_id}, \code{count}
+a dataframe: \code{fantasypros_id}, \code{sleeper_id}, \code{player}, \code{pos}, \code{team},
+\code{count}
 }
 \description{
 (EXPERIMENTAL) Sleeper publishes the most-added and most-dropped players

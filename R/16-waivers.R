@@ -68,7 +68,7 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
                   gsis_id = as.character(gsis_id),
                   pfr_id = as.character(pfr_id),
                   player = get("name"),
-                  pos = position)]
+                  pos = position, team = get("team"))]
   ids <- unique(ids, by = "fantasypros_id")
 
   # window labeller shared by both sources: the last `lookback` played weeks are
@@ -134,7 +134,7 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
     fpoe_recent = fpts_recent - exp_pts_recent
   )]
   out <- out[!is.na(fantasypros_id),
-             list(fantasypros_id, player, pos, games_recent,
+             list(fantasypros_id, player, pos, team, games_recent,
                   snap_pct_recent, snap_pct_prior, snap_trend,
                   exp_pts_recent, exp_pts_prior, exp_pts_trend,
                   fpts_recent, fpoe_recent)]
@@ -201,7 +201,7 @@ ffs_waiver_candidates <- function(base_simulation,
 
   if (!is.null(usage)) {
     u <- data.table::as.data.table(usage)
-    u <- u[, setdiff(names(u), c("player", "pos")), with = FALSE]
+    u <- u[, setdiff(names(u), c("player", "pos", "team")), with = FALSE]
     u[, fantasypros_id := as.character(fantasypros_id)]
     fa <- merge(fa, unique(u, by = "fantasypros_id"), by = "fantasypros_id", all.x = TRUE)
   }

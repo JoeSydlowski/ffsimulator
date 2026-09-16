@@ -11,7 +11,10 @@ ffs_waiver_watchlist(
   values = NULL,
   trending = NULL,
   pos_filter = c("QB", "RB", "WR", "TE"),
-  my_franchise = NULL
+  my_franchise = NULL,
+  include_unranked = TRUE,
+  unranked_min_snap = 0.35,
+  unranked_min_xfp = 5
 )
 }
 \arguments{
@@ -29,11 +32,18 @@ ffs_waiver_watchlist(
 \item{pos_filter}{positions to include}
 
 \item{my_franchise}{optional franchise_id: marks your own players \code{mine}}
+
+\item{include_unranked}{also carry players FantasyPros does not rank at all,
+when the usage or market data says they are live (default \code{TRUE}). Their
+ranking columns are blank and \code{ranked} is \code{FALSE}}
+
+\item{unranked_min_snap, unranked_min_xfp}{how much usage an unranked player
+needs to earn a row: snap share, or expected points per game}
 }
 \value{
-a dataframe, one row per ranked player: identity, \code{status}
-(\code{"free agent"} / \code{"rostered"}), \code{rostered_by}, \code{mine}, and the signal
-columns above
+a dataframe, one row per player: identity, \code{status}
+(\code{"free agent"} / \code{"rostered"}), \code{rostered_by}, \code{mine}, \code{ranked}, and the
+signal columns above
 }
 \description{
 (EXPERIMENTAL) Every ranked player in a league, free agent or rostered, with
