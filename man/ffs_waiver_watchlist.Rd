@@ -10,6 +10,8 @@ ffs_waiver_watchlist(
   usage = NULL,
   values = NULL,
   trending = NULL,
+  projections = NULL,
+  ppr = 1,
   pos_filter = c("QB", "RB", "WR", "TE"),
   my_franchise = NULL,
   include_unranked = TRUE,
@@ -28,6 +30,11 @@ ffs_waiver_watchlist(
 
 \item{trending}{a list with \code{add} and/or \code{drop} elements from
 \code{\link[=ffs_sleeper_trending]{ffs_sleeper_trending()}}, or \code{NULL}}
+
+\item{projections}{a table from \code{\link[=ffs_sleeper_projections]{ffs_sleeper_projections()}}, or \code{NULL}}
+
+\item{ppr}{the league's points per reception, which picks the scoring
+variant of the projection}
 
 \item{pos_filter}{positions to include}
 
@@ -54,18 +61,21 @@ each signal that says something different about him:
 \item \strong{rankings} (\code{ecr}, \code{pos_rank}, \code{ecr_delta}): where the analyst consensus
 has him for the rest of the season, and which way it is moving
 \item \strong{market} (\code{roster_pct}, \code{trend_add}, \code{trend_drop}): what the rest of
-fantasy is doing about him, right now, plus \code{adds_per_open} and
-\code{drops_per_owned}, the same counts divided by the leagues that could
-actually make the move - a player most leagues already roster cannot be
-added much, which flatters the waiver-wire nobody next to him
+fantasy is doing about him, right now
 \item \strong{usage} (\code{snap_pct}, \code{xfp_g}, \code{fp_g}, \code{fpoe}): what his team is actually
 giving him, which moves first when a role changes
+\item \strong{next week} (\code{proj}): Sleeper's own projection for the upcoming week, in
+this league's scoring
 \item \strong{value} (\code{redraft_value}, \code{dynasty_value}): what the trade market pays
 }
 
+Every join falls back from \code{fantasypros_id} to a cleaned name and position
+(see \code{.ffs_pkey}), because FantasyPros re-issues ids and a moved id otherwise
+blanks a player's usage - or shows a rostered one as free.
+
 \code{signal} averages the available components as percentile ranks \strong{within
 position}, against the free agents: consensus rank, expected points, snap
-share, roster percentage and ownership-adjusted Sleeper adds. Rostered
+share, roster percentage and Sleeper adds. Rostered
 players are scored on that same free-agent scale, so a claim and the man you
 would cut for him sort in one list. It is a rough ordering to open the table
 on, not a model - every input is there to be sorted on itself.

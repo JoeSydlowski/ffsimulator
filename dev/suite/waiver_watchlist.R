@@ -7,6 +7,7 @@
 # lists every ranked player - free agent or rostered - with
 #   rankings  ecr / pos_rank / ecr_delta   (LIVE FantasyPros rest-of-season scrape)
 #   market    roster_pct, Sleeper adds+drops over the last 24h
+#   next week Sleeper projection for the upcoming week, in league scoring
 #   usage     snap share, expected fantasy points, actual points (nflreadr)
 #   value     FantasyCalc redraft and dynasty values
 #
@@ -50,6 +51,13 @@ trending <- list(
                  error = function(e) NULL),
   drop = tryCatch(ffs_sleeper_trending("drop", config$trend_hours, 200L),
                   error = function(e) NULL))
+
+week <- as.integer(nflreadr::get_current_week())
+message("sleeper projections for week ", week, " ...")
+projections <- tryCatch(
+  ffs_sleeper_projections(season = config$season, week = week,
+                          pos_filter = config$pos_filter),
+  error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
 
 ros_cache <- new.env(parent = emptyenv())
 ros_for <- function(ppr) {
@@ -109,6 +117,8 @@ build_league <- function(league_id) {
     usage = usage,
     values = fc_for(if (superflex) 2 else 1, teams, ppr),
     trending = trending,
+    projections = projections,
+    ppr = ppr,
     pos_filter = config$pos_filter,
     my_franchise = my_id))
 
@@ -143,8 +153,8 @@ fwrite(rbindlist(lapply(leagues, function(l)
 ## ---- PAGE --------------------------------------------------------------------
 # columns the page shows, in order; everything else stays in the CSV
 show <- c("player", "pos", "team", "bye", "status", "rostered_by", "mine", "ranked", "signal",
-          "pos_rank", "ecr", "ecr_delta", "roster_pct", "trend_add", "adds_per_open",
-          "trend_drop", "drops_per_owned",
+          "pos_rank", "ecr", "ecr_delta", "roster_pct", "trend_add", "trend_drop",
+          "proj",
           "snap_pct", "xfp_g", "fp_g", "redraft_value", "dynasty_value")
 
 payload <- lapply(leagues, function(l) {
@@ -392,8 +402,8 @@ body_bits <- paste0(
       <div><dt>mine / unranked</dt><dd><span class="tag-mine">mine</span> is on your roster. <span class="unranked">unranked</span> means FantasyPros lists no rest-of-season rank for him at all &mdash; he is here because his snaps or the Sleeper market say he is playing.</dd></div>
       <div><dt>Rank</dt><dd>FantasyPros rest-of-season consensus, with the week&rsquo;s movement.</dd></div>
       <div><dt>Own%</dt><dd>Share of all leagues that roster him. High and still free here is the classic miss.</dd></div>
-      <div><dt>Adds / Drops</dt><dd>Sleeper claims across every league in the window. Moves hours after news, days before rankings.</dd></div>
-      <div><dt>Adds/open</dt><dd>Adds divided by the leagues where he was actually free, so ownership stops hiding the signal &mdash; a player 88% of leagues already roster can only be added in the other 12%. Drops/own does the same the other way: of the leagues that have him, how hard they are cutting.</dd></div>
+      <div><dt>Adds / Drops</dt><dd>Sleeper claims across every league in the window. Moves hours after news, days before rankings. Read them next to Own% &mdash; a player most leagues already roster can only be added in the few where he is free.</dd></div>
+      <div><dt>Proj</dt><dd>Sleeper&rsquo;s projection for the upcoming week, in this league&rsquo;s scoring. The only column about next Sunday rather than the rest of the season.</dd></div>
       <div><dt>Snap%</dt><dd>Share of his team&rsquo;s offensive snaps, recent window.</dd></div>
       <div><dt>xFP/g</dt><dd>Expected fantasy points per game from opportunity alone &mdash; volume without the finishing luck.</dd></div>
       <div><dt>FP/g</dt><dd>Points he actually scored. Far above xFP/g is production you should not bank on.</dd></div>
@@ -419,11 +429,10 @@ body_bits <- paste0(
     {k:"player",        h:"Player",  type:"name"},
     {k:"signal",        h:"Signal",  type:"sig"},
     {k:"pos_rank",      h:"Rank",    type:"rank"},
-    {k:"roster_pct",    h:"Own%",       type:"pct1"},
-    {k:"trend_add",     h:"Adds",       type:"count"},
-    {k:"adds_per_open", h:"Adds/open",  type:"count"},
-    {k:"trend_drop",    h:"Drops",      type:"count"},
-    {k:"drops_per_owned", h:"Drops/own", type:"count"},
+    {k:"proj",          h:"Proj",    type:"num1"},
+    {k:"roster_pct",    h:"Own%",    type:"pct1"},
+    {k:"trend_add",     h:"Adds",    type:"count"},
+    {k:"trend_drop",    h:"Drops",   type:"count"},
     {k:"snap_pct",      h:"Snap%",   type:"frac"},
     {k:"xfp_g",         h:"xFP/g",   type:"num1"},
     {k:"fp_g",          h:"FP/g",    type:"num1"},
