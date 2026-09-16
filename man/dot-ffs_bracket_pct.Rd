@@ -17,7 +17,9 @@
 
 \item{ss}{summary_season carrying \code{lg_rank}}
 
-\item{playoff_slots}{number of berths (a power of two)}
+\item{playoff_slots}{number of berths. A field that is not a power of two
+plays byes - it is padded up to the next power of two and the top seeds sit
+out round one (6 berths = seeds 1-2 on bye, then 3v6 and 4v5).}
 
 \item{playoff_weeks}{weeks available to the bracket, in order}
 

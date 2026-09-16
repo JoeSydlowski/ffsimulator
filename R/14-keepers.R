@@ -8,6 +8,9 @@
 # resulting league. That makes "which keepers should I set?" answerable on
 # simulated wins rather than on market value.
 
+# placeholder franchise for an unfilled bracket seed (a bye) - never a real id
+.ffs_bye_id <- "__ffs_bye__"
+
 # --- keeper costs -----------------------------------------------------------
 
 #' Keeper cost for every rostered player
@@ -243,13 +246,38 @@ ffs_draft_pick_map <- function(draft_slots, n_rounds, forfeited = NULL) {
 #'   league rookies went ~11.7 picks (~26 ranks) earlier than their preseason
 #'   rank implied, controlling for rank (p=0.03, 2024-25). Requires a logical
 #'   `rookie` column on `pool`; 0 disables.
+#' @param pos_shift optional named numeric vector of ranks to move a whole
+#'   position UP the board (e.g. `c(QB = 12)` where a league reaches on QBs
+#'   relative to the supplied board). Board order only - `ecr` itself is left
+#'   untouched for reporting. `NULL` disables.
+#' @param pos_shift_exempt franchise ids that draft the UNSHIFTED board while
+#'   everyone else reaches. Use it to model a room whose bias you do not share -
+#'   leaving it empty means a shift meant for the opponents also moves your own
+#'   board, which makes "best available" mean something you cannot execute.
+#' @param pos_shift_alt shift applied to the `pos_shift_exempt` franchises
+#'   instead of `pos_shift`. `NULL` gives them the raw board; supplying the
+#'   league's own calibrated shift instead makes them draft like a typical
+#'   manager while the room bias varies around them.
+#' @param pos_shift_ramp optional per-round multiplier on `pos_shift`, indexed by
+#'   round (clamped at its last element). `NULL` applies the shift at full
+#'   strength in every round. Use it where a room follows the board early and
+#'   only develops its positional bias later.
+#' @param policy optional `function(franchise_id, round, have)` returning the
+#'   positions that franchise will consider at that pick, where `have` is its
+#'   named vector of current positional counts. Scripts a build for one seat
+#'   while everyone else autodrafts. The return is intersected with what is
+#'   already allowed and ignored when empty, when that position is exhausted, or
+#'   while the hard starter backstop is running - a policy can narrow the draft
+#'   but never make a roster illegal. `NULL` disables.
 #' @param pos_cap named vector of positional roster maximums (`Inf` = no cap;
 #'   this is a hard ceiling like a platform's per-position roster limit, not a
 #'   preference - use `soft_bench`/`depth_decay` to softly discourage excess)
 #' @param soft_bench extra copies beyond `pos_need` a franchise wants before a
 #'   position starts getting discounted (bench/flex depth)
 #' @param window_k how many of the best remaining eligible players (by true
-#'   rank) are in play for a given pick
+#'   rank) are in play for a given pick. A length-1 value applies to every round;
+#'   a vector is indexed by round (clamped at its last element), which is how a
+#'   draft that is tight early and loose late gets expressed
 #' @param rank_decay within the window, how much the pick still favors the top:
 #'   weight `exp(-rank_decay * (rank_in_window - 1))` before the fit multiplier
 #' @param need_boost weight multiplier for a position below `pos_need`
@@ -265,7 +293,9 @@ ffs_mock_draft <- function(pool, pick_map, kept = NULL,
                            pos_need = c(QB = 1L, RB = 2L, WR = 3L, TE = 1L),
                            pos_cap = c(QB = Inf, RB = Inf, WR = Inf, TE = Inf),
                            pos_start_max = NULL, over_start_decay = 0.15,
-                           rookie_boost = 0,
+                           rookie_boost = 0, pos_shift = NULL,
+                           pos_shift_exempt = character(0), pos_shift_alt = NULL,
+                           pos_shift_ramp = NULL, policy = NULL,
                            soft_bench = 1L, window_k = 6L, rank_decay = 0.7,
                            need_boost = 1.6, depth_decay = 0.4,
                            seed = NULL) {
@@ -284,7 +314,48 @@ ffs_mock_draft <- function(pool, pick_map, kept = NULL,
   } else {
     p[, ecr_adj := ecr]
   }
+  # pos_shift moves a whole position up the board the same way rookie_boost
+  # moves rookies: a league that reaches on QBs is a property of the drafters,
+  # not of the players, so it belongs in board order and not in ecr.
+  #
+  # `pos_shift_exempt` names franchises that do NOT share the distortion - they
+  # draft the true board while the rest of the room reaches. Without it a shift
+  # applied to model the ROOM silently applies to the seat being studied too,
+  # so "best available" quietly means "best available on the distorted board"
+  # and the counterfactual that matters - everyone else reaches, I do not -
+  # cannot be expressed at all.
+  apply_shift <- function(s) {
+    if (is.null(s)) return(p$ecr_adj)
+    v <- unname(s[p$pos]); v[is.na(v)] <- 0
+    p$ecr_adj - as.numeric(v)
+  }
+  p[, ecr_shift := apply_shift(pos_shift)]
   data.table::setorder(p, ecr_adj)
+  # board order seen by a reaching franchise, as positions into p
+  ord_shift <- order(apply_shift(pos_shift))
+  # ...and the order seen by the exempt seats. `pos_shift_alt` is the point:
+  # exempting a seat from the ROOM bias does not make it a sharp value drafter,
+  # it makes it a manager who refuses to pay any positional premium - which in
+  # superflex ends with no startable quarterbacks. The realistic counterfactual
+  # is a seat that values players like a TYPICAL manager in this league (a fixed
+  # calibrated shift) while the room bias moves around it. NULL keeps the old
+  # meaning, the raw board.
+  ord_plain <- if (is.null(pos_shift_alt)) seq_len(nrow(p)) else order(apply_shift(pos_shift_alt))
+  pos_shift_exempt <- as.character(pos_shift_exempt)
+
+  # A room does not carry the same positional bias in every round. Measured on
+  # this league: round 1 tracks ADP almost exactly (86% of picks within 3 ranks,
+  # zero excess QBs) and the bias only appears from round 3 on. A constant shift
+  # forces a round-1 QB reach that never happens. `pos_shift_ramp` scales the
+  # shift per round, so the board order is rebuilt for each round it changes.
+  ord_by_round <- NULL
+  if (!is.null(pos_shift) && !is.null(pos_shift_ramp)) {
+    n_rd <- max(as.integer(data.table::as.data.table(pick_map)$round))
+    ord_by_round <- lapply(seq_len(n_rd), function(rr) {
+      f <- pos_shift_ramp[[min(rr, length(pos_shift_ramp))]]
+      order(apply_shift(pos_shift * f))
+    })
+  }
 
   picks <- data.table::as.data.table(pick_map)[order(overall)]
   fids <- unique(picks$franchise_id)
@@ -324,15 +395,37 @@ ffs_mock_draft <- function(pool, pick_map, kept = NULL,
     if (length(allowed) == 0L) allowed <- open_pos
     if (length(allowed) == 0L) allowed <- positions
 
+    # a scripted build narrows the pick, but only within what is already allowed
+    # and never while the hard backstop is committing picks to unmet starter
+    # needs - a policy must not be able to produce an illegal roster
+    allowed_base <- allowed
+    if (!hard_backstop && !is.null(policy)) {
+      want <- intersect(as.character(policy(f, picks$round[[i]], hv)), allowed)
+      if (length(want)) allowed <- want
+    }
+
     picks_left[[f]] <- picks_left[[f]] - 1L
 
-    hit <- which(avail & pos_vec %in% allowed) # p is sorted by true ecr
+    ord <- if (f %in% pos_shift_exempt) ord_plain
+           else if (!is.null(ord_by_round)) ord_by_round[[min(as.integer(picks$round[[i]]), length(ord_by_round))]]
+           else ord_shift
+    hit <- ord[avail[ord] & pos_vec[ord] %in% allowed]
+    if (length(hit) == 0L && length(allowed) < length(allowed_base)) {
+      allowed <- allowed_base # the policy asked for a position that is gone
+      hit <- ord[avail[ord] & pos_vec[ord] %in% allowed]
+    }
     if (length(hit) == 0L) next
 
     if (hard_backstop) {
       sel <- hit[[1L]]
     } else {
-      window <- hit[seq_len(min(window_k, length(hit)))]
+      # window_k may be a per-round vector: real drafts are near-deterministic
+      # in round 1 (86% of picks land within 3 ranks of ADP) and fan out about
+      # tenfold by the end, so a single width is wrong at both ends
+      wk <- if (length(window_k) > 1L) {
+        window_k[[min(as.integer(picks$round[[i]]), length(window_k))]]
+      } else window_k
+      window <- hit[seq_len(min(wk, length(hit)))]
       if (length(window) == 1L) {
         sel <- window[[1L]] # sample(x, 1) on a length-1 x samples from 1:x, not x
       } else {
@@ -403,7 +496,9 @@ ffs_mock_draft <- function(pool, pick_map, kept = NULL,
 #' @param lineup_method passed to [ffs_optimise_lineups()]
 #'
 #' @return a data.table with one row per franchise: `h2h_wins`, `points_for`,
-#'   `playoff_pct`, and `champion_pct` when `playoff_weeks` is supplied
+#'   `playoff_pct`, `bye_pct` (share of seasons seeded into a first-round bye -
+#'   `NA` when the field is a power of two and nobody gets one), and
+#'   `champion_pct` when `playoff_weeks` is supplied
 #'
 #' @export
 ffs_keeper_world <- function(rosters, projected_scores, franchises,
@@ -411,7 +506,8 @@ ffs_keeper_world <- function(rosters, projected_scores, franchises,
                              playoff_slots = 6L, playoff_weeks = NULL, weeks_per_round = 1L,
                              pos_filter = c("QB", "RB", "WR", "TE"),
                              replacement_level = TRUE,
-                             lineup_method = "rank") {
+                             lineup_method = "rank",
+                             compute_optimal = TRUE) {
   assert_df(rosters, c("league_id", "franchise_id", "franchise_name",
                        "fantasypros_id", "pos"))
   season <- week <- h2h_wins <- points_for <- lg_rank <- franchise_id <- NULL
@@ -434,6 +530,7 @@ ffs_keeper_world <- function(rosters, projected_scores, franchises,
     roster_scores = roster_scores,
     lineup_constraints = lineup_constraints,
     lineup_method = lineup_method,
+    compute_optimal = compute_optimal,
     pos_filter = pos_filter))
 
   sw <- data.table::as.data.table(
@@ -442,11 +539,18 @@ ffs_keeper_world <- function(rosters, projected_scores, franchises,
   ss[, lg_rank := data.table::frank(list(-h2h_wins, -points_for), ties.method = "first"),
      by = season]
 
+  # A field that is not a power of two hands the top seeds a first-round bye,
+  # which in a 6-of-12 league is a free win and much of what separates a good
+  # season from a title. playoff_pct cannot see it and champion_pct is too noisy
+  # to measure it directly, so report the seeding rate in its own right - it is
+  # the low-variance term that explains playoff-to-title conversion.
+  n_byes <- as.integer(2^ceiling(log2(playoff_slots)) - playoff_slots)
   agg <- ss[, list(
     seasons = .N,
     h2h_wins = mean(h2h_wins),
     points_for = mean(points_for),
-    playoff_pct = mean(lg_rank <= playoff_slots)
+    playoff_pct = mean(lg_rank <= playoff_slots),
+    bye_pct = if (n_byes > 0L) mean(lg_rank <= n_byes) else NA_real_
   ), by = list(franchise_id, franchise_name)]
 
   if (!is.null(playoff_weeks)) {
@@ -467,7 +571,9 @@ ffs_keeper_world <- function(rosters, projected_scores, franchises,
 #'
 #' @param optimal optimal_scores for all simulated weeks
 #' @param ss summary_season carrying `lg_rank`
-#' @param playoff_slots number of berths (a power of two)
+#' @param playoff_slots number of berths. A field that is not a power of two
+#'   plays byes - it is padded up to the next power of two and the top seeds sit
+#'   out round one (6 berths = seeds 1-2 on bye, then 3v6 and 4v5).
 #' @param playoff_weeks weeks available to the bracket, in order
 #' @param weeks_per_round games per bracket round. Many leagues (Sleeper
 #'   `playoff_round_type = 2`) play TWO weeks per round and advance on the
@@ -478,12 +584,11 @@ ffs_keeper_world <- function(rosters, projected_scores, franchises,
 .ffs_bracket_pct <- function(optimal, ss, playoff_slots, playoff_weeks, weeks_per_round = 1L) {
   season <- week <- lg_rank <- franchise_id <- actual_score <- NULL
 
-  n_rounds <- log2(playoff_slots)
-  if (n_rounds != as.integer(n_rounds)) {
-    cli::cli_warn("{.arg playoff_slots} = {playoff_slots} is not a power of two - skipping the bracket")
-    return(data.table::data.table(franchise_id = character(), champion_pct = numeric()))
-  }
-  n_rounds <- as.integer(n_rounds)
+  # a field that is not a power of two plays byes: pad up to the next power of
+  # two with placeholder seeds below every real one, so the top seeds sit out
+  # round one exactly as they would in a real bracket
+  n_rounds <- as.integer(ceiling(log2(playoff_slots)))
+  field_size <- 2^n_rounds
   need_wk <- n_rounds * weeks_per_round
   if (length(playoff_weeks) < need_wk) {
     cli::cli_warn("need {need_wk} playoff week{?s}, got {length(playoff_weeks)} - skipping the bracket")
@@ -496,6 +601,12 @@ ffs_keeper_world <- function(rosters, projected_scores, franchises,
 
   # seeds: one row per (season, seed)
   field <- ss[lg_rank <= playoff_slots, list(season, franchise_id, seed = lg_rank)]
+  if (field_size > playoff_slots) {
+    byes <- data.table::CJ(season = unique(field$season),
+                           seed = seq.int(playoff_slots + 1L, field_size))
+    byes[, "franchise_id" := .ffs_bye_id]
+    field <- data.table::rbindlist(list(field, byes), use.names = TRUE)
+  }
   alive <- data.table::copy(field)
 
   for (rd in seq_len(n_rounds)) {
@@ -517,6 +628,7 @@ ffs_keeper_world <- function(rosters, projected_scores, franchises,
   }
 
   n_seasons <- length(unique(ss$season))
-  champs <- alive[, list(champion_pct = .N / n_seasons), by = franchise_id]
+  champs <- alive[franchise_id != .ffs_bye_id,
+                  list(champion_pct = .N / n_seasons), by = franchise_id]
   champs[]
 }

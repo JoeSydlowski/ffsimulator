@@ -13,6 +13,11 @@ ffs_mock_draft(
   pos_start_max = NULL,
   over_start_decay = 0.15,
   rookie_boost = 0,
+  pos_shift = NULL,
+  pos_shift_exempt = character(0),
+  pos_shift_alt = NULL,
+  pos_shift_ramp = NULL,
+  policy = NULL,
   soft_bench = 1L,
   window_k = 6L,
   rank_decay = 0.7,
@@ -52,11 +57,41 @@ league rookies went ~11.7 picks (~26 ranks) earlier than their preseason
 rank implied, controlling for rank (p=0.03, 2024-25). Requires a logical
 \code{rookie} column on \code{pool}; 0 disables.}
 
+\item{pos_shift}{optional named numeric vector of ranks to move a whole
+position UP the board (e.g. \code{c(QB = 12)} where a league reaches on QBs
+relative to the supplied board). Board order only - \code{ecr} itself is left
+untouched for reporting. \code{NULL} disables.}
+
+\item{pos_shift_exempt}{franchise ids that draft the UNSHIFTED board while
+everyone else reaches. Use it to model a room whose bias you do not share -
+leaving it empty means a shift meant for the opponents also moves your own
+board, which makes "best available" mean something you cannot execute.}
+
+\item{pos_shift_alt}{shift applied to the \code{pos_shift_exempt} franchises
+instead of \code{pos_shift}. \code{NULL} gives them the raw board; supplying the
+league's own calibrated shift instead makes them draft like a typical
+manager while the room bias varies around them.}
+
+\item{pos_shift_ramp}{optional per-round multiplier on \code{pos_shift}, indexed by
+round (clamped at its last element). \code{NULL} applies the shift at full
+strength in every round. Use it where a room follows the board early and
+only develops its positional bias later.}
+
+\item{policy}{optional \verb{function(franchise_id, round, have)} returning the
+positions that franchise will consider at that pick, where \code{have} is its
+named vector of current positional counts. Scripts a build for one seat
+while everyone else autodrafts. The return is intersected with what is
+already allowed and ignored when empty, when that position is exhausted, or
+while the hard starter backstop is running - a policy can narrow the draft
+but never make a roster illegal. \code{NULL} disables.}
+
 \item{soft_bench}{extra copies beyond \code{pos_need} a franchise wants before a
 position starts getting discounted (bench/flex depth)}
 
 \item{window_k}{how many of the best remaining eligible players (by true
-rank) are in play for a given pick}
+rank) are in play for a given pick. A length-1 value applies to every round;
+a vector is indexed by round (clamped at its last element), which is how a
+draft that is tight early and loose late gets expressed}
 
 \item{rank_decay}{within the window, how much the pick still favors the top:
 weight \code{exp(-rank_decay * (rank_in_window - 1))} before the fit multiplier}

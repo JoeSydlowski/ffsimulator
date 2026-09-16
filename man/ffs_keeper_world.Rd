@@ -16,7 +16,8 @@ ffs_keeper_world(
   weeks_per_round = 1L,
   pos_filter = c("QB", "RB", "WR", "TE"),
   replacement_level = TRUE,
-  lineup_method = "rank"
+  lineup_method = "rank",
+  compute_optimal = TRUE
 )
 }
 \arguments{
@@ -50,7 +51,9 @@ playoff rounds run two weeks and advance on combined score)
 }
 \value{
 a data.table with one row per franchise: \code{h2h_wins}, \code{points_for},
-\code{playoff_pct}, and \code{champion_pct} when \code{playoff_weeks} is supplied
+\code{playoff_pct}, \code{bye_pct} (share of seasons seeded into a first-round bye -
+\code{NA} when the field is a power of two and nobody gets one), and
+\code{champion_pct} when \code{playoff_weeks} is supplied
 }
 \description{
 (EXPERIMENTAL) Runs a set of hypothetical rosters through the back half of

@@ -155,8 +155,46 @@ test_that("bracket handles multi-week rounds and crowns exactly one champion", {
   # too few weeks for the requested format -> warn, return empty
   expect_warning(z <- ffsimulator:::.ffs_bracket_pct(opt, ss, 4L, 14:15, weeks_per_round = 2L))
   expect_equal(nrow(z), 0L)
-  # non-power-of-two field refused rather than silently mis-bracketed
-  expect_warning(ffsimulator:::.ffs_bracket_pct(opt, ss, 6L, 14:17, weeks_per_round = 1L))
+})
+
+test_that("a non-power-of-two field plays byes for the top seeds", {
+  # 12 teams, 6 berths: seeds 1-2 sit out round one, 3v6 and 4v5 play. Every
+  # team is equally good, so the byes are the only thing separating them.
+  set.seed(7)
+  n_seas <- 3000
+  ss <- data.table::CJ(season = seq_len(n_seas), franchise_id = as.character(1:12))
+  data.table::setorder(ss, season, franchise_id)
+  ss[, lg_rank := as.integer(sub("^", "", franchise_id))]
+  opt <- data.table::CJ(season = seq_len(n_seas), week = 15:17,
+                        franchise_id = as.character(1:12))
+  opt[, actual_score := stats::rnorm(.N, 100, 20)]
+
+  ch <- ffsimulator:::.ffs_bracket_pct(opt, ss, 6L, 15:17, weeks_per_round = 1L)
+  expect_equal(nrow(ch), 6L)                                  # only real seeds
+  expect_equal(sum(ch$champion_pct), 1, tolerance = 1e-8)
+  expect_false(any(grepl("bye", ch$franchise_id)))
+  expect_setequal(ch$franchise_id, as.character(1:6))
+
+  pct <- stats::setNames(ch$champion_pct, ch$franchise_id)
+  # a bye is worth one fewer game to win: ~1/4 each for seeds 1-2, ~1/8 for 3-6
+  expect_equal(unname(pct["1"]), 0.25, tolerance = 0.03)
+  expect_equal(unname(pct["5"]), 0.125, tolerance = 0.03)
+  expect_gt(min(pct[c("1", "2")]), max(pct[c("3", "4", "5", "6")]))
+})
+
+test_that("padding leaves a power-of-two field exactly as it was", {
+  set.seed(11)
+  n_seas <- 200
+  ss <- data.table::CJ(season = seq_len(n_seas), franchise_id = as.character(1:8))
+  data.table::setorder(ss, season, franchise_id)
+  ss[, lg_rank := as.integer(franchise_id)]
+  opt <- data.table::CJ(season = seq_len(n_seas), week = 15:17,
+                        franchise_id = as.character(1:8))
+  opt[, actual_score := stats::rnorm(.N, 100, 20)]
+  ch <- ffsimulator:::.ffs_bracket_pct(opt, ss, 8L, 15:17, weeks_per_round = 1L)
+  expect_equal(nrow(ch), 8L)
+  expect_equal(sum(ch$champion_pct), 1, tolerance = 1e-8)
+  expect_setequal(ch$franchise_id, as.character(1:8))
 })
 
 test_that("two-week rounds favour the stronger team more than one-week rounds", {
@@ -174,3 +212,113 @@ test_that("two-week rounds favour the stronger team more than one-week rounds", 
   expect_gt(two$champion_pct[two$franchise_id == "1"],
             one$champion_pct[one$franchise_id == "1"])
 })
+
+# --- scripted builds and board shifts ---------------------------------------
+
+# a pool with no cross-position ecr ties, so window_k = 1 makes the draft
+# deterministic and the board order is the only thing under test
+shift_pool <- function() {
+  data.table::data.table(
+    fantasypros_id = paste0("p", 1:80),
+    player = paste0("Player", 1:80),
+    pos = rep(c("RB", "QB", "WR", "TE"), each = 20),
+    ecr = 1:80
+  )
+}
+
+test_that("pos_shift reorders the board without touching ecr", {
+  slots <- stats::setNames(1:4, paste0("f", 1:4))
+  pm <- ffs_draft_pick_map(slots, 8)
+  args <- list(pool = shift_pool(), pick_map = pm,
+               pos_need = c(QB = 1L, RB = 1L, WR = 1L, TE = 1L),
+               pos_cap = c(QB = Inf, RB = Inf, WR = Inf, TE = Inf),
+               window_k = 1L)
+
+  plain <- do.call(ffs_mock_draft, args)
+  expect_equal(plain$pos[[1]], "RB")            # RB1 is the best ecr
+
+  bumped <- do.call(ffs_mock_draft, c(args, list(pos_shift = c(QB = 25))))
+  expect_equal(bumped$pos[[1]], "QB")           # QBs jump 20 ranks
+  expect_equal(bumped$ecr[[1]], 21)              # reported ecr is untouched
+
+  # a shift for a position that is not in the pool is a no-op, not an error
+  noop <- do.call(ffs_mock_draft, c(args, list(pos_shift = c(K = 50))))
+  expect_equal(noop$fantasypros_id, plain$fantasypros_id)
+})
+
+test_that("policy scripts one seat's build and leaves the rest autodrafting", {
+  slots <- stats::setNames(1:4, paste0("f", 1:4))
+  pm <- ffs_draft_pick_map(slots, 8)
+  need <- c(QB = 1L, RB = 2L, WR = 3L, TE = 1L)
+
+  # f1 takes WR with its first three picks, TE with the fourth, then BPA
+  pol <- function(franchise_id, round, have) {
+    if (franchise_id != "f1") return(character(0))
+    if (round <= 3L) "WR" else if (round == 4L) "TE" else character(0)
+  }
+  d <- ffs_mock_draft(shift_pool(), pm, pos_need = need,
+                      pos_cap = c(QB = Inf, RB = Inf, WR = Inf, TE = Inf),
+                      policy = pol, seed = 3)
+
+  f1 <- d[d$franchise_id == "f1"][order(round)]
+  expect_equal(f1$pos[1:3], rep("WR", 3))
+  expect_equal(f1$pos[[4]], "TE")
+  expect_equal(nrow(d), nrow(pm))
+  expect_equal(anyDuplicated(d$fantasypros_id), 0L)
+
+  # the guarantee still holds for everyone, f1 included
+  for (fid in paste0("f", 1:4)) {
+    tb <- table(factor(d$pos[d$franchise_id == fid], levels = names(need)))
+    expect_true(all(tb >= need), info = fid)
+  }
+})
+
+test_that("a policy cannot starve a roster or outrank the hard backstop", {
+  slots <- stats::setNames(1:4, paste0("f", 1:4))
+  pm <- ffs_draft_pick_map(slots, 7)
+  need <- c(QB = 1L, RB = 2L, WR = 3L, TE = 1L)   # 7 needs, 7 picks - no slack
+
+  # an adversarial policy that only ever wants QBs
+  d <- ffs_mock_draft(shift_pool(), pm, pos_need = need,
+                      pos_cap = c(QB = Inf, RB = Inf, WR = Inf, TE = Inf),
+                      policy = function(...) "QB", seed = 5)
+  expect_equal(nrow(d), nrow(pm))
+  for (fid in paste0("f", 1:4)) {
+    tb <- table(factor(d$pos[d$franchise_id == fid], levels = names(need)))
+    expect_true(all(tb >= need), info = fid)
+  }
+
+  # asking for a position that is exhausted falls back rather than losing a pick
+  small <- shift_pool()[shift_pool()$pos != "TE"]
+  d2 <- ffs_mock_draft(small, ffs_draft_pick_map(slots, 5),
+                       pos_need = c(QB = 1L, RB = 1L, WR = 1L),
+                       pos_cap = c(QB = Inf, RB = Inf, WR = Inf),
+                       policy = function(...) "TE", seed = 5)
+  expect_equal(nrow(d2), 20L)
+})
+
+
+test_that("pos_shift_exempt lets one seat draft the true board", {
+  slots <- stats::setNames(1:4, paste0("f", 1:4))
+  pm <- ffs_draft_pick_map(slots, 6)
+  args <- list(pool = shift_pool(), pick_map = pm,
+               pos_need = c(QB = 1L, RB = 1L, WR = 1L, TE = 1L),
+               pos_cap = c(QB = Inf, RB = Inf, WR = Inf, TE = Inf),
+               window_k = 1L, pos_shift = c(QB = 25))
+
+  # everyone reaches: the whole first round is QBs (QB block is ecr 21-40,
+  # shifted to -4..15, so it outranks RB1 at ecr 1)
+  all_reach <- do.call(ffs_mock_draft, args)
+  expect_equal(all_reach$pos[1:4], rep("QB", 4))
+
+  # f1 exempt: it takes the true board leader while the rest still reach
+  one_out <- do.call(ffs_mock_draft, c(args, list(pos_shift_exempt = "f1")))
+  r1 <- one_out[one_out$round == 1L][order(overall)]
+  expect_equal(r1$pos[r1$franchise_id == "f1"], "RB")
+  expect_true(all(r1$pos[r1$franchise_id != "f1"] == "QB"))
+
+  # and exempting nobody is identical to not passing the argument at all
+  same <- do.call(ffs_mock_draft, c(args, list(pos_shift_exempt = character(0))))
+  expect_equal(same$fantasypros_id, all_reach$fantasypros_id)
+})
+
