@@ -142,6 +142,70 @@ only run at value ≥ 300.
   confirmed on the n=400 standings sim.
 - `FFS_SELL_MAX` (default `4`) — how many SELLs get buyer scans + matchmaking.
 
+## Waiver wire (`dev/suite/waiver_wire.R`)
+
+The weekly question — *who do I add, and who do I drop for him?* — answered in
+the same currency as everything else: the change in **your** simulated season.
+
+```
+Rscript dev/suite/waiver_wire.R                        # every league in the config
+FFS_LEAGUE_ID=1312145437842497536 Rscript dev/suite/waiver_wire.R
+```
+
+League type (dynasty/keeper/redraft), superflex, PPR, team count and Sleeper's
+position limits are read off the league — the only things to set are the league
+ids and `FFS_MY_TEAM` (matched against Sleeper `user_name` first). It reuses
+today's `simulation.rds` if the suite already built one. Outputs land in
+`dev/league_sims/<league_id>/<date>/waivers/`:
+
+| file | what it is |
+|---|---|
+| `pairs.csv` | ranked add/drop swaps: `h2h_wins_delta`, `playoff_pct_delta`, `champion_pct_delta` for **your** team, plus `value_delta` (FantasyCalc market swing), the add's ECR / roster% / snaps / xFP, and `score` (the ordering — see below). `exact` marks the rows that got a real swap evaluation; `confirmed` (when the search/confirm split is on) marks the ones re-priced on the standings sim |
+| `adds.csv` | what each free agent is worth to your roster on his own |
+| `drops.csv` | what dropping each of your players costs on its own (sorted least-costly first) |
+| `board.csv` | the whole free-agent board: ROS ECR, FantasyPros roster% and rank movement, snap share, expected fantasy points, FantasyCalc value |
+| `watchlist.csv` | unrostered usage risers — including players too unranked for the sim to price, who are a *watch*, not a move |
+
+**How a claim gets priced.** `ffs_attach_free_agents()` simulates the free-agent
+pool on the same season/week grid as the league sim and parks it under a phantom
+franchise, so a claim is priced by exactly the machinery a trade is:
+re-optimize your lineups with him in (and the dropped player out), re-summarise.
+This is deliberately **not** `replacement_level = TRUE`, which hands the top free
+agents to *every* team at once and prices every claim at ~0 by construction —
+the runner refuses to report off such a simulation.
+
+**Two screens, then exact math.** Simulating every free agent against every
+droppable player is `n_add × n_drop` re-optimizations. Instead: a cheap
+points-vs-your-starters proxy keeps the top `FFS_SCREEN_ADDS` (25) candidates;
+each surviving add and each drop is valued once; their sum ranks the pairs; and
+the best `FFS_TOP_PAIRS` (30) are re-evaluated as real simultaneous swaps
+(`exact = TRUE` — trust those rows first). Measured screen-vs-exact error on
+the confirmed rows: ~0.02 wins, max 0.035.
+
+**Runtime.** A counterfactual costs one lineup re-solve per simulated
+franchise-week, so it scales with `n` *and* with how often the player would
+start: ~7s for a lineup-worthy add at n=400, ~0.5s for a bench drop. A full
+league run at the defaults is ~9 minutes of evaluation on top of the
+simulation. Two levers if that is too slow on a bigger league:
+`FFS_SEARCH_NSEASONS` (< `FFS_NSEASONS`) values everything on a cheap sim and
+re-prices only the top `FFS_CONFIRM_N` (10) pairings on the standings sim —
+those rows come back marked `confirmed`; and `FFS_WORKERS` spreads the batch
+over a PSOCK cluster (results are bit-identical to in-process). **Leave
+`FFS_WORKERS=1` unless you have ~2.5 GB of free RAM per worker** — each worker
+holds its own copy of the simulation, and a 6-worker run on a 32 GB box paged
+so hard it ran ~10x slower than sequential.
+
+**Ordering.** `score` blends win-now and market value as percentile ranks:
+championship-odds delta only in a redraft league, and
+`(1 − FFS_DYNASTY_WEIGHT)` win-now + `FFS_DYNASTY_WEIGHT` value swing (0.35 by
+default) in a dynasty or keeper league, where a claim is partly an asset
+acquisition. It is an ordering heuristic, not a unit — the underlying deltas are
+the real numbers.
+
+**What it cannot see.** Exclusivity and denial: the model prices the player you
+gain, not the opponent who now cannot have him. Nor does it know your FAAB
+budget or waiver priority.
+
 ## Config notes
 
 - `replacement_level = FALSE` is the right setting for deep dynasty leagues:
