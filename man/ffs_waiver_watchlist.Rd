@@ -11,6 +11,8 @@ ffs_waiver_watchlist(
   values = NULL,
   trending = NULL,
   projections = NULL,
+  sleeper_players = NULL,
+  lineups = NULL,
   ppr = 1,
   pos_filter = c("QB", "RB", "WR", "TE"),
   my_franchise = NULL,

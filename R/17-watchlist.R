@@ -198,6 +198,125 @@ ffs_sleeper_projections <- function(season = nflreadr::most_recent_season(),
                            proj_std = get("proj_std"), week = get("week"))])
 }
 
+#' Sleeper's player file: injuries and NFL depth-chart order
+#'
+#' (EXPERIMENTAL) One row per player from Sleeper's master file, cut down to the
+#' fields a waiver decision turns on: whether he is hurt, and where his own team
+#' lists him on the depth chart. The file is large (~10 MB) and changes slowly,
+#' so callers should fetch it once per run.
+#'
+#' Sleeper does **not** publish roster percentage here - the number their app
+#' shows is internal. `roster_pct` on the board is FantasyPros' figure, an
+#' average across ESPN and Yahoo redraft leagues, which is why a dynasty stash
+#' can read low there and high in a Sleeper dynasty league.
+#'
+#' @param pos_filter positions to keep
+#'
+#' @return a dataframe: `sleeper_id`, `fantasypros_id`, `player`, `pos`, `team`,
+#'   `injury`, `injury_body_part`, `status`, `nfl_depth`, `nfl_depth_pos`
+#' @export
+ffs_sleeper_players <- function(pos_filter = c("QB", "RB", "WR", "TE")) {
+  rlang::check_installed(c("httr", "jsonlite"), "to read the Sleeper player file")
+  sleeper_id <- fantasypros_id <- pos <- NULL
+
+  resp <- tryCatch(httr::GET("https://api.sleeper.app/v1/players/nfl"),
+                   error = function(e) e)
+  if (inherits(resp, "error") || httr::status_code(resp) != 200) {
+    cli::cli_alert_warning("Sleeper player file unavailable")
+    return(data.frame())
+  }
+  raw <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"),
+                            simplifyDataFrame = FALSE)
+  pick <- function(p, f) {
+    v <- p[[f]]
+    if (is.null(v) || !length(v)) NA else v[[1]]
+  }
+  keep <- Filter(function(p) isTRUE(toupper(pick(p, "position")) %in% pos_filter), raw)
+  if (!length(keep)) return(data.frame())
+
+  out <- data.table::data.table(
+    sleeper_id = vapply(keep, function(p) as.character(pick(p, "player_id")), character(1)),
+    player = vapply(keep, function(p) as.character(pick(p, "full_name")), character(1)),
+    pos = vapply(keep, function(p) toupper(as.character(pick(p, "position"))), character(1)),
+    team = vapply(keep, function(p) as.character(pick(p, "team")), character(1)),
+    injury = vapply(keep, function(p) as.character(pick(p, "injury_status")), character(1)),
+    injury_body_part = vapply(keep, function(p) as.character(pick(p, "injury_body_part")), character(1)),
+    status = vapply(keep, function(p) as.character(pick(p, "status")), character(1)),
+    nfl_depth = vapply(keep, function(p) suppressWarnings(as.integer(pick(p, "depth_chart_order"))), integer(1)),
+    nfl_depth_pos = vapply(keep, function(p) as.character(pick(p, "depth_chart_position")), character(1))
+  )
+  ids <- data.table::as.data.table(ffscrapr::dp_playerids())
+  ids <- unique(ids[!is.na(sleeper_id), list(sleeper_id = as.character(sleeper_id),
+                                             fantasypros_id = as.character(fantasypros_id))],
+                by = "sleeper_id")
+  out <- merge(out, ids, by = "sleeper_id", all.x = TRUE)
+  as.data.frame(out)
+}
+
+#' Who each franchise is actually starting this week
+#'
+#' (EXPERIMENTAL) Sleeper's `starters` array, aligned to the league's own slot
+#' list, so every rostered player comes back marked as a starter in a named slot
+#' or as bench. This is what turns "who is available" into "who is *startable*":
+#' a manager leaving a hurt or bye-week player in his lineup, or sitting someone
+#' who would start for you, is only visible here.
+#'
+#' @param league_id the Sleeper league id
+#' @param week optional week - reads that week's matchup lineups instead of the
+#'   currently-set ones
+#'
+#' @return a dataframe: `franchise_id`, `sleeper_id`, `slot`, `slot_no`, `starting`
+#' @export
+ffs_sleeper_lineups <- function(league_id, week = NULL) {
+  rlang::check_installed(c("httr", "jsonlite"), "to read Sleeper lineups")
+
+  get_json <- function(path) {
+    resp <- tryCatch(httr::GET(paste0("https://api.sleeper.app/v1/", path)),
+                     error = function(e) e)
+    if (inherits(resp, "error") || httr::status_code(resp) != 200) return(NULL)
+    jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"),
+                       simplifyDataFrame = FALSE)
+  }
+
+  lg <- get_json(paste0("league/", league_id))
+  # the starters array lines up positionally with the league's own slot list, so
+  # this has to keep BOTH the order and the repeats - setdiff() would collapse
+  # QB,RB,RB,WR,WR,TE,FLEX,FLEX,FLEX to five slots and mislabel every lineup
+  rp <- unlist(lg$roster_positions)
+  slots <- rp[!rp %in% c("BN", "IR", "TAXI")]
+  rosters <- get_json(paste0("league/", league_id, "/rosters"))
+  if (is.null(rosters)) {
+    cli::cli_alert_warning("Sleeper rosters unavailable for league {league_id}")
+    return(data.frame())
+  }
+  # a week's matchup carries the lineup as it was actually set for that week
+  wk <- if (!is.null(week)) get_json(paste0("league/", league_id, "/matchups/", week)) else NULL
+  wk_starters <- if (!is.null(wk)) stats::setNames(
+    lapply(wk, function(m) as.character(unlist(m$starters))),
+    vapply(wk, function(m) as.character(m$roster_id), character(1))) else NULL
+
+  rows <- lapply(rosters, function(r) {
+    fid <- as.character(r$roster_id)
+    st <- if (!is.null(wk_starters) && !is.null(wk_starters[[fid]])) wk_starters[[fid]] else
+      as.character(unlist(r$starters))
+    all_players <- as.character(unlist(r$players))
+    st_rows <- if (length(st)) data.table::data.table(
+      franchise_id = fid,
+      sleeper_id = st,
+      slot = slots[seq_along(st)],
+      slot_no = seq_along(st),
+      starting = TRUE) else NULL
+    bench <- setdiff(all_players, st)
+    bn_rows <- if (length(bench)) data.table::data.table(
+      franchise_id = fid, sleeper_id = bench,
+      slot = NA_character_, slot_no = NA_integer_, starting = FALSE) else NULL
+    data.table::rbindlist(list(st_rows, bn_rows), use.names = TRUE)
+  })
+  out <- data.table::rbindlist(Filter(Negate(is.null), rows), use.names = TRUE)
+  # an empty slot comes back as "0"
+  as.data.frame(out[out$sleeper_id != "0"])
+}
+
 #' A name-and-position key, for when a FantasyPros id moves
 #'
 #' FantasyPros re-issues player ids: their live rest-of-season page had Roman
@@ -293,6 +412,8 @@ ffs_waiver_watchlist <- function(conn,
                                  values = NULL,
                                  trending = NULL,
                                  projections = NULL,
+                                 sleeper_players = NULL,
+                                 lineups = NULL,
                                  ppr = 1,
                                  pos_filter = c("QB", "RB", "WR", "TE"),
                                  my_franchise = NULL,
@@ -448,6 +569,29 @@ ffs_waiver_watchlist <- function(conn,
     out <- .ffs_attach(out, pr, "proj")
   }
 
+  if (!is.null(sleeper_players) && NROW(sleeper_players)) {
+    sp <- data.table::as.data.table(sleeper_players)
+    sp <- sp[, list(fantasypros_id = as.character(fantasypros_id),
+                    pkey = .ffs_pkey(player, pos),
+                    injury = get("injury"), nfl_depth = get("nfl_depth"),
+                    nfl_depth_pos = get("nfl_depth_pos"))]
+    out <- .ffs_attach(out, sp, c("injury", "nfl_depth", "nfl_depth_pos"))
+  }
+
+  if (!is.null(lineups) && NROW(lineups)) {
+    lu <- data.table::as.data.table(lineups)
+    # lineups key on the platform's own player id; carry them onto the board
+    # through the roster table, which holds both that id and fantasypros_id
+    lu <- merge(rosters[, list(player_id = as.character(get("player_id")),
+                               fantasypros_id = as.character(fantasypros_id), pkey)],
+                lu[, list(player_id = as.character(get("sleeper_id")),
+                          slot = get("slot"), slot_no = get("slot_no"),
+                          starting = get("starting"))],
+                by = "player_id")
+    out <- .ffs_attach(out, lu, c("slot", "slot_no", "starting"))
+    out[status == "rostered" & is.na(get("starting")), "starting" := FALSE]
+  }
+
   # Percentile within position over EVERY player in the league, rostered and
   # free alike. Scoring against the free agents alone reads better in principle
   # ("where would he sit if he were available") but saturates: every startable
@@ -477,7 +621,8 @@ ffs_waiver_watchlist <- function(conn,
   front <- intersect(c("player", "pos", "team", "status", "rostered_by", "mine",
                        "ranked", "signal", "pos_rank", "ecr", "ecr_delta", "roster_pct",
                        "trend_add", "trend_drop",
-                       "snap_pct", "xfp_g", "fp_g", "proj",
+                       "proj", "snap_pct", "xfp_g", "fp_g", "injury",
+                       "starting", "slot", "nfl_depth", "nfl_depth_pos",
                        "fpoe", "games", "redraft_value", "dynasty_value",
                        "value_trend_30d", "bye", "sd", "fantasypros_id"), names(out))
   data.table::setcolorder(out, front)

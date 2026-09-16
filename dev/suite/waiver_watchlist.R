@@ -59,6 +59,11 @@ projections <- tryCatch(
                           pos_filter = config$pos_filter),
   error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
 
+message("sleeper player file (injuries + NFL depth chart) ...")
+sleeper_players <- tryCatch(ffs_sleeper_players(pos_filter = config$pos_filter),
+                            error = function(e) {
+                              message("  unavailable: ", conditionMessage(e)); NULL})
+
 ros_cache <- new.env(parent = emptyenv())
 ros_for <- function(ppr) {
   key <- paste0("ppr", ppr)
@@ -118,6 +123,9 @@ build_league <- function(league_id) {
     values = fc_for(if (superflex) 2 else 1, teams, ppr),
     trending = trending,
     projections = projections,
+    sleeper_players = sleeper_players,
+    lineups = tryCatch(ffs_sleeper_lineups(league_id, week = week),
+                       error = function(e) NULL),
     ppr = ppr,
     pos_filter = config$pos_filter,
     my_franchise = my_id))
@@ -154,7 +162,7 @@ fwrite(rbindlist(lapply(leagues, function(l)
 # columns the page shows, in order; everything else stays in the CSV
 show <- c("player", "pos", "team", "bye", "status", "rostered_by", "mine", "ranked", "signal",
           "pos_rank", "ecr", "ecr_delta", "roster_pct", "trend_add", "trend_drop",
-          "proj",
+          "proj", "injury", "starting", "slot", "slot_no", "nfl_depth",
           "snap_pct", "xfp_g", "fp_g", "redraft_value", "dynasty_value")
 
 payload <- lapply(leagues, function(l) {
@@ -418,6 +426,47 @@ td.sig{text-align:left; width:104px}
   color:var(--ink-3); margin-top:2px;
 }
 .slot .nm.un{font-style:italic}
+.inj{
+  margin-left:6px; font-family:"IBM Plex Mono",monospace; font-size:9.5px;
+  letter-spacing:.04em; text-transform:uppercase; color:var(--down);
+  border:1px solid var(--down); border-radius:3px; padding:0 4px; white-space:nowrap;
+}
+
+/* lineups */
+.lineups{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px}
+.lineup{
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:12px 14px 10px; box-shadow:var(--shadow);
+}
+.lineup.mine{border-color:var(--mine)}
+.lineup h3{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  font-family:Archivo,sans-serif; font-size:13px; margin:0 0 8px;
+}
+.lineup h3 .tot{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-3); font-weight:400;
+}
+.chiprow{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px}
+.chipflag{
+  font-size:11px; padding:2px 7px; border-radius:999px; white-space:nowrap;
+}
+.chipflag.bad{background:var(--surface-2); color:var(--down); border:1px solid var(--down)}
+.chipflag.good{background:var(--accent-soft); color:var(--accent-ink); border:1px solid var(--accent)}
+.lrow{
+  display:grid; grid-template-columns:46px 1fr 48px; gap:8px; align-items:center;
+  padding:5px 0; border-top:1px solid var(--line); font-size:12.5px;
+}
+.lrow:first-of-type{border-top:0}
+.lrow.bad .who b{color:var(--down)}
+.lrow.good{background:var(--accent-soft); border-radius:5px; padding-inline:6px}
+.lrow .slotname{
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.04em;
+  color:var(--ink-3); text-transform:uppercase;
+}
+.lrow .num{
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; text-align:right;
+}
+.steals{margin-top:8px; border-top:1px dashed var(--line-strong); padding-top:6px}
 @media (max-width:520px){
   h1{font-size:19px}
   .wrap{padding-inline:12px}
@@ -442,6 +491,7 @@ body_bits <- paste0(
       <button type="button" data-view="board" aria-pressed="true">Board</button>
       <button type="button" data-view="nfl" aria-pressed="false">NFL depth</button>
       <button type="button" data-view="league" aria-pressed="false">League depth</button>
+      <button type="button" data-view="lineups" aria-pressed="false">Lineups</button>
     </div>
   </div>
 
@@ -468,6 +518,7 @@ body_bits <- paste0(
 
   <div id="nflwrap" hidden></div>
   <div id="leaguewrap" class="gridwrap" hidden></div>
+  <div id="lineupwrap" class="lineups" hidden></div>
 
   <section class="legend">
     <h2>What the columns mean</h2>
@@ -546,7 +597,7 @@ body_bits <- paste0(
     if(col.type==="rank"){
       var d = row.ecr_delta, ds = "";
       if(d!==null&&d!==undefined&&d!==0){
-        ds = " <span class=\\"delta "+(d>0?"up":"down")+"\\">"+(d>0?"\\u25b2":"\\u25bc")+Math.abs(d)+"</span>";
+        ds = " <span class=\\"delta "+(d>0?"up":"down")+"\\">"+(d>0?"&#9650;":"&#9660;")+Math.abs(d)+"</span>";
       }
       return "<td>"+esc(row.pos)+v+ds+"</td>";
     }
@@ -584,52 +635,59 @@ body_bits <- paste0(
     return out;
   }
 
-  // ---- NFL depth: one team, grouped by position, ordered by the snaps -------
+  // shared cell: a player in a depth slot, shaded by what he projects -------
+  function slotCell(r, maxProj, kind){
+    if(!r) return "<div class=\\"slot empty-slot\\"></div>";
+    var heat = (r.proj!=null && maxProj>0) ? Math.round(Math.min(1, r.proj/maxProj)*55) : 0;
+    var bg = heat>0 ? " style=\\"background:color-mix(in srgb, var(--accent) "+heat+"%, var(--surface))\\"" : "";
+    var meta = [r.proj!=null ? r.proj.toFixed(1) : null,
+                r.snap_pct!=null ? Math.round(r.snap_pct*100)+"%" : null,
+                r.pos_rank!=null ? (r.pos+r.pos_rank) : null].filter(Boolean).join(" &middot; ");
+    var inj = r.injury ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" : "";
+    return "<div class=\\"slot "+kind+"\\""+bg+"><span class=\\"nm"+(r.ranked===false?" un":"")+"\\">"+
+      esc(r.player)+inj+"</span><span class=\\"mt\\">"+meta+"</span></div>";
+  }
+
+  function depthSort(a,b){
+    var ad = a.nfl_depth, bd = b.nfl_depth;
+    if(ad!=null && bd!=null && ad!==bd) return ad-bd;
+    if(ad!=null && bd==null) return -1;
+    if(ad==null && bd!=null) return 1;
+    var as = a.snap_pct==null?-1:a.snap_pct, bs = b.snap_pct==null?-1:b.snap_pct;
+    if(as!==bs) return bs-as;
+    return (b.proj==null?-1:b.proj) - (a.proj==null?-1:a.proj);
+  }
+
+  // ---- NFL depth: every team at one position, in the NFL depth order -------
   function drawNfl(){
     var L = leagues[state.league];
-    var order = ["QB","RB","WR","TE"];
-    var rows = L.rows.filter(function(r){
-      if(r.team !== state.team) return false;
-      if(state.pos!=="ALL" && r.pos!==state.pos) return false;
-      if(state.q && (r.player+" "+(r.team||"")).toLowerCase().indexOf(state.q)===-1) return false;
-      return true;
+    var pos = state.pos==="ALL" ? "RB" : state.pos;
+    var byTeam = {}, maxProj = 0;
+    L.rows.forEach(function(r){
+      if(r.pos!==pos || !r.team) return;
+      if(state.q && (r.player+" "+r.team).toLowerCase().indexOf(state.q)===-1) return;
+      (byTeam[r.team] = byTeam[r.team] || []).push(r);
+      if(r.proj!=null && r.proj>maxProj) maxProj = r.proj;
     });
-    var by = {};
-    rows.forEach(function(r){ (by[r.pos] = by[r.pos] || []).push(r); });
-    var html = order.filter(function(p){ return by[p] && by[p].length; }).map(function(p){
-      var list = by[p].sort(function(a,b){
-        var as = a.snap_pct, bs = b.snap_pct;
-        if(as==null && bs==null) return (b.proj||0)-(a.proj||0);
-        if(as==null) return 1;
-        if(bs==null) return -1;
-        if(bs!==as) return bs-as;
-        return (b.proj||0)-(a.proj||0);
-      });
-      var body = list.map(function(r){
-        var tag = r.mine ? "<span class=\\"tag mine\\">mine</span>" :
-          (r.status==="free agent" ? "<span class=\\"tag fa\\">free</span>" :
-           "<span class=\\"tag own\\">"+esc(r.rostered_by)+"</span>");
-        var sp = r.snap_pct==null ? "<span class=\\"dim\\">&mdash;</span>" :
-          "<span class=\\"share\\"><span class=\\"track\\"><span class=\\"fill\\" style=\\"width:"+
-          Math.max(2,Math.round(r.snap_pct*100))+"%\\"></span></span><span class=\\"num\\">"+
-          Math.round(r.snap_pct*100)+"</span></span>";
-        var n = function(v,d){ return v==null ? "<span class=\\"dim\\">&mdash;</span>" : v.toFixed(d); };
-        var rank = r.pos_rank==null ? "<span class=\\"dim\\">&mdash;</span>" : (r.pos+r.pos_rank);
-        return "<div class=\\"drow"+(r.mine?" is-mine":(r.status==="free agent"?" is-fa":""))+"\\">"+
-          "<span class=\\"who\\"><b>"+esc(r.player)+"</b>"+tag+"</span>"+
-          "<span>"+sp+"</span>"+
-          "<span class=\\"num\\">"+n(r.xfp_g,1)+"</span>"+
-          "<span class=\\"num\\">"+n(r.proj,1)+"</span>"+
-          "<span class=\\"num\\">"+rank+"</span>"+
-          "<span class=\\"num\\">"+n(r.roster_pct,1)+"</span></div>";
-      }).join("");
-      return "<div class=\\"posblock\\"><h3>"+p+"</h3>"+
-        "<div class=\\"tablewrap\\"><div class=\\"dhead\\"><span>Player</span><span>Snap%</span>"+
-        "<span>xFP/g</span><span>Proj</span><span>Rank</span><span>Own%</span></div>"+
-        body+"</div></div>";
+    var teams = Object.keys(byTeam).sort();
+    var cols = Math.min(5, Math.max.apply(null, teams.map(function(t){
+      return byTeam[t].length; }).concat([1])));
+    var tmpl = "grid-template-columns:78px repeat("+cols+",minmax(132px,1fr))";
+    var head = "<div class=\\"gridrow\\" style=\\""+tmpl+"\\"><span class=\\"gridhead\\">Team</span>"+
+      Array.apply(null,{length:cols}).map(function(_,i){
+        return "<span class=\\"gridhead\\">"+pos+(i+1)+"</span>"; }).join("")+"</div>";
+    var body = teams.map(function(t){
+      var list = byTeam[t].slice().sort(depthSort);
+      return "<div class=\\"gridrow\\" style=\\""+tmpl+"\\">"+
+        "<div class=\\"owncell\\">"+esc(t)+"</div>"+
+        Array.apply(null,{length:cols}).map(function(_,i){
+          var r = list[i];
+          var kind = !r ? "" : (r.mine ? "mine" : (r.status==="free agent" ? "fa" : ""));
+          return slotCell(r, maxProj, kind); }).join("")+"</div>";
     }).join("");
-    document.getElementById("nflwrap").innerHTML = html ||
-      "<div class=\\"empty\\">No players for that team and position.</div>";
+    document.getElementById("nflwrap").innerHTML = teams.length ?
+      ("<div class=\\"grid\\">"+head+body+"</div>") :
+      "<div class=\\"empty\\">Nothing matches that search.</div>";
   }
 
   // ---- League depth: each franchise stack at one position ----------------
@@ -662,13 +720,9 @@ body_bits <- paste0(
                  .concat([Math.min(fas.length,6), 1])));
     var tmpl = "grid-template-columns:150px repeat("+cols+",minmax(118px,1fr))";
 
-    var slot = function(r, kind){
-      if(!r) return "<div class=\\"slot empty-slot\\"></div>";
-      var meta = [r.pos_rank!=null ? (r.pos+r.pos_rank) : "unranked",
-                  r.proj!=null ? r.proj.toFixed(1) : null].filter(Boolean).join(" &middot; ");
-      return "<div class=\\"slot "+kind+"\\"><span class=\\"nm"+(r.ranked===false?" un":"")+"\\">"+
-        esc(r.player)+"</span><span class=\\"mt\\">"+meta+"</span></div>";
-    };
+    var maxProj = 0;
+    L.rows.forEach(function(r){ if(r.pos===pos && r.proj!=null && r.proj>maxProj) maxProj = r.proj; });
+    var slot = function(r, kind){ return slotCell(r, maxProj, kind); };
     var head = "<div class=\\"gridrow\\" style=\\""+tmpl+"\\"><span class=\\"gridhead\\">"+
       esc(L.my_team? "Franchise":"Franchise")+"</span>"+
       Array.apply(null,{length:cols}).map(function(_,i){
@@ -692,17 +746,94 @@ body_bits <- paste0(
       "<div class=\\"grid\\">"+head+body+faRow+"</div>";
   }
 
+  // ---- Lineups: what everyone is actually starting this week ---------------
+  function drawLineups(){
+    var L = leagues[state.league];
+    var hurt = function(r){
+      return r.injury && ["Out","IR","Doubtful","Sus","PUP","NA"].indexOf(r.injury)!==-1;
+    };
+    var onBye = function(r){ return r.bye!=null && r.bye===meta.week; };
+
+    // what my own lineup projects at each position - anything on another
+    // manager bench that clears it is a player who would start for me
+    var myFloor = {};
+    L.rows.forEach(function(r){
+      if(!r.mine || !r.starting || r.proj==null) return;
+      if(myFloor[r.pos]==null || r.proj < myFloor[r.pos]) myFloor[r.pos] = r.proj;
+    });
+
+    var teams = {};
+    L.rows.forEach(function(r){
+      if(r.status!=="rostered" || !r.rostered_by) return;
+      (teams[r.rostered_by] = teams[r.rostered_by] || []).push(r);
+    });
+    var names = Object.keys(teams).sort(function(a,b){
+      var am = teams[a].some(function(r){return r.mine;});
+      var bm = teams[b].some(function(r){return r.mine;});
+      if(am!==bm) return am ? -1 : 1;
+      return a.localeCompare(b);
+    });
+
+    var html = names.map(function(n){
+      var roster = teams[n];
+      var isMine = roster.some(function(r){return r.mine;});
+      var starters = roster.filter(function(r){ return r.starting; })
+        .sort(function(a,b){ return (a.slot_no||99)-(b.slot_no||99); });
+      var bench = roster.filter(function(r){ return !r.starting; })
+        .sort(function(a,b){ return (b.proj==null?-1:b.proj)-(a.proj==null?-1:a.proj); });
+
+      var flags = starters.filter(function(r){ return hurt(r) || onBye(r); });
+      var steals = isMine ? [] : bench.filter(function(r){
+        return r.proj!=null && myFloor[r.pos]!=null && r.proj > myFloor[r.pos];
+      }).slice(0,4);
+
+      var chip = "";
+      if(flags.length) chip += "<span class=\\"chipflag bad\\">"+flags.length+" starter"+
+        (flags.length>1?"s":"")+" out or on bye</span>";
+      if(steals.length) chip += "<span class=\\"chipflag good\\">"+steals.length+
+        " benched who would start for you</span>";
+
+      var lines = starters.map(function(r){
+        var why = hurt(r) ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" :
+                  (onBye(r) ? "<span class=\\"inj\\">BYE</span>" : "");
+        return "<div class=\\"lrow"+((hurt(r)||onBye(r))?" bad":"")+"\\">"+
+          "<span class=\\"slotname\\">"+esc(r.slot||"")+"</span>"+
+          "<span class=\\"who\\"><b>"+esc(r.player)+"</b>"+why+"</span>"+
+          "<span class=\\"num\\">"+(r.proj==null?"&mdash;":r.proj.toFixed(1))+"</span></div>";
+      }).join("");
+
+      var stealLines = steals.length ? ("<div class=\\"steals\\">"+steals.map(function(r){
+        return "<div class=\\"lrow good\\"><span class=\\"slotname\\">BN</span>"+
+          "<span class=\\"who\\"><b>"+esc(r.player)+"</b><span class=\\"tag fa\\">"+
+          esc(r.pos)+" &gt; your "+r.proj.toFixed(1)+" vs "+myFloor[r.pos].toFixed(1)+
+          "</span></span><span class=\\"num\\">"+r.proj.toFixed(1)+"</span></div>";
+      }).join("")+"</div>") : "";
+
+      var total = starters.reduce(function(s,r){ return s + (r.proj||0); }, 0);
+      return "<div class=\\"lineup"+(isMine?" mine":"")+"\\">"+
+        "<h3>"+esc(n)+"<span class=\\"tot\\">"+total.toFixed(1)+" proj</span></h3>"+
+        (chip?("<div class=\\"chiprow\\">"+chip+"</div>"):"")+
+        lines+stealLines+"</div>";
+    }).join("");
+
+    document.getElementById("lineupwrap").innerHTML = html ||
+      "<div class=\\"empty\\">No lineups set for this league yet.</div>";
+  }
+
   function draw(){
     var L = leagues[state.league];
     // controls that only make sense in one view
     document.getElementById("scope").hidden = state.view!=="board";
     document.getElementById("team").hidden = state.view!=="nfl";
-    document.getElementById("q").hidden = state.view==="league";
+    document.getElementById("q").hidden = (state.view==="league" || state.view==="lineups");
+    document.getElementById("poschips").hidden = state.view==="lineups";
     document.getElementById("boardwrap").hidden = state.view!=="board";
     document.getElementById("nflwrap").hidden = state.view!=="nfl";
     document.getElementById("leaguewrap").hidden = state.view!=="league";
+    document.getElementById("lineupwrap").hidden = state.view!=="lineups";
     if(state.view==="nfl"){ drawNfl(); }
     if(state.view==="league"){ drawLeague(); }
+    if(state.view==="lineups"){ drawLineups(); }
     if(state.view!=="board"){ drawFacts(); return; }
     drawBoard();
   }
@@ -728,7 +859,7 @@ body_bits <- paste0(
 
     document.getElementById("hrow").innerHTML = COLS.map(function(c){
       var on = state.sort===c.k;
-      var arw = on ? "<span class=\\"arw\\">"+(state.dir===1?"\\u25b2":"\\u25bc")+"</span>" : "";
+      var arw = on ? "<span class=\\"arw\\">"+(state.dir===1?"&#9650;":"&#9660;")+"</span>" : "";
       return "<th"+(on?" aria-sort=\\""+(state.dir===1?"ascending":"descending")+"\\"":"")+
              "><button type=\\"button\\" data-k=\\""+c.k+"\\">"+c.h+arw+"</button></th>";
     }).join("");
