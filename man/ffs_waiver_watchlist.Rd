@@ -54,16 +54,21 @@ each signal that says something different about him:
 \item \strong{rankings} (\code{ecr}, \code{pos_rank}, \code{ecr_delta}): where the analyst consensus
 has him for the rest of the season, and which way it is moving
 \item \strong{market} (\code{roster_pct}, \code{trend_add}, \code{trend_drop}): what the rest of
-fantasy is doing about him, right now
+fantasy is doing about him, right now, plus \code{adds_per_open} and
+\code{drops_per_owned}, the same counts divided by the leagues that could
+actually make the move - a player most leagues already roster cannot be
+added much, which flatters the waiver-wire nobody next to him
 \item \strong{usage} (\code{snap_pct}, \code{xfp_g}, \code{fp_g}, \code{fpoe}): what his team is actually
 giving him, which moves first when a role changes
 \item \strong{value} (\code{redraft_value}, \code{dynasty_value}): what the trade market pays
 }
 
 \code{signal} averages the available components as percentile ranks \strong{within
-position}, over the free agents only: consensus rank, expected points, snap
-share, roster percentage and Sleeper adds. It is a rough ordering to open the
-table on, not a model - every input is there to be sorted on itself.
+position}, against the free agents: consensus rank, expected points, snap
+share, roster percentage and ownership-adjusted Sleeper adds. Rostered
+players are scored on that same free-agent scale, so a claim and the man you
+would cut for him sort in one list. It is a rough ordering to open the table
+on, not a model - every input is there to be sorted on itself.
 
 No simulation is involved, so this is quick enough to run for every league
 every week. To price a specific add against a specific drop, take the

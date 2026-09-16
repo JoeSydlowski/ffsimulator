@@ -137,15 +137,20 @@ ffs_sleeper_trending <- function(type = c("add", "drop"),
 #' - **rankings** (`ecr`, `pos_rank`, `ecr_delta`): where the analyst consensus
 #'   has him for the rest of the season, and which way it is moving
 #' - **market** (`roster_pct`, `trend_add`, `trend_drop`): what the rest of
-#'   fantasy is doing about him, right now
+#'   fantasy is doing about him, right now, plus `adds_per_open` and
+#'   `drops_per_owned`, the same counts divided by the leagues that could
+#'   actually make the move - a player most leagues already roster cannot be
+#'   added much, which flatters the waiver-wire nobody next to him
 #' - **usage** (`snap_pct`, `xfp_g`, `fp_g`, `fpoe`): what his team is actually
 #'   giving him, which moves first when a role changes
 #' - **value** (`redraft_value`, `dynasty_value`): what the trade market pays
 #'
 #' `signal` averages the available components as percentile ranks **within
-#' position**, over the free agents only: consensus rank, expected points, snap
-#' share, roster percentage and Sleeper adds. It is a rough ordering to open the
-#' table on, not a model - every input is there to be sorted on itself.
+#' position**, against the free agents: consensus rank, expected points, snap
+#' share, roster percentage and ownership-adjusted Sleeper adds. Rostered
+#' players are scored on that same free-agent scale, so a claim and the man you
+#' would cut for him sort in one list. It is a rough ordering to open the table
+#' on, not a model - every input is there to be sorted on itself.
 #'
 #' No simulation is involved, so this is quick enough to run for every league
 #' every week. To price a specific add against a specific drop, take the
@@ -181,6 +186,7 @@ ffs_waiver_watchlist <- function(conn,
                                  unranked_min_xfp = 5) {
   fantasypros_id <- pos <- ecr <- status <- mine <- signal <- NULL
   rostered_by <- franchise_id <- player <- team <- ranked <- NULL
+  adds_per_open <- drops_per_owned <- NULL
 
   if (is.null(ros)) ros <- ffs_ros_rankings(pos_filter = pos_filter)
   r <- data.table::as.data.table(ros)[pos %in% pos_filter & !is.na(ecr)]
@@ -269,18 +275,39 @@ ffs_waiver_watchlist <- function(conn,
     out <- merge(out, tr, by = "fantasypros_id", all.x = TRUE)
   }
 
+  # Raw add counts are confounded by ownership: a player 88% of leagues already
+  # roster can only be added in the 12% where he is free, so he looks cold next
+  # to a waiver-wire nobody. Divide each count by the share of leagues that
+  # could make the move - adds by the leagues where he is free, drops by the
+  # leagues that own him - and the two become comparable. The 2% floor keeps a
+  # 99%-owned player from turning a handful of adds into a huge rate; a player
+  # FantasyPros does not rank has no ownership figure and is treated as free.
+  avail <- pmax(1 - data.table::fifelse(is.na(out$roster_pct), 0,
+                                        as.numeric(out$roster_pct)) / 100, 0.02)
+  owned_share <- pmax(data.table::fifelse(is.na(out$roster_pct), 0,
+                                          as.numeric(out$roster_pct)) / 100, 0.02)
+  if ("trend_add" %in% names(out)) {
+    out[, adds_per_open := round(as.numeric(get("trend_add")) / avail)]
+  }
+  if ("trend_drop" %in% names(out)) {
+    out[, drops_per_owned := round(as.numeric(get("trend_drop")) / owned_share)]
+  }
+
   # Every player is scored against the FREE AGENT distribution at his own
   # position, rostered players included: the question a waiver board answers is
   # "where would this guy sit if he were available", which is what makes a
   # rostered player and a claim comparable in one sorted list.
-  comps <- intersect(c("ecr", "xfp_g", "snap_pct", "roster_pct", "trend_add"), names(out))
+  # ownership-adjusted adds, not raw ones: ownership is already a component in
+  # its own right, and the raw count carries it a second time
+  comps <- intersect(c("ecr", "xfp_g", "snap_pct", "roster_pct", "adds_per_open"),
+                     names(out))
   fa <- out$status == "free agent"
   parts <- lapply(comps, function(cc) {
     v <- rep(NA_real_, nrow(out))
     x <- as.numeric(out[[cc]])
     # trending counts are absent for the vast majority - a missing count is a
     # zero, not an unknown; every other input stays NA and drops out of the mean
-    if (cc == "trend_add") x <- data.table::fifelse(is.na(x), 0, x)
+    if (cc == "adds_per_open") x <- data.table::fifelse(is.na(x), 0, x)
     if (cc == "ecr") x <- -x           # a lower consensus rank is a better one
     for (p in unique(out$pos)) {
       ref <- stats::na.omit(x[fa & out$pos == p])
@@ -297,7 +324,8 @@ ffs_waiver_watchlist <- function(conn,
   data.table::setorderv(out, c("status", "signal"), c(1L, -1L))
   front <- intersect(c("player", "pos", "team", "status", "rostered_by", "mine",
                        "ranked", "signal", "pos_rank", "ecr", "ecr_delta", "roster_pct",
-                       "trend_add", "trend_drop", "snap_pct", "xfp_g", "fp_g",
+                       "trend_add", "adds_per_open", "trend_drop", "drops_per_owned",
+                       "snap_pct", "xfp_g", "fp_g",
                        "fpoe", "games", "redraft_value", "dynasty_value",
                        "value_trend_30d", "bye", "sd", "fantasypros_id"), names(out))
   data.table::setcolorder(out, front)
