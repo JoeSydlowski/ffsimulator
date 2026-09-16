@@ -85,16 +85,26 @@ ffs_ros_rankings <- function(season = nflreadr::most_recent_season(),
 #' it is pure market behaviour, so read it as "what everyone else is doing",
 #' not as a valuation.
 #'
+#' Sleeper keys team defenses by the bare team abbreviation (`"TB"`, `"SF"`),
+#' which no player-id map carries, and a genuinely new player can be missing
+#' from the maps too. Either way the row would come back nameless. Pass
+#' `players` from [ffs_sleeper_players()] to fill those in from Sleeper's own
+#' file; defenses are labelled `"<TEAM> D/ST"` so they are identifiable rather
+#' than blank.
+#'
 #' @param type `"add"` or `"drop"`
 #' @param lookback_hours the window Sleeper aggregates over (default 24)
 #' @param limit how many players to return (default 200)
+#' @param players an optional [ffs_sleeper_players()] table, used to name
+#'   anyone the id maps do not cover
 #'
 #' @return a dataframe: `fantasypros_id`, `sleeper_id`, `player`, `pos`, `team`,
 #'   `count`
 #' @export
 ffs_sleeper_trending <- function(type = c("add", "drop"),
                                  lookback_hours = 24L,
-                                 limit = 200L) {
+                                 limit = 200L,
+                                 players = NULL) {
   rlang::check_installed(c("httr", "jsonlite"), "to read Sleeper trending players")
   type <- rlang::arg_match(type)
   sleeper_id <- fantasypros_id <- player <- pos <- team <- NULL
@@ -125,6 +135,22 @@ ffs_sleeper_trending <- function(type = c("add", "drop"),
                          team = get("team"))],
                 by = "sleeper_id")
   out <- merge(dt, ids, by = "sleeper_id", all.x = TRUE)
+
+  # fill anyone the id map missed from Sleeper's own file
+  if (!is.null(players) && NROW(players)) {
+    sp <- data.table::as.data.table(players)
+    sp <- unique(sp[, list(sleeper_id = as.character(get("sleeper_id")),
+                           sp_player = get("player"), sp_pos = get("pos"),
+                           sp_team = as.character(get("team")))], by = "sleeper_id")
+    out <- merge(out, sp, by = "sleeper_id", all.x = TRUE)
+    out[is.na(player), `:=`(player = get("sp_player"), pos = get("sp_pos"),
+                            team = get("sp_team"))]
+    out[, c("sp_player", "sp_pos", "sp_team") := NULL]
+  }
+  # a two or three letter id is a team defense, which no player map carries
+  out[is.na(player) & grepl("^[A-Z]{2,3}$", sleeper_id),
+      `:=`(player = paste(sleeper_id, "D/ST"), pos = "DST", team = sleeper_id)]
+
   data.table::setorderv(out, "count", -1L)
   as.data.frame(out[, list(fantasypros_id, sleeper_id, player, pos, team, count)])
 }
@@ -468,17 +494,21 @@ ffs_waiver_watchlist <- function(conn,
     tr_add <- trending[["add"]]
     if (!is.null(tr_add) && NROW(tr_add) && "player" %in% names(tr_add)) {
       t <- data.table::as.data.table(tr_add)
-      t <- t[!is.na(fantasypros_id) & pos %in% pos_filter &
-               !as.character(fantasypros_id) %in% r$fantasypros_id]
+      # a named player with no fantasypros_id still belongs here - he joins on
+      # name and position like everyone else
+      t <- t[!is.na(player) & pos %in% pos_filter &
+               !as.character(fantasypros_id) %in% stats::na.omit(r$fantasypros_id)]
       if (nrow(t)) extra[["trending"]] <- t[, list(
         fantasypros_id = as.character(fantasypros_id), player, pos, team)]
     }
     if (length(extra)) {
-      ex <- unique(data.table::rbindlist(extra, use.names = TRUE, fill = TRUE),
-                   by = "fantasypros_id")
+      # dedupe on the name key, not the id: several rows can share a missing id,
+      # and unique(by = "fantasypros_id") would collapse them into one player
+      ex <- data.table::rbindlist(extra, use.names = TRUE, fill = TRUE)
+      ex[, pkey := .ffs_pkey(player, pos)]
+      ex <- unique(ex, by = "pkey")
       # a player whose FantasyPros id has moved (see .ffs_pkey) is already on the
       # board under his ranked row - do not add him a second time as "unranked"
-      ex[, pkey := .ffs_pkey(player, pos)]
       ex <- ex[!pkey %in% r$pkey]
       ex[, `:=`(ecr = NA_real_, sd = NA_real_, pos_rank = NA_integer_,
                 bye = NA_integer_, roster_pct = NA_real_, ecr_delta = NA_real_,

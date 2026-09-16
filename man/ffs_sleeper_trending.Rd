@@ -7,7 +7,8 @@
 ffs_sleeper_trending(
   type = c("add", "drop"),
   lookback_hours = 24L,
-  limit = 200L
+  limit = 200L,
+  players = NULL
 )
 }
 \arguments{
@@ -16,6 +17,9 @@ ffs_sleeper_trending(
 \item{lookback_hours}{the window Sleeper aggregates over (default 24)}
 
 \item{limit}{how many players to return (default 200)}
+
+\item{players}{an optional \code{\link[=ffs_sleeper_players]{ffs_sleeper_players()}} table, used to name
+anyone the id maps do not cover}
 }
 \value{
 a dataframe: \code{fantasypros_id}, \code{sleeper_id}, \code{player}, \code{pos}, \code{team},
@@ -27,4 +31,12 @@ across every league on the platform. It is the fastest-moving signal
 available - it moves hours after news breaks, long before rankings do - and
 it is pure market behaviour, so read it as "what everyone else is doing",
 not as a valuation.
+}
+\details{
+Sleeper keys team defenses by the bare team abbreviation (\code{"TB"}, \code{"SF"}),
+which no player-id map carries, and a genuinely new player can be missing
+from the maps too. Either way the row would come back nameless. Pass
+\code{players} from \code{\link[=ffs_sleeper_players]{ffs_sleeper_players()}} to fill those in from Sleeper's own
+file; defenses are labelled \code{"<TEAM> D/ST"} so they are identifiable rather
+than blank.
 }

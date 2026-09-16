@@ -45,12 +45,6 @@ message("usage signals (snaps + expected points) ...")
 usage <- tryCatch(ffs_usage_signals(season = config$season, lookback = config$lookback),
                   error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
 
-message("sleeper trending (", config$trend_hours, "h) ...")
-trending <- list(
-  add = tryCatch(ffs_sleeper_trending("add", config$trend_hours, 200L),
-                 error = function(e) NULL),
-  drop = tryCatch(ffs_sleeper_trending("drop", config$trend_hours, 200L),
-                  error = function(e) NULL))
 
 week <- as.integer(nflreadr::get_current_week())
 message("sleeper projections for week ", week, " ...")
@@ -67,6 +61,13 @@ message("sleeper player file (injuries + NFL depth chart) ...")
 sleeper_players <- tryCatch(ffs_sleeper_players(pos_filter = config$pos_filter),
                             error = function(e) {
                               message("  unavailable: ", conditionMessage(e)); NULL})
+
+message("sleeper trending (", config$trend_hours, "h) ...")
+trending <- list(
+  add = tryCatch(ffs_sleeper_trending("add", config$trend_hours, 200L, players = sleeper_players),
+                 error = function(e) NULL),
+  drop = tryCatch(ffs_sleeper_trending("drop", config$trend_hours, 200L, players = sleeper_players),
+                  error = function(e) NULL))
 
 ros_cache <- new.env(parent = emptyenv())
 ros_for <- function(ppr) {
