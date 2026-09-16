@@ -307,6 +307,13 @@ ffs_waiver_watchlist <- function(conn,
   r <- unique(r[!is.na(fantasypros_id)], by = "fantasypros_id")
   r[, `:=`(ranked = TRUE, pkey = .ffs_pkey(player, pos))]
 
+  rosters <- data.table::as.data.table(ffs_rosters(conn))
+  # rookies lag in dp_playerids; match them to the rankings by name
+  rosters <- data.table::as.data.table(
+    ffs_backfill_fp_ids(rosters, r[, list(player, pos, fantasypros_id)]))
+  rosters <- rosters[pos %in% pos_filter]
+  rosters[, pkey := .ffs_pkey(get("player_name"), pos)]
+
   # FantasyPros ranks a fixed number of players per position, so a back-up who
   # has just taken over a starting job is simply absent - Drew Lock was playing
   # 90% of Seattle's snaps and sat outside all 66 ranked QBs. Anyone the usage
@@ -348,10 +355,25 @@ ffs_waiver_watchlist <- function(conn,
     }
   }
 
-  rosters <- data.table::as.data.table(ffs_rosters(conn))
-  # rookies lag in dp_playerids; match them to the rankings by name
-  rosters <- data.table::as.data.table(
-    ffs_backfill_fp_ids(rosters, r[, list(player, pos, fantasypros_id)]))
+  # Anyone on a roster in THIS league belongs on the board whatever the rankings
+  # and the usage thresholds say - otherwise a deep bench player is simply
+  # missing from your own roster view, and you cannot decide who to cut on a
+  # list that does not have him. Dohnte Meyers: 16% of Cincinnati's snaps, no
+  # FantasyPros rest-of-season rank, rostered in JML.
+  own_missing <- rosters[!pkey %in% r$pkey &
+                           !as.character(fantasypros_id) %in% r$fantasypros_id]
+  own_missing <- unique(own_missing, by = "pkey")
+  if (nrow(own_missing)) {
+    add <- own_missing[, list(
+      fantasypros_id = as.character(fantasypros_id),
+      player = get("player_name"), pos, team = as.character(get("team")), pkey,
+      ecr = NA_real_, sd = NA_real_, pos_rank = NA_integer_, bye = NA_integer_,
+      roster_pct = NA_real_, ecr_delta = NA_real_,
+      scrape_date = r$scrape_date[[1]], source = r$source[[1]], ranked = FALSE)]
+    r <- data.table::rbindlist(list(r, add), use.names = TRUE, fill = TRUE)
+    cli::cli_alert_info("{nrow(add)} rostered player{?s} carried in with no rest-of-season rank")
+  }
+
   owned <- rosters[, list(
     fantasypros_id = as.character(fantasypros_id),
     pkey = .ffs_pkey(get("player_name"), pos),
