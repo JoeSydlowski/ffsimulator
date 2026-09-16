@@ -14,6 +14,7 @@ ffs_optimise_lineups(
   pos_filter = c("QB", "RB", "WR", "TE"),
   lineup_method = c("efficiency", "rank"),
   lineup_noise_sd = 0,
+  compute_optimal = TRUE,
   version = c("v2", "v1")
 )
 
@@ -26,6 +27,7 @@ ffs_optimize_lineups(
   pos_filter = c("QB", "RB", "WR", "TE"),
   lineup_method = c("efficiency", "rank"),
   lineup_noise_sd = 0,
+  compute_optimal = TRUE,
   version = c("v2", "v1")
 )
 }

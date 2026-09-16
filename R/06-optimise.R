@@ -47,6 +47,7 @@ ffs_optimise_lineups <- function(roster_scores,
                                  pos_filter = c("QB", "RB", "WR", "TE"),
                                  lineup_method = c("efficiency", "rank"),
                                  lineup_noise_sd = 0,
+                                 compute_optimal = TRUE,
                                  version = c("v2", "v1")) {
   version <- rlang::arg_match0(version, c("v2","v1"))
   lineup_method <- rlang::arg_match0(lineup_method, c("efficiency", "rank"))
@@ -127,19 +128,38 @@ ffs_optimise_lineups <- function(roster_scores,
   if (lineup_method == "rank") {
     optimal_score <- actual_score <- NULL
 
-    optimal_scores <-
+    # The LP is only ever needed for the hindsight-optimal score, which feeds
+    # lineup_efficiency and nothing else - standings, playoff odds and the
+    # bracket all run off actual_score from the rank lineup. It is also half the
+    # cost of this function, so a caller that never reads efficiency can skip it
+    # and roughly double throughput.
+    if (isTRUE(compute_optimal)) {
+      optimal_scores <-
+        optimal_scores[
+          , c(
+            .ff_optimise_one_lineup(.SD, lineup_constraints),
+            .ff_rank_one_lineup(.SD, lineup_constraints, noise_sd = lineup_noise_sd)
+          )
+          , by = c("league_id", "franchise_id", "franchise_name", "season", "week"),
+          .SDcols = c("player_id", "pos", "projected_score", "avg_week")
+        ]
       optimal_scores[
-        , c(
-          .ff_optimise_one_lineup(.SD, lineup_constraints),
-          .ff_rank_one_lineup(.SD, lineup_constraints, noise_sd = lineup_noise_sd)
-        )
-        , by = c("league_id", "franchise_id", "franchise_name", "season", "week"),
-        .SDcols = c("player_id", "pos", "projected_score", "avg_week")
+        , `:=`(lineup_efficiency = data.table::fifelse(optimal_score > 0, actual_score / optimal_score, 1))
       ]
-
-    optimal_scores[
-      , `:=`(lineup_efficiency = data.table::fifelse(optimal_score > 0, actual_score / optimal_score, 1))
-    ]
+    } else {
+      optimal_scores <-
+        optimal_scores[
+          , .ff_rank_one_lineup(.SD, lineup_constraints, noise_sd = lineup_noise_sd)
+          , by = c("league_id", "franchise_id", "franchise_name", "season", "week"),
+          .SDcols = c("player_id", "pos", "projected_score", "avg_week")
+        ]
+      # downstream shape must not change: efficiency is definitionally 1 when
+      # the lineup we scored IS the one we report as optimal
+      optimal_scores[, `:=`(optimal_score = actual_score,
+                            optimal_player_id = starter_player_id,
+                            optimal_player_score = NA_real_,
+                            lineup_efficiency = 1)]
+    }
   }
 
   return(optimal_scores)
