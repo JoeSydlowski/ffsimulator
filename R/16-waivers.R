@@ -60,7 +60,7 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
   total_fantasy_points_exp <- total_fantasy_points <- NULL
   snap_pct_recent <- snap_pct_prior <- exp_pts_recent <- exp_pts_prior <- NULL
   fpts_recent <- games_recent <- snap_trend <- exp_pts_trend <- NULL
-  fpoe_recent <- player <- pos <- NULL
+  fpoe_recent <- player <- pos <- pkey <- team <- NULL
 
   ids <- data.table::as.data.table(nflreadr::load_ff_playerids())
   ids <- ids[!is.na(fantasypros_id),
@@ -68,8 +68,9 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
                   gsis_id = as.character(gsis_id),
                   pfr_id = as.character(pfr_id),
                   player = get("name"),
-                  pos = position, team = get("team"))]
+                  pos = .ffs_pos(position), team = get("team"))]
   ids <- unique(ids, by = "fantasypros_id")
+  ids[, pkey := .ffs_pkey(player, pos, team)]
 
   # window labeller shared by both sources: the last `lookback` played weeks are
   # "recent", everything before them is "prior"
@@ -80,6 +81,23 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
     dt[, window := data.table::fifelse(week >= cut, "recent", "prior")][]
   }
 
+  # id first, cleaned name + position second: the id maps are wrong often enough
+  # that a player who has plainly played would otherwise show no usage at all
+  attach_usage <- function(base, agg, idcol, cols) {
+    if (is.null(agg) || !NROW(agg)) return(base)
+    agg <- data.table::as.data.table(agg)
+    by_id <- unique(agg[!is.na(agg[[idcol]])], by = idcol)
+    by_key <- unique(agg[!is.na(agg$pkey)], by = "pkey")
+    i_id <- match(base[[idcol]], by_id[[idcol]])
+    i_key <- match(base$pkey, by_key$pkey)
+    for (cc in intersect(cols, names(agg))) {
+      v <- by_id[[cc]][i_id]
+      w <- by_key[[cc]][i_key]
+      data.table::set(base, j = cc, value = data.table::fifelse(is.na(v), w, v))
+    }
+    base
+  }
+
   snaps <- tryCatch(
     data.table::as.data.table(nflreadr::load_snap_counts(season)),
     error = function(e) {
@@ -88,12 +106,15 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
     })
   snap_agg <- NULL
   if (!is.null(snaps) && nrow(snaps)) {
-    snaps <- windowise(snaps[game_type == "REG" & position %in% pos_filter])
+    snaps[, pos := .ffs_pos(position)]
+    snaps <- windowise(snaps[game_type == "REG" & pos %in% .ffs_pos(pos_filter)])
     if (nrow(snaps)) {
+      snaps[, pkey := .ffs_pkey(player, pos, team)]
       snap_agg <- snaps[, list(snap_pct = mean(offense_pct, na.rm = TRUE), games = .N),
-                        by = c("pfr_player_id", "window")]
-      snap_agg <- data.table::dcast(snap_agg, pfr_player_id ~ window,
+                        by = c("pfr_player_id", "pkey", "window")]
+      snap_agg <- data.table::dcast(snap_agg, pfr_player_id + pkey ~ window,
                                     value.var = c("snap_pct", "games"), fill = NA)
+      data.table::setnames(snap_agg, "pfr_player_id", "pfr_id")
     }
   }
 
@@ -106,23 +127,24 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
     })
   opp_agg <- NULL
   if (!is.null(opp) && nrow(opp)) {
-    opp <- windowise(opp[position %in% pos_filter])
+    opp[, pos := .ffs_pos(position)]
+    opp <- windowise(opp[pos %in% .ffs_pos(pos_filter)])
     if (nrow(opp)) {
+      opp[, pkey := .ffs_pkey(get("full_name"), pos, get("posteam"))]
       opp_agg <- opp[, list(exp_pts = mean(total_fantasy_points_exp, na.rm = TRUE),
                             fpts = mean(total_fantasy_points, na.rm = TRUE)),
-                     by = c("player_id", "window")]
-      opp_agg <- data.table::dcast(opp_agg, player_id ~ window,
+                     by = c("player_id", "pkey", "window")]
+      opp_agg <- data.table::dcast(opp_agg, player_id + pkey ~ window,
                                    value.var = c("exp_pts", "fpts"), fill = NA)
+      data.table::setnames(opp_agg, "player_id", "gsis_id")
     }
   }
 
   out <- data.table::copy(ids)
-  if (!is.null(snap_agg)) {
-    out <- merge(out, snap_agg, by.x = "pfr_id", by.y = "pfr_player_id", all.x = TRUE)
-  }
-  if (!is.null(opp_agg)) {
-    out <- merge(out, opp_agg, by.x = "gsis_id", by.y = "player_id", all.x = TRUE)
-  }
+  out <- attach_usage(out, snap_agg, "pfr_id",
+                      c("snap_pct_recent", "snap_pct_prior", "games_recent", "games_prior"))
+  out <- attach_usage(out, opp_agg, "gsis_id",
+                      c("exp_pts_recent", "exp_pts_prior", "fpts_recent", "fpts_prior"))
   # a whole window can be missing this early in a season - keep the shape stable
   for (nm in c("snap_pct_recent", "snap_pct_prior", "games_recent", "games_prior",
                "exp_pts_recent", "exp_pts_prior", "fpts_recent", "fpts_prior")) {

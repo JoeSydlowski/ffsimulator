@@ -392,7 +392,11 @@ ffs_sleeper_lineups <- function(league_id, week = NULL) {
 #' @keywords internal
 .ffs_pos <- function(pos) {
   p <- toupper(as.character(pos))
-  data.table::fifelse(p %in% c("DEF", "D/ST", "DEFENSE"), "DST", p)
+  p <- data.table::fifelse(p %in% c("DEF", "D/ST", "DEFENSE"), "DST", p)
+  # snap counts list running backs as HB (and fullbacks as FB), which silently
+  # drops them from any position filter written in fantasy terms
+  p <- data.table::fifelse(p %in% c("HB", "FB"), "RB", p)
+  data.table::fifelse(p == "PK", "K", p)
 }
 
 #' Attach columns from a signal table by id, falling back to name + position
