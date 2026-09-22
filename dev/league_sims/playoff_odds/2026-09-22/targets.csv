@@ -1,29 +1,36 @@
-league,player,pos,age,team,owner,owner_posture,redraft_value,dynasty_value,fits_need
-The Gridiron Goofball Gala,Matthew Stafford,QB,38.6,LAR,Taem CTE,Seller (aging roster),3436,2652,TRUE
-The Gridiron Goofball Gala,Christian McCaffrey,RB,30.3,SF,Taem CTE,Seller (aging roster),7488,4569,FALSE
-The Gridiron Goofball Gala,George Kittle,TE,33,SF,Taem CTE,Seller (aging roster),1599,2107,FALSE
-The Gridiron Goofball Gala,Jaylen Warren,RB,27.9,PIT,Taem CTE,Seller (aging roster),1158,1806,FALSE
-The Gridiron Goofball Gala,Deebo Samuel,WR,30.7,SF,Taem CTE,Seller (aging roster),951,1518,FALSE
-The Gridiron Goofball Gala,Courtland Sutton,WR,31,DEN,Taem CTE,Seller (aging roster),768,1431,FALSE
-The Gridiron Goofball Gala,Dalton Schultz,TE,30.2,HOU,Taem CTE,Seller (aging roster),656,1362,FALSE
-The Gridiron Goofball Gala,Tony Pollard,RB,29.4,TEN,Taem CTE,Seller (aging roster),610,1373,FALSE
-The JanMichaelLarkin Dynasty League,Rachaad White,RB,27.7,WAS,Flipadelphia05,Rebuilding,643,1223,TRUE
-The JanMichaelLarkin Dynasty League,Dallas Goedert,TE,31.7,PHI,Flipadelphia05,Rebuilding,1150,1434,FALSE
-The JanMichaelLarkin Dynasty League,Devaughn Vele,WR,28.8,NO,Buy My Quarterbacks,Rebuilding,562,1132,FALSE
-Dynasty Dimwits,Lamar Jackson,QB,29.7,BAL,Galletti,Seller (aging roster),9411,7819,FALSE
-Dynasty Dimwits,Christian McCaffrey,RB,30.3,SF,CrashOutChris'Kickoff,Seller (aging roster),7488,4521,FALSE
-Dynasty Dimwits,Javonte Williams,RB,26.4,DAL,CrashOutChris'Kickoff,Seller (aging roster),3691,3400,FALSE
-Dynasty Dimwits,DJ Moore,WR,29.4,BUF,Galletti,Seller (aging roster),2432,2469,FALSE
-Dynasty Dimwits,A.J. Brown,WR,29.2,NE,Galletti,Seller (aging roster),2113,3154,FALSE
-Dynasty Dimwits,Mike Evans,WR,33.1,SF,Galletti,Seller (aging roster),1816,2009,FALSE
-Dynasty Dimwits,Josh Jacobs,RB,28.6,GB,Galletti,Seller (aging roster),1444,2110,FALSE
-Dynasty Dimwits,Mark Andrews,TE,31,BAL,CrashOutChris'Kickoff,Seller (aging roster),1008,1596,FALSE
-Dynasty Dimwits,Chris Godwin,WR,30.6,TB,Galletti,Seller (aging roster),742,1437,FALSE
-Dynasty Dimwits,J.K. Dobbins,RB,27.8,DEN,CrashOutChris'Kickoff,Seller (aging roster),679,1428,FALSE
-Fantasy League of Ex-Athletes,Jonathan Taylor,RB,27.7,IND,Waddle to LaPorta Potty,Long shot,7561,5813,FALSE
-Fantasy League of Ex-Athletes,Derrick Henry,RB,32.7,BAL,Waddle to LaPorta Potty,Long shot,6518,3644,FALSE
-Fantasy League of Ex-Athletes,Chuba Hubbard,RB,27.3,CAR,Waddle to LaPorta Potty,Long shot,1985,2216,FALSE
-Fantasy League of Ex-Athletes,Terry McLaurin,WR,31,WAS,Waddle to LaPorta Potty,Long shot,1273,1833,FALSE
-Fantasy League of Ex-Athletes,Deebo Samuel,WR,30.7,SF,Waddle to LaPorta Potty,Long shot,951,1527,FALSE
-Fantasy League of Ex-Athletes,Rico Dowdle,RB,28.3,PIT,It’s Gonna be Maye,Long shot,789,1525,FALSE
-Fantasy League of Ex-Athletes,Dalton Schultz,TE,30.2,HOU,Waddle to LaPorta Potty,Long shot,656,1370,FALSE
+league,player,pos,age,team,owner,owner_posture,redraft_value,dynasty_value,fits_need,why
+The Gridiron Goofball Gala,Jaxson Dart,QB,23.4,NYG,Taem CTE,Seller (aging roster),4555,5064,TRUE,fills your need
+The Gridiron Goofball Gala,Matthew Stafford,QB,38.6,LAR,Taem CTE,Seller (aging roster),3694,2642,TRUE,"vet, fills your need"
+The Gridiron Goofball Gala,Daniel Jones,QB,29.3,IND,Taem CTE,Seller (aging roster),1755,2181,TRUE,fills your need
+The Gridiron Goofball Gala,Christian McCaffrey,RB,30.3,SF,Taem CTE,Seller (aging roster),7030,4649,FALSE,win-now vet
+The Gridiron Goofball Gala,George Kittle,TE,33,SF,Taem CTE,Seller (aging roster),1640,2164,FALSE,win-now vet
+The Gridiron Goofball Gala,Jaylen Warren,RB,27.9,PIT,Taem CTE,Seller (aging roster),1283,1786,FALSE,win-now vet
+The Gridiron Goofball Gala,Deebo Samuel,WR,30.7,SF,Taem CTE,Seller (aging roster),1089,1516,FALSE,win-now vet
+The Gridiron Goofball Gala,Dalton Schultz,TE,30.2,HOU,Taem CTE,Seller (aging roster),678,1415,FALSE,win-now vet
+The Gridiron Goofball Gala,Tony Pollard,RB,29.4,TEN,Taem CTE,Seller (aging roster),641,1345,FALSE,win-now vet
+The Gridiron Goofball Gala,Courtland Sutton,WR,31,DEN,Taem CTE,Seller (aging roster),638,1430,FALSE,win-now vet
+The JanMichaelLarkin Dynasty League,Bucky Irving,RB,24.1,TB,Prestige Worldwide,Rebuilding,3976,3525,TRUE,fills your need
+The JanMichaelLarkin Dynasty League,Jeremiyah Love,RB,21.3,ARI,Buy My Quarterbacks,Rebuilding,3882,6319,TRUE,fills your need
+The JanMichaelLarkin Dynasty League,Cam Skattebo,RB,24.6,NYG,Prestige Worldwide,Rebuilding,3565,3623,TRUE,fills your need
+The JanMichaelLarkin Dynasty League,Jadarian Price,RB,23,SEA,Flipadelphia05,Rebuilding,2133,3441,TRUE,fills your need
+The JanMichaelLarkin Dynasty League,Jacory Croskey-Merritt,RB,25.4,WAS,Flipadelphia05,Rebuilding,1071,1754,TRUE,fills your need
+The JanMichaelLarkin Dynasty League,Rachaad White,RB,27.7,WAS,Flipadelphia05,Rebuilding,725,1248,TRUE,"vet, fills your need"
+The JanMichaelLarkin Dynasty League,Dallas Goedert,TE,31.7,PHI,Flipadelphia05,Rebuilding,1203,1447,FALSE,win-now vet
+The JanMichaelLarkin Dynasty League,Devaughn Vele,WR,28.8,NO,Buy My Quarterbacks,Rebuilding,524,1217,FALSE,win-now vet
+Dynasty Dimwits,Lamar Jackson,QB,29.7,BAL,Galletti,Seller (aging roster),9205,7830,FALSE,win-now vet
+Dynasty Dimwits,Christian McCaffrey,RB,30.3,SF,CrashOutChris'Kickoff,Seller (aging roster),7030,4601,FALSE,win-now vet
+Dynasty Dimwits,Javonte Williams,RB,26.4,DAL,CrashOutChris'Kickoff,Seller (aging roster),3625,3372,FALSE,win-now vet
+Dynasty Dimwits,DJ Moore,WR,29.4,BUF,Galletti,Seller (aging roster),2490,2440,FALSE,win-now vet
+Dynasty Dimwits,A.J. Brown,WR,29.2,NE,Galletti,Seller (aging roster),2126,3067,FALSE,win-now vet
+Dynasty Dimwits,Mike Evans,WR,33.1,SF,Galletti,Seller (aging roster),1875,1931,FALSE,win-now vet
+Dynasty Dimwits,Josh Jacobs,RB,28.6,GB,Galletti,Seller (aging roster),1412,2115,FALSE,win-now vet
+Dynasty Dimwits,Mark Andrews,TE,31,BAL,CrashOutChris'Kickoff,Seller (aging roster),1013,1614,FALSE,win-now vet
+Dynasty Dimwits,Chris Godwin,WR,30.6,TB,Galletti,Seller (aging roster),863,1429,FALSE,win-now vet
+Dynasty Dimwits,J.K. Dobbins,RB,27.8,DEN,CrashOutChris'Kickoff,Seller (aging roster),660,1419,FALSE,win-now vet
+Fantasy League of Ex-Athletes,Jonathan Taylor,RB,27.7,IND,Waddle to LaPorta Potty,Long shot,7595,5882,FALSE,win-now vet
+Fantasy League of Ex-Athletes,Derrick Henry,RB,32.7,BAL,Waddle to LaPorta Potty,Long shot,6497,3642,FALSE,win-now vet
+Fantasy League of Ex-Athletes,Chuba Hubbard,RB,27.3,CAR,Waddle to LaPorta Potty,Long shot,2066,2315,FALSE,win-now vet
+Fantasy League of Ex-Athletes,Terry McLaurin,WR,31,WAS,Waddle to LaPorta Potty,Long shot,1230,1866,FALSE,win-now vet
+Fantasy League of Ex-Athletes,Deebo Samuel,WR,30.7,SF,Waddle to LaPorta Potty,Long shot,1089,1525,FALSE,win-now vet
+Fantasy League of Ex-Athletes,Rico Dowdle,RB,28.3,PIT,It’s Gonna be Maye,Long shot,738,1512,FALSE,win-now vet
+Fantasy League of Ex-Athletes,Dalton Schultz,TE,30.2,HOU,Waddle to LaPorta Potty,Long shot,678,1424,FALSE,win-now vet

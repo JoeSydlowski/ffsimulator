@@ -301,7 +301,7 @@ td.name a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--li
 
     var myNeeds = (L.my_needs || []);
     var targets = panel("Targets &mdash; veterans on teams that are out of it",
-      "Win-now pieces a seller should move. <span class=\"fit\">fits</span> marks your need" +
+      "Win-now veterans, plus <em>anyone</em> at a position you need &mdash; a rebuilder will move a young starter there too. <span class=\"fit\">fits</span> marks your need" +
       (myNeeds.length ? " (" + myNeeds.map(esc).join(", ") + ")" : "") + ".",
       ["Player", "Owner", "Age", "Redraft", "Dynasty"],
       (L.targets || []).map(function(t){

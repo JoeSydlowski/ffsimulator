@@ -607,7 +607,7 @@ ffs_waiver_watchlist <- function(conn,
                                  unranked_min_xfp = 0) {
   fantasypros_id <- pos <- ecr <- status <- mine <- signal <- NULL
   rostered_by <- franchise_id <- player <- team <- ranked <- pkey <- NULL
-  wk_rank <- flex_rank <- flex_ecr <- NULL
+  wk_rank <- flex_rank <- flex_ecr <- nkey <- NULL
 
   if (is.null(ros)) ros <- ffs_ros_rankings(pos_filter = pos_filter)
   r <- data.table::as.data.table(ros)[pos %in% pos_filter & !is.na(ecr)]
@@ -618,8 +618,13 @@ ffs_waiver_watchlist <- function(conn,
   # rookies lag in dp_playerids; match them to the rankings by name
   rosters <- data.table::as.data.table(
     ffs_backfill_fp_ids(rosters, r[, list(player, pos, fantasypros_id)]))
-  rosters <- rosters[pos %in% pos_filter]
   rosters[, pkey := .ffs_pkey(get("player_name"), pos, get("team"))]
+  # Ownership must not be filtered by position. Sleeper calls Travis Hunter a
+  # DB (he plays both ways), so filtering the roster to the league's fantasy
+  # positions dropped him from the owned list and every league showed the
+  # WR the rankings do carry as a free agent.
+  rosters_all <- data.table::copy(rosters)
+  rosters <- rosters[pos %in% pos_filter]
 
   # FantasyPros ranks a fixed number of players per position, so a back-up who
   # has just taken over a starting job is simply absent - Drew Lock was playing
@@ -698,7 +703,7 @@ ffs_waiver_watchlist <- function(conn,
     cli::cli_alert_info("{nrow(add)} rostered player{?s} carried in with no rest-of-season rank")
   }
 
-  owned <- rosters[, list(
+  owned <- rosters_all[, list(
     fantasypros_id = as.character(fantasypros_id),
     pkey = .ffs_pkey(get("player_name"), pos, get("team")),
     rostered_by = get("franchise_name"),
@@ -732,6 +737,27 @@ ffs_waiver_watchlist <- function(conn,
 
   out <- data.table::copy(r)
   out <- .ffs_attach(out, owned, c("rostered_by", "owner_id"))
+
+  # Last resort for ownership: the cleaned name alone. A player the platform
+  # and the rankings file under different positions (Travis Hunter: DB on
+  # Sleeper, WR on FantasyPros) matches on neither `pkey` nor - when the id
+  # maps disagree too - `fantasypros_id`. Only names that are unique on both
+  # sides are used, so this cannot hand one man's roster spot to another.
+  nm <- rosters_all[, list(
+    nkey = nflreadr::clean_player_names(as.character(get("player_name")), lowercase = TRUE),
+    rostered_by = get("franchise_name"), owner_id = as.character(franchise_id))]
+  nm <- nm[nm[, list(n = .N), by = "nkey"][get("n") == 1L], on = "nkey", nomatch = 0L]
+  out[, nkey := nflreadr::clean_player_names(as.character(player), lowercase = TRUE)]
+  dup_board <- out[, list(n = .N), by = "nkey"][get("n") > 1L]$nkey
+  i <- match(out$nkey, nm$nkey)
+  fill <- which(is.na(out$rostered_by) & !is.na(i) & !out$nkey %in% dup_board)
+  if (length(fill)) {
+    data.table::set(out, i = fill, j = "rostered_by", value = nm$rostered_by[i[fill]])
+    data.table::set(out, i = fill, j = "owner_id", value = nm$owner_id[i[fill]])
+    cli::cli_alert_info("{length(fill)} player{?s} matched to a roster by name only")
+  }
+  out[, nkey := NULL]
+
   out[, status := data.table::fifelse(is.na(rostered_by), "free agent", "rostered")]
   mine_ids <- if (is.null(my_franchise)) character(0) else as.character(my_franchise)
   out[, mine := !is.na(get("owner_id")) & get("owner_id") %in% mine_ids]

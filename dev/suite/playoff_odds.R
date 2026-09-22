@@ -228,13 +228,22 @@ build_h2h <- function(conn, league_id, st, fr, ppr, superflex, teams, ltype, my_
     needs[franchise_id == my_id & vs_median <= -config$need_min & need_rank <= 2]$pos
   my_posture <- if (is.na(my_id)) NA_character_ else odds[franchise_id == my_id]$posture
 
+  # A team that is out of it will move a veteran to anyone. At a position you
+  # actually need, take the whole roster: the young back who would start for you
+  # is the point of trading with a rebuilder, and he is no veteran (Bucky Irving
+  # on 0-2 Prestige Worldwide is exactly the case).
   out_of_it <- c("Seller (aging roster)", "Long shot", "Rebuilding")
-  targets <- rosters[vet & posture %in% out_of_it & franchise_id != my_id &
-                       !is.na(redraft_value) & redraft_value > 0,
+  targets <- rosters[posture %in% out_of_it & franchise_id != my_id &
+                       !is.na(redraft_value) & redraft_value >= config$min_value &
+                       (vet | pos %in% my_needs),
                      list(player = player_name, pos, age = round(age, 1), team,
                           owner = franchise_name, owner_posture = posture,
                           redraft_value, dynasty_value,
-                          fits_need = pos %in% my_needs)]
+                          fits_need = pos %in% my_needs,
+                          why = data.table::fcase(
+                            vet & pos %in% my_needs, "vet, fills your need",
+                            pos %in% my_needs, "fills your need",
+                            default = "win-now vet"))]
   targets <- head(targets[order(-fits_need, -redraft_value)], config$top_targets)
 
   # my veterans, and the contenders whose need each one fills
