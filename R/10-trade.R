@@ -1202,24 +1202,20 @@ ffs_build_trades <- function(base_simulation, franchise_id,
   sw <- data.table::as.data.table(
     ffs_summarise_week(optimal_scores = optimal, schedules = base_simulation$schedules))
   ss <- data.table::as.data.table(ffs_summarise_season(summary_week = sw))
-  # playoff seeding: wins, then points-for (how real leagues break ties).
-  # Deterministic on purpose - with random tie-breaks, paired comparisons
-  # ("with player" vs "without") re-roll the ties and a player who never even
-  # starts can show a phantom playoff delta of several percent.
-  ss[, lg_rank := data.table::frank(list(-h2h_wins, -points_for), ties.method = "first"),
-     by = season]
+  ss <- .ffs_seed(ss, base_simulation$standings)
+  n_playoff <- .ffs_sim_playoff_teams(base_simulation)
 
-  # regular-season aggregates + playoff-berth odds (top-6)
+  # regular-season aggregates (banked games included) + playoff-berth odds
   agg <- ss[, list(
     h2h_wins = mean(h2h_wins),
     h2h_winpct = mean(h2h_winpct),
     allplay_winpct = mean(allplay_winpct),
     points_for = mean(points_for),
-    playoff_pct = mean(lg_rank <= 6)
+    playoff_pct = mean(lg_rank <= n_playoff)
   ), by = franchise_id]
   # championship + top-seed odds from a deterministic bracket over the seedings
   # (report-only for now; the trade score still rides on playoff_pct)
-  champ <- .ffs_champion_pct(sw, ss)
+  champ <- .ffs_champion_pct(sw, ss, n_playoff)
   agg <- merge(agg, champ, by = "franchise_id", all.x = TRUE)
   agg[is.na(champion_pct), champion_pct := 0][is.na(top_seed_pct), top_seed_pct := 0]
   agg[franchise_id %in% fids]
@@ -1228,10 +1224,10 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 #' Championship + top-seed probability from a deterministic playoff bracket
 #'
 #' Reuses the already-simulated weekly team scores instead of re-simulating
-#' playoff weeks. For each of the simulated seasons the top-6 seeds are taken
-#' from `ss` (the same wins-then-points-for seeding used for berth odds), then a
-#' standard fixed 6-team bracket (seeds 1-2 bye; R1 3v6 & 4v5; semis 1-vs-(4/5)
-#' and 2-vs-(3/6); final) is resolved by **win-probability propagation**, not
+#' playoff weeks. For each of the simulated seasons the top `playoff_teams`
+#' seeds are taken from `ss` (the same wins-then-points-for seeding used for
+#' berth odds), then a fixed bracket (6 teams: seeds 1-2 bye; R1 3v6 & 4v5;
+#' semis 1-vs-(4/5) and 2-vs-(3/6); final) is resolved by **win-probability propagation**, not
 #' random draws: each matchup uses `P(A>B) = pnorm((muA-muB)/sqrt(sdA^2+sdB^2))`
 #' from each franchise's weekly-score mean/sd. Deterministic on purpose so the
 #' paired leave-one-out delta carries no extra Monte-Carlo bracket noise (same
@@ -1241,15 +1237,77 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 #'
 #' @param sw weekly summary (`ffs_summarise_week` output) with `team_score`
 #' @param ss season summary with a `lg_rank` seeding column
+#' @param playoff_teams berths in the bracket
 #' @return a data.table: franchise_id, champion_pct, top_seed_pct (sum to 1 each)
 #' @keywords internal
-.ffs_champion_pct <- function(sw, ss) {
+.ffs_champion_pct <- function(sw, ss, playoff_teams = 6L) {
   team_score <- franchise_id <- sd <- NULL
   sw <- data.table::as.data.table(sw)
   # global per-franchise weekly-score strength (mean + ceiling/variance)
   strength <- sw[, list(mu = mean(team_score), sd = stats::sd(team_score)), by = franchise_id]
   strength[is.na(sd) | sd <= 0, sd := 1e-6]
-  .ffs_champion_pct_core(strength, ss)
+  .ffs_champion_pct_core(strength, ss, playoff_teams)
+}
+
+#' Seed simulated seasons, counting the games already banked
+#'
+#' Adds each franchise's real record so far ([ffs_current_record()], carried on
+#' the simulation as `standings`) to every simulated season, then seeds on
+#' wins and then points-for - how real leagues break ties. The tie-break is
+#' deterministic on purpose: with random tie-breaks, paired comparisons ("with
+#' player" vs "without") re-roll the ties and a player who never even starts
+#' can show a phantom playoff delta of several percent.
+#'
+#' Row order is preserved, because the `"first"` tie-break rides on it.
+#'
+#' @param ss a season summary ([ffs_summarise_season()])
+#' @param standings banked record, or `NULL` for none (a preseason simulation)
+#' @return `ss` with `h2h_wins` / `points_for` including the banked games and a
+#'   `lg_rank` column
+#' @keywords internal
+.ffs_seed <- function(ss, standings = NULL) {
+  season <- h2h_wins <- points_for <- lg_rank <- NULL
+  ss <- data.table::as.data.table(ss)
+  if (!is.null(standings) && NROW(standings)) {
+    i <- match(as.character(ss$franchise_id), as.character(standings$franchise_id))
+    w0 <- standings$wins[i]
+    pf0 <- standings$points_for[i]
+    w0[is.na(w0)] <- 0
+    pf0[is.na(pf0)] <- 0
+    data.table::set(ss, j = "h2h_wins", value = ss$h2h_wins + w0)
+    data.table::set(ss, j = "points_for", value = ss$points_for + pf0)
+  }
+  ss[, lg_rank := data.table::frank(list(-h2h_wins, -points_for), ties.method = "first"),
+     by = season]
+  ss[]
+}
+
+#' Playoff berths a simulation seeds for (6 for simulations that predate it)
+#' @param sim an `ff_simulation`
+#' @return an integer
+#' @keywords internal
+.ffs_sim_playoff_teams <- function(sim) {
+  n <- sim$simulation_params$playoff_teams
+  n <- suppressWarnings(as.integer(n))
+  if (!length(n) || is.na(n) || n < 1L) 6L else n
+}
+
+#' Seed order of a fixed single-elimination bracket
+#'
+#' The standard layout (8: 1, 8, 4, 5, 2, 7, 3, 6): seed `i` meets seed
+#' `size + 1 - i` in round one, and the top seed only meets the second in the
+#' final. A seed number above the field size is a bye.
+#'
+#' @param size a power of two
+#' @return an integer vector of seeds in bracket order
+#' @keywords internal
+.ffs_bracket_order <- function(size) {
+  o <- 1L
+  while (length(o) < size) {
+    m <- 2L * length(o) + 1L
+    o <- as.integer(as.vector(rbind(o, m - o)))
+  }
+  o
 }
 
 #' Championship bracket from a pre-computed strength table
@@ -1261,47 +1319,74 @@ ffs_build_trades <- function(base_simulation, franchise_id,
 #'
 #' @param strength a data.table: franchise_id, mu, sd (sd already floored > 0)
 #' @param ss season summary with a `lg_rank` seeding column
+#' @param playoff_teams berths in the bracket (any size; byes go to the top seeds)
 #' @return a data.table: franchise_id, champion_pct, top_seed_pct
 #' @keywords internal
-.ffs_champion_pct_core <- function(strength, ss) {
+.ffs_champion_pct_core <- function(strength, ss, playoff_teams = 6L) {
   franchise_id <- lg_rank <- season <- champ <- mu <- sd <- NULL
   champion_pct <- top_seed_pct <- NULL
   ss <- data.table::as.data.table(ss)
+  n <- as.integer(playoff_teams)
 
-  seeds <- merge(ss[lg_rank <= 6L, list(season, franchise_id, lg_rank)],
+  seeds <- merge(ss[lg_rank <= n, list(season, franchise_id, lg_rank)],
                  strength, by = "franchise_id")
   w <- data.table::dcast(seeds, season ~ lg_rank,
                          value.var = c("franchise_id", "mu", "sd"))
-  # any season missing a full 6-team field can't seed a bracket - drop it
-  need <- c(paste0("mu_", 1:6), paste0("sd_", 1:6))
+  # dcast names the columns plainly (franchise_id_1 ...) only when there is
+  # more than one seed; a one-team "bracket" is just the top seed
+  if (n == 1L) data.table::setnames(w, c("franchise_id", "mu", "sd"),
+                                    c("franchise_id_1", "mu_1", "sd_1"), skip_absent = TRUE)
+  # any season missing a full field can't seed a bracket - drop it
+  need <- c(paste0("mu_", seq_len(n)), paste0("sd_", seq_len(n)))
   if (!all(need %in% names(w))) return(strength[, list(franchise_id, champion_pct = NA_real_, top_seed_pct = NA_real_)])
   w <- w[stats::complete.cases(w[, need, with = FALSE])]
 
   pb <- function(a, sa, b, sb) stats::pnorm((a - b) / sqrt(sa^2 + sb^2))
-  # round 1: 3v6, 4v5
-  p36 <- pb(w$mu_3, w$sd_3, w$mu_6, w$sd_6); p63 <- 1 - p36
-  p45 <- pb(w$mu_4, w$sd_4, w$mu_5, w$sd_5); p54 <- 1 - p45
-  # semis (fixed bracket): A = 1 vs (4/5 winner); B = 2 vs (3/6 winner)
-  a1 <- p45 * pb(w$mu_1, w$sd_1, w$mu_4, w$sd_4) + p54 * pb(w$mu_1, w$sd_1, w$mu_5, w$sd_5)
-  a4 <- p45 * pb(w$mu_4, w$sd_4, w$mu_1, w$sd_1)
-  a5 <- p54 * pb(w$mu_5, w$sd_5, w$mu_1, w$sd_1)
-  b2 <- p36 * pb(w$mu_2, w$sd_2, w$mu_3, w$sd_3) + p63 * pb(w$mu_2, w$sd_2, w$mu_6, w$sd_6)
-  b3 <- p36 * pb(w$mu_3, w$sd_3, w$mu_2, w$sd_2)
-  b6 <- p63 * pb(w$mu_6, w$sd_6, w$mu_2, w$sd_2)
-  # champion = win your semi, then beat whoever comes out of the other semi
-  cA <- function(mt, st, pa) pa * (b2 * pb(mt, st, w$mu_2, w$sd_2) +
-                                   b3 * pb(mt, st, w$mu_3, w$sd_3) +
-                                   b6 * pb(mt, st, w$mu_6, w$sd_6))
-  cB <- function(mt, st, pbb) pbb * (a1 * pb(mt, st, w$mu_1, w$sd_1) +
-                                     a4 * pb(mt, st, w$mu_4, w$sd_4) +
-                                     a5 * pb(mt, st, w$mu_5, w$sd_5))
-  champ_long <- data.table::rbindlist(list(
-    data.table::data.table(franchise_id = w$franchise_id_1, champ = cA(w$mu_1, w$sd_1, a1)),
-    data.table::data.table(franchise_id = w$franchise_id_2, champ = cB(w$mu_2, w$sd_2, b2)),
-    data.table::data.table(franchise_id = w$franchise_id_3, champ = cB(w$mu_3, w$sd_3, b3)),
-    data.table::data.table(franchise_id = w$franchise_id_4, champ = cA(w$mu_4, w$sd_4, a4)),
-    data.table::data.table(franchise_id = w$franchise_id_5, champ = cA(w$mu_5, w$sd_5, a5)),
-    data.table::data.table(franchise_id = w$franchise_id_6, champ = cB(w$mu_6, w$sd_6, b6))))
+  MU <- lapply(seq_len(n), function(s) w[[paste0("mu_", s)]])
+  SD <- lapply(seq_len(n), function(s) w[[paste0("sd_", s)]])
+  ones <- rep(1, nrow(w))
+
+  # A fixed bracket padded to a power of two, byes to the top seeds (6 teams:
+  # 1 and 2 sit out round one, then 1 meets the 4/5 winner and 2 the 3/6
+  # winner). Resolved by win-probability propagation up the tree rather than
+  # random draws: each seed's chance of winning a sub-bracket is its chance of
+  # winning its half times its chance of beating whoever wins the other half.
+  # Deterministic on purpose, so a paired delta carries no bracket noise.
+  win_sub <- function(sl) {
+    if (length(sl) == 1L) {
+      if (sl > n) return(list())                 # a bye
+      return(stats::setNames(list(ones), sl))
+    }
+    h <- length(sl) %/% 2L
+    L <- win_sub(sl[seq_len(h)])
+    R <- win_sub(sl[-seq_len(h)])
+    if (!length(L)) return(R)
+    if (!length(R)) return(L)
+    out <- list()
+    for (a in names(L)) {
+      ia <- as.integer(a)
+      acc <- 0
+      for (b in names(R)) {
+        ib <- as.integer(b)
+        acc <- acc + R[[b]] * pb(MU[[ia]], SD[[ia]], MU[[ib]], SD[[ib]])
+      }
+      out[[a]] <- L[[a]] * acc
+    }
+    for (b in names(R)) {
+      ib <- as.integer(b)
+      acc <- 0
+      for (a in names(L)) {
+        ia <- as.integer(a)
+        acc <- acc + L[[a]] * pb(MU[[ib]], SD[[ib]], MU[[ia]], SD[[ia]])
+      }
+      out[[b]] <- R[[b]] * acc
+    }
+    out
+  }
+  size <- 2L^as.integer(ceiling(log2(max(n, 1L))))
+  p <- win_sub(.ffs_bracket_order(size))
+  champ_long <- data.table::rbindlist(lapply(names(p), function(s)
+    data.table::data.table(franchise_id = w[[paste0("franchise_id_", s)]], champ = p[[s]])))
   nseason <- length(unique(ss$season))
   champ_tbl <- champ_long[, list(champion_pct = sum(champ) / nseason), by = franchise_id]
   top_tbl <- ss[lg_rank == 1L, list(top_seed_pct = .N / nseason), by = franchise_id]

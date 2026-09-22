@@ -146,7 +146,6 @@ pick_for_pick <- as.logical(as.integer(Sys.getenv("FFS_TRADE_PICK_FOR_PICK", "0"
 # set >0 only to experiment. Same for ceiling_weight (the consolidation screen).
 champ_weight <- as.numeric(Sys.getenv("FFS_TRADE_CHAMP_WEIGHT", "0"))
 ceiling_weight <- as.numeric(Sys.getenv("FFS_TRADE_CEILING_WEIGHT", "0"))
-playoff_slots <- if (!is.null(config$playoff_slots)) config$playoff_slots else 6L
 
 # role thresholds (shared by roster labels and the console narrative)
 TH <- list(
@@ -715,11 +714,9 @@ if (nrow(trades_out)) {
 data.table::fwrite(round_sheet(trades_out), file.path(out, "trades.csv"))
 
 ## ---- 4. portfolio.csv --------------------------------------------------------------
-ss <- data.table::as.data.table(sim$summary_season)
-# wins then points-for, deterministic (matches .ffs_franchise_summary)
-ss[, lg_rank := data.table::frank(list(-h2h_wins, -points_for), ties.method = "first"),
-   by = season]
-my_playoff <- ss[franchise_id == me, mean(lg_rank <= playoff_slots)]
+# wins then points-for, deterministic, with the games already played counted in
+ss <- ffsimulator:::.ffs_seed(sim$summary_season, sim$standings)
+my_playoff <- ss[franchise_id == me, mean(lg_rank <= ffsimulator:::.ffs_sim_playoff_teams(sim))]
 posture <- if (my_playoff >= 0.55) "contend" else if (my_playoff >= 0.35) "bubble" else "rebuild"
 
 mine_d <- d[franchise_id == me & !is.na(cur_value)]

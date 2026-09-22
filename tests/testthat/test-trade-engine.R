@@ -61,6 +61,63 @@ test_that("the engine's baseline summary matches the legacy summariser", {
   }
 })
 
+test_that("engine and legacy agree with a banked record and a 4-team playoff", {
+  skip_on_cran()
+  sim <- .ffs_cache_example("trade_sim.rds")
+  skip_if(is.null(sim$optimal_scores), "example simulation lacks optimal_scores")
+  fids <- sort(unique(as.character(sim$optimal_scores$franchise_id)), method = "radix")
+  # an uneven banked record, including a tie and a franchise with no row
+  sim$standings <- data.table::data.table(
+    franchise_id = fids[-length(fids)],
+    wins = c(2, 0, 1.5, rep(1, length(fids) - 4)),
+    points_for = seq(200, by = 13.37, length.out = length(fids) - 1))
+  sim$simulation_params$playoff_teams <- 4L
+  engine <- ffs_trade_engine(sim)
+  skip_if(is.null(engine), "example simulation is not engine-eligible")
+
+  legacy <- data.table::as.data.table(.ffs_summarise_optimal(
+    sim, data.table::as.data.table(sim$optimal_scores), engine$franchise_ids))
+  data.table::setorder(legacy, franchise_id)
+  fast <- engine$before[order(franchise_id)]
+  for (cc in c("h2h_wins", "h2h_winpct", "points_for", "playoff_pct",
+               "champion_pct", "top_seed_pct")) {
+    expect_equal(fast[[cc]], legacy[[cc]], tolerance = 1e-12, info = cc)
+  }
+  # four berths, one title
+  expect_equal(sum(fast$playoff_pct), 4, tolerance = 1e-12)
+  expect_equal(sum(fast$champion_pct), 1, tolerance = 1e-9)
+
+  rs <- data.table::as.data.table(sim$roster_scores)
+  pool <- unique(rs[!grepl("^(QB|RB|WR|TE|K)_[0-9]+$", player_id),
+                    list(franchise_id, player_id)])
+  set.seed(11)
+  for (i in 1:5) {
+    fa <- sample(fids, 1); fb <- sample(setdiff(fids, fa), 1)
+    ga <- sample(pool[franchise_id == fa]$player_id, 1)
+    gb <- sample(pool[franchise_id == fb]$player_id, 1)
+    l <- ffs_trade_eval(sim, fa, ga, fb, gb)
+    f <- ffs_trade_eval(sim, fa, ga, fb, gb, engine = engine)
+    for (cc in setdiff(names(l), "franchise_id")) {
+      expect_equal(f[[cc]], l[[cc]], tolerance = 1e-10, info = paste("deal", i, cc))
+    }
+  }
+})
+
+test_that("banked wins move the seeding", {
+  sim <- .ffs_cache_example("trade_sim.rds")
+  skip_if(is.null(sim$optimal_scores) || is.null(sim$schedules),
+          "example simulation lacks optimal_scores")
+  ss <- data.table::as.data.table(ffs_summarise_season(
+    ffs_summarise_week(sim$optimal_scores, sim$schedules)))
+  base <- .ffs_seed(ss)
+  worst <- base[, list(r = mean(lg_rank)), by = franchise_id][which.max(r)]$franchise_id
+  boosted <- .ffs_seed(ss, data.table::data.table(franchise_id = worst, wins = 20,
+                                                  points_for = 0))
+  expect_true(all(boosted[franchise_id == worst]$lg_rank == 1L))
+  # row order is untouched (the "first" tie-break rides on it)
+  expect_identical(boosted$franchise_id, ss$franchise_id)
+})
+
 test_that("ffs_trade_eval_many matches one-at-a-time evaluation", {
   skip_on_cran()
   sim <- .ffs_cache_example("trade_sim.rds")

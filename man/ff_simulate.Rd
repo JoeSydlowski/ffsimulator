@@ -20,6 +20,8 @@ ff_simulate(
   version = c("v2", "v1", "v3"),
   lineup_method = c("efficiency", "rank"),
   lineup_noise_sd = 0,
+  latest_rankings = NULL,
+  playoff_teams = NULL,
   return = c("default", "all")
 )
 }
@@ -57,6 +59,13 @@ is a no-op for leagues whose starting slots are all QB/RB/WR/TE.}
 \item{lineup_method}{"efficiency" (default) scales hindsight-optimal lineups by a random efficiency factor; "rank" (experimental, requires version "v2"/"v3") sets lineups from simulated weekly rankings like a real manager, so efficiency emerges from the start/sit decision}
 
 \item{lineup_noise_sd}{manager evaluation error (points sd) for lineup_method "rank"; see \code{ffs_optimise_lineups()}}
+
+\item{latest_rankings}{optional rankings to simulate from, in the shape of
+\code{\link[=ffs_latest_rankings]{ffs_latest_rankings()}} (e.g. \code{\link[=ffs_ros_rankings]{ffs_ros_rankings()}} for a live
+rest-of-season scrape). \code{NULL} reads \code{ffs_latest_rankings("draft")}}
+
+\item{playoff_teams}{playoff berths, used to seed the simulated seasons.
+\code{NULL} reads it off a Sleeper league and otherwise assumes 6}
 
 \item{return}{one of c("default", "all") - what objects to return in the output list}
 }

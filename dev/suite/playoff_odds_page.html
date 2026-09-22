@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>sox05syd Playoff Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#f5f7f6; --surface:#ffffff; --surface-2:#eef2f0;
+  --ink:#111a17; --ink-2:#4a5a54; --ink-3:#7a8a84;
+  --line:#dfe6e2; --line-strong:#c6d1cc;
+  --accent:#0f6b4f; --accent-soft:#dff0e8; --accent-ink:#0b5540;
+  --up:#116b4c; --down:#a5402f; --mine:#9a6412; --mine-soft:#f7ecd8;
+  --bar:#bfe3d2; --chip-on:#ffffff;
+  --warn-soft:#f6e3de;
+  --shadow:0 1px 2px rgba(17,26,23,.06), 0 8px 24px -16px rgba(17,26,23,.25);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0e1412; --surface:#151d1a; --surface-2:#1b2522;
+    --ink:#e7edea; --ink-2:#9db0a8; --ink-3:#74867f;
+    --line:#233029; --line-strong:#31423a;
+    --accent:#49bd8e; --accent-soft:#13312a; --accent-ink:#8fe0bf;
+    --up:#49bd8e; --down:#e0806e; --mine:#d8a44a; --mine-soft:#2b2317;
+    --bar:#1d4a3a; --chip-on:#08130f; --warn-soft:#3a211c;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0e1412; --surface:#151d1a; --surface-2:#1b2522;
+  --ink:#e7edea; --ink-2:#9db0a8; --ink-3:#74867f;
+  --line:#233029; --line-strong:#31423a;
+  --accent:#49bd8e; --accent-soft:#13312a; --accent-ink:#8fe0bf;
+  --up:#49bd8e; --down:#e0806e; --mine:#d8a44a; --mine-soft:#2b2317;
+  --bar:#1d4a3a; --chip-on:#08130f; --warn-soft:#3a211c;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1280px; margin:0 auto; padding:0 16px 48px}
+header.top{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--ground);
+  background:color-mix(in srgb, var(--ground) 92%, transparent); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line); margin-inline:-16px; padding:14px 16px 0;
+}
+.masthead{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 16px}
+h1{font-family:Archivo,"IBM Plex Sans",sans-serif; font-weight:700; font-size:22px; letter-spacing:-.01em; margin:0}
+.provenance{color:var(--ink-3); font-size:12px; font-family:"IBM Plex Mono",monospace}
+.provenance b{color:var(--ink-2); font-weight:500}
+.tabs{display:flex; gap:2px; overflow-x:auto; margin-top:12px; scrollbar-width:thin}
+.tab{
+  appearance:none; border:0; background:transparent; color:var(--ink-2); font:inherit; font-size:13px;
+  padding:8px 12px 10px; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap;
+  border-radius:6px 6px 0 0;
+}
+.tab:hover{color:var(--ink); background:var(--surface-2)}
+.tab[aria-selected="true"]{color:var(--accent-ink); border-bottom-color:var(--accent); font-weight:600}
+.tab:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.facts{color:var(--ink-2); font-size:13px; padding:16px 0 12px}
+.facts b{color:var(--ink); font-weight:600}
+.dot{color:var(--line-strong); margin:0 6px}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:separate; border-spacing:0; width:100%}
+thead th{
+  text-align:right; white-space:nowrap; padding:11px 10px; border-bottom:1px solid var(--line-strong);
+  font-family:Archivo,sans-serif; font-weight:600; font-size:11px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+thead th:first-child{text-align:left}
+tbody td{
+  padding:9px 10px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:13px;
+}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+tr.is-mine td{background:var(--mine-soft)}
+tr.is-mine td:first-child{box-shadow:inset 3px 0 0 var(--mine)}
+tr.is-mine:hover td{background:var(--mine-soft)}
+td.name{text-align:left; font-family:"IBM Plex Sans",sans-serif; font-size:13.5px; font-weight:500}
+td.name .sub{display:block; font-size:11px; color:var(--ink-3); font-weight:400}
+td.name a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--line-strong); cursor:pointer}
+.dim{color:var(--ink-3)}
+.tag-mine{
+  display:inline-block; margin-left:7px; padding:1px 6px; border-radius:4px; font-family:"IBM Plex Mono",monospace;
+  font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--mine); border:1px solid var(--mine);
+  vertical-align:1px; font-weight:500;
+}
+.odds{display:flex; align-items:center; gap:8px; justify-content:flex-end}
+.odds .track{width:72px; height:6px; border-radius:3px; background:var(--surface-2); overflow:hidden}
+.odds .fill{display:block; height:100%; background:var(--bar); border-right:2px solid var(--accent)}
+.odds .val{min-width:34px; text-align:right}
+.delta{font-size:11px; min-width:38px; text-align:left}
+.delta.up{color:var(--up)} .delta.down{color:var(--down)}
+.chip{
+  display:inline-block; font-family:"IBM Plex Sans",sans-serif; font-size:11px; padding:2px 8px;
+  border-radius:999px; white-space:nowrap; border:1px solid var(--line-strong); color:var(--ink-2);
+  background:var(--surface);
+}
+.chip.Contender{background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink)}
+.chip.Bubble{color:var(--ink)}
+.chip.Seller{background:var(--warn-soft); border-color:var(--down); color:var(--down)}
+.chip.Rebuilding,.chip.Long{color:var(--ink-3)}
+.need{font-family:"IBM Plex Mono",monospace; font-size:11.5px}
+.need b{color:var(--down); font-weight:500}
+.seeds{display:inline-grid; grid-auto-flow:column; grid-auto-columns:14px; gap:1px; vertical-align:middle}
+.seeds span{height:16px; border-radius:2px; background:var(--surface-2)}
+.seeds span.cut{box-shadow:inset -2px 0 0 var(--ink-3)}
+
+.panels{display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:16px; margin-top:20px}
+.panel h2{
+  font-family:Archivo,sans-serif; font-size:13px; margin:0; padding:14px 14px 2px;
+}
+.panel p.lede{margin:0; padding:0 14px 10px; color:var(--ink-2); font-size:12.5px}
+.panel td.name{white-space:normal}
+.fit{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--accent-ink); border:1px solid var(--accent); border-radius:3px; padding:0 4px; margin-left:6px}
+.buyers{font-family:"IBM Plex Sans",sans-serif; font-size:12px; color:var(--ink-2); white-space:normal; text-align:left; min-width:220px}
+.empty{padding:22px 14px; color:var(--ink-3); text-align:center}
+.legend{margin-top:26px; border-top:1px solid var(--line); padding-top:16px}
+.legend h2{font-family:Archivo,sans-serif; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 10px}
+.legend dl{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:8px 24px; margin:0}
+.legend div{display:flex; gap:8px; align-items:baseline}
+.legend dt{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--accent-ink); white-space:nowrap; font-weight:500}
+.legend dd{margin:0; font-size:12.5px; color:var(--ink-2)}
+@media (max-width:520px){
+  h1{font-size:19px}
+  .panels{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="masthead">
+      <h1>Playoff Odds</h1>
+      <div class="provenance" id="prov"></div>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Leagues"></nav>
+  </header>
+  <div class="facts" id="facts"></div>
+  <main id="view"></main>
+
+  <section class="legend">
+    <h2>How to read this</h2>
+    <dl>
+      <div><dt>Playoff / Champ</dt><dd>Share of simulated seasons that make the playoffs / win the title. Only the games left are simulated, from live FantasyPros rest-of-season ranks on the real schedule; the record already banked is added before seeding (wins, then points-for), with this league&rsquo;s number of berths.</dd></div>
+      <div><dt>&#9650; / &#9660;</dt><dd>Change since the previous run of this report.</dd></div>
+      <div><dt>Seeds</dt><dd>Each cell is one final seed, darker = likelier. The rule after a cell marks the playoff cut.</dd></div>
+      <div><dt>Posture</dt><dd><b>Contender</b> (playoff 65%+ or title odds 1.5&times; a fair share), <b>Bubble</b> (30&ndash;65%), and below that <b>Seller</b> (an older-than-median roster in a dynasty or keeper league &mdash; the team with veterans to move), <b>Rebuilding</b> (young roster), or <b>Long shot</b> (redraft). Early in a season this mostly restates roster strength.</dd></div>
+      <div><dt>Need</dt><dd>The position where a teamThe position where a team&rsquo;s simulated starters score furthest below the league median, in points per week.rsquo;s simulated starters score furthest below the league median, in points per week (at least 1 point below counts).</dd></div>
+      <div><dt>Targets / Pitches</dt><dd><b>Targets</b>: veterans (past a positional age line &mdash; RB 26, WR 28, TE 29, QB 32 &mdash; or priced 15%+ higher for this season than the long run, and worth at least 500 redraft) on teams that are out of it. <b>Pitches</b>: your veterans, and the contenders whose need they fill. The list that suits your posture in the league comes first.</dd></div>
+      <div><dt>Not modelled</dt><dd>Known multi-week absences are treated as random missed weeks, and teams fill holes only from their own benches (no waiver streaming).</dd></div>
+    </dl>
+  </section>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var meta = D.meta, leagues = D.leagues;
+  var state = {tab: -1};
+
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+  function pct(v, d){ return v == null ? "&mdash;" : (v*100).toFixed(d == null ? 0 : d) + "%"; }
+  function num(v, d){ return v == null ? "&mdash;" : Number(v).toFixed(d == null ? 1 : d); }
+  function money(v){ return v == null ? "&mdash;" : Math.round(v).toLocaleString(); }
+  function delta(now, prev){
+    if(now == null || prev == null) return "<span class=\"delta\"></span>";
+    var d = Math.round((now - prev) * 100);
+    if(d === 0) return "<span class=\"delta dim\">&middot;</span>";
+    return "<span class=\"delta " + (d > 0 ? "up" : "down") + "\">" + (d > 0 ? "&#9650;" : "&#9660;") + Math.abs(d) + "</span>";
+  }
+  function oddsCell(v, prev){
+    if(v == null) return "<td class=\"dim\">&mdash;</td>";
+    var w = Math.max(2, Math.round(v * 100));
+    return "<td><span class=\"odds\"><span class=\"track\"><span class=\"fill\" style=\"width:" + w +
+      "%\"></span></span><span class=\"val\">" + pct(v) + "</span>" + delta(v, prev) + "</span></td>";
+  }
+  function postureChip(p){
+    if(!p) return "";
+    var cls = p.split(" ")[0];
+    return "<span class=\"chip " + esc(cls) + "\">" + esc(p) + "</span>";
+  }
+  function needCell(r){
+    if(!r.need_pos) return "<td class=\"dim\">&mdash;</td>";
+    return "<td class=\"need\">" + esc(r.need_pos) + " <b>" + num(r.need_gap) + "</b></td>";
+  }
+  function record(r){
+    var t = r.ties_now ? "-" + r.ties_now : "";
+    return (r.wins_now - (r.ties_now || 0) * 0.5) + "-" + r.losses_now + t;
+  }
+  function seedStrip(dist, cut){
+    if(!dist) return "";
+    var mx = Math.max.apply(null, dist) || 1;
+    return "<span class=\"seeds\" title=\"" + dist.map(function(p, i){ return "#" + (i+1) + " " + Math.round(p*100) + "%"; }).join("  ") + "\">" +
+      dist.map(function(p, i){
+        var a = Math.round(6 + 70 * p / mx);
+        return "<span class=\"" + (i + 1 === cut ? "cut" : "") + "\" style=\"background:color-mix(in srgb, var(--accent) " + a + "%, var(--surface-2))\"></span>";
+      }).join("") + "</span>";
+  }
+  function myRow(L){
+    return (L.odds || []).filter(function(r){ return String(r.franchise_id) === String(L.my_id); })[0];
+  }
+
+  document.getElementById("prov").innerHTML =
+    "week <b>" + meta.week + "</b> &middot; " + meta.season + " &middot; <b>" + (meta.n_min === meta.n_max ? meta.n_min.toLocaleString() :
+      meta.n_min.toLocaleString() + "&ndash;" + meta.n_max.toLocaleString()) +
+    "</b> simulated seasons per league &middot; built " + esc(meta.generated) +
+    (meta.prev_generated ? " &middot; arrows vs " + esc(meta.prev_generated) : " &middot; first run (no arrows yet)");
+
+  // ---- tabs --------------------------------------------------------------
+  var tabs = document.getElementById("tabs");
+  var names = ["My leagues"].concat(leagues.map(function(l){ return l.name; }));
+  tabs.innerHTML = names.map(function(n, i){
+    return "<button type=\"button\" class=\"tab\" role=\"tab\" data-i=\"" + (i - 1) + "\" aria-selected=\"" + (i === 0) + "\">" + esc(n) + "</button>";
+  }).join("");
+  tabs.addEventListener("click", function(e){
+    var b = e.target.closest(".tab"); if(!b) return;
+    go(+b.dataset.i);
+  });
+  function go(i){
+    state.tab = i;
+    [].forEach.call(tabs.children, function(t){ t.setAttribute("aria-selected", +t.dataset.i === i); });
+    draw();
+    window.scrollTo(0, 0);
+  }
+
+  // ---- My leagues ----------------------------------------------------------
+  function drawMine(){
+    document.getElementById("facts").innerHTML = "Your team in every league. Click a league for everyone&rsquo;s odds and the trade read.";
+    var rows = leagues.map(function(L, i){
+      var r = myRow(L);
+      var link = "<a href=\"#\" data-go=\"" + i + "\">" + esc(L.name) + "</a>";
+      if(L.format === "guillotine"){
+        var nextWk = L.weeks && L.weeks.length ? L.weeks[0] : null;
+        var surv = r && nextWk != null ? r["survive_wk" + nextWk] : null;
+        return "<tr class=\"is-mine\"><td class=\"name\">" + link + "<span class=\"sub\">guillotine &middot; " +
+          (L.odds.length) + " left</span></td>" +
+          "<td>" + (r ? "alive" : "<span class=\"dim\">out</span>") + "</td>" +
+          "<td>" + (surv == null ? "&mdash;" : "survive wk" + nextWk + " " + pct(surv)) + "</td>" +
+          oddsCell(r ? r.win_pct : null, r ? r.prev_champion : null) +
+          "<td class=\"dim\">&mdash;</td><td class=\"dim\">&mdash;</td><td></td><td class=\"dim\">&mdash;</td></tr>";
+      }
+      if(!r) return "<tr><td class=\"name\">" + link + "</td><td colspan=\"7\" class=\"dim\">team not found</td></tr>";
+      return "<tr class=\"is-mine\"><td class=\"name\">" + link + "<span class=\"sub\">" + esc(L.type) + " &middot; " + esc(L.qb) +
+        " &middot; " + L.playoff_teams + " of " + L.teams + " make it</span></td>" +
+        "<td>" + record(r) + "<span class=\"dim\"> (" + num(r.proj_wins) + ")</span></td>" +
+        oddsCell(r.playoff_pct, r.prev_playoff) + oddsCell(r.champion_pct, r.prev_champion) +
+        "<td>" + pct(r.bye_pct) + "</td><td>" + num(r.mean_seed) + "</td>" +
+        "<td style=\"text-align:left\">" + postureChip(r.posture) + "</td>" + needCell(r) + "</tr>";
+    }).join("");
+    document.getElementById("view").innerHTML =
+      "<div class=\"card tablewrap\"><table><thead><tr><th>League</th><th>Record (proj W)</th><th>Playoff</th><th>Champ / win</th>" +
+      "<th>Bye</th><th>Avg seed</th><th style=\"text-align:left\">Posture</th><th>Need</th></tr></thead><tbody>" +
+      rows + "</tbody></table></div>";
+  }
+
+  // ---- one league ------------------------------------------------------------
+  function drawLeague(L){
+    if(L.format === "guillotine") return drawGuillotine(L);
+    var mine = myRow(L);
+    document.getElementById("facts").innerHTML =
+      "<b>" + esc(L.my_team || "&mdash;") + "</b><span class=\"dot\">/</span>" + esc(L.type) +
+      "<span class=\"dot\">&middot;</span>" + esc(L.qb) + "<span class=\"dot\">&middot;</span>" + L.ppr + " ppr" +
+      "<span class=\"dot\">&middot;</span>" + L.teams + " teams, " + L.playoff_teams + " make the playoffs" +
+      "<span class=\"dot\">&middot;</span>" + L.weeks_banked + " week" + (L.weeks_banked === 1 ? "" : "s") +
+      " banked, " + L.weeks_left + " to play" +
+      (L.n_sims ? "<span class=\"dot\">&middot;</span>" + L.n_sims.toLocaleString() + " sims" : "") +
+      (mine ? "<span class=\"dot\">&middot;</span>you: " + postureChip(mine.posture) : "");
+
+    var body = (L.odds || []).slice().sort(function(a, b){ return b.playoff_pct - a.playoff_pct || b.champion_pct - a.champion_pct; })
+      .map(function(r){
+        var isMine = String(r.franchise_id) === String(L.my_id);
+        return "<tr" + (isMine ? " class=\"is-mine\"" : "") + "><td class=\"name\">" + esc(r.franchise_name) +
+          (isMine ? "<span class=\"tag-mine\">you</span>" : "") +
+          "<span class=\"sub\">" + (r.roster_age != null ? "roster age " + num(r.roster_age) : "") + "</span></td>" +
+          "<td>" + record(r) + "</td><td>" + num(r.pf_now, 1) + "</td>" +
+          "<td>" + num(r.proj_wins) + " <span class=\"dim\">" + num(r.proj_wins_p10, 0) + "&ndash;" + num(r.proj_wins_p90, 0) + "</span></td>" +
+          oddsCell(r.playoff_pct, r.prev_playoff) +
+          "<td>" + pct(r.bye_pct) + "</td>" +
+          oddsCell(r.champion_pct, r.prev_champion) +
+          "<td>" + seedStrip(r.seed_dist, L.playoff_teams) + "</td>" +
+          "<td style=\"text-align:left\">" + postureChip(r.posture) + "</td>" + needCell(r) + "</tr>";
+      }).join("");
+
+    var odds = "<div class=\"card tablewrap\"><table><thead><tr><th>Team</th><th>Record</th><th>PF</th><th>Proj W</th>" +
+      "<th>Playoff</th><th>Bye</th><th>Champ</th><th>Seeds</th><th style=\"text-align:left\">Posture</th><th>Need</th></tr></thead><tbody>" +
+      body + "</tbody></table></div>";
+
+    var myNeeds = (L.my_needs || []);
+    var targets = panel("Targets &mdash; veterans on teams that are out of it",
+      "Win-now pieces a seller should move. <span class=\"fit\">fits</span> marks your need" +
+      (myNeeds.length ? " (" + myNeeds.map(esc).join(", ") + ")" : "") + ".",
+      ["Player", "Owner", "Age", "Redraft", "Dynasty"],
+      (L.targets || []).map(function(t){
+        return "<tr><td class=\"name\">" + esc(t.player) + (t.fits_need ? "<span class=\"fit\">fits</span>" : "") +
+          "<span class=\"sub\">" + esc(t.pos) + " &middot; " + esc(t.team || "FA") + "</span></td>" +
+          "<td class=\"name\">" + esc(t.owner) + "<span class=\"sub\">" + esc(t.owner_posture) + "</span></td>" +
+          "<td>" + num(t.age) + "</td><td>" + money(t.redraft_value) + "</td><td>" + money(t.dynasty_value) + "</td></tr>";
+      }), "No veterans on teams that are out of it.");
+    var pitches = panel("Pitches &mdash; your veterans, and who needs them",
+      "Contenders and bubble teams whose starters are weakest at the position, points per week below the league median.",
+      ["Player", "Age", "Redraft", "Dynasty", "Buyers"],
+      (L.pitches || []).map(function(p){
+        return "<tr><td class=\"name\">" + esc(p.player) + "<span class=\"sub\">" + esc(p.pos) + "</span></td>" +
+          "<td>" + num(p.age) + "</td><td>" + money(p.redraft_value) + "</td><td>" + money(p.dynasty_value) + "</td>" +
+          "<td class=\"buyers\">" + esc(p.buyers) + "</td></tr>";
+      }), "None of your veterans fills a contender&rsquo;s need.");
+    var buying = !mine || mine.posture === "Contender" || mine.posture === "Bubble";
+    document.getElementById("view").innerHTML = odds +
+      "<div class=\"panels\">" + (buying ? targets + pitches : pitches + targets) + "</div>";
+  }
+
+  function panel(title, lede, heads, rows, emptyMsg){
+    return "<section class=\"card panel\"><h2>" + title + "</h2><p class=\"lede\">" + lede + "</p>" +
+      (rows.length ? "<div class=\"tablewrap\"><table><thead><tr>" + heads.map(function(h){ return "<th>" + h + "</th>"; }).join("") +
+        "</tr></thead><tbody>" + rows.join("") + "</tbody></table></div>" : "<div class=\"empty\">" + emptyMsg + "</div>") +
+      "</section>";
+  }
+
+  function drawGuillotine(L){
+    var wk = L.weeks || [];
+    document.getElementById("facts").innerHTML =
+      "<b>" + esc(L.my_team || "&mdash;") + "</b><span class=\"dot\">/</span>guillotine" +
+      "<span class=\"dot\">&middot;</span>" + L.odds.length + " teams left, " + L.n_out + " chopped" +
+      "<span class=\"dot\">&middot;</span>lowest score each week is eliminated, weeks " + wk.join(", ");
+    var body = L.odds.map(function(r){
+      var isMine = String(r.franchise_id) === String(L.my_id);
+      return "<tr" + (isMine ? " class=\"is-mine\"" : "") + "><td class=\"name\">" + esc(r.franchise_name) +
+        (isMine ? "<span class=\"tag-mine\">you</span>" : "") + "</td><td>" + num(r.pf_now, 1) + "</td>" +
+        wk.map(function(w){ return oddsCell(r["survive_wk" + w], null); }).join("") +
+        oddsCell(r.win_pct, r.prev_champion) + "</tr>";
+    }).join("");
+    document.getElementById("view").innerHTML =
+      "<div class=\"card tablewrap\"><table><thead><tr><th>Team</th><th>Points so far</th>" +
+      wk.map(function(w){ return "<th>Survive wk" + w + "</th>"; }).join("") + "<th>Win</th></tr></thead><tbody>" +
+      body + "</tbody></table></div>";
+  }
+
+  function draw(){
+    if(state.tab < 0) drawMine(); else drawLeague(leagues[state.tab]);
+  }
+  document.getElementById("view").addEventListener("click", function(e){
+    var a = e.target.closest("a[data-go]"); if(!a) return;
+    e.preventDefault();
+    go(+a.dataset.go);
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

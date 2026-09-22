@@ -173,6 +173,44 @@ Rest-of-season pages are scored per league (`ros-ppr-rb` vs
 `ros-half-point-ppr-rb`), and each scrape and FantasyCalc pull is cached across
 leagues that share a format.
 
+## Playoff odds (`dev/suite/playoff_odds.R`) — where you stand, and who is selling
+
+Rest-of-season odds for every franchise in every league, and a read on who is
+buying and who is selling.
+
+```
+Rscript dev/suite/playoff_odds.R                 # n=1000 per league
+FFS_NSEASONS=2000 Rscript dev/suite/playoff_odds.R
+```
+
+Only the games **left** are simulated, on the real schedule, from live
+FantasyPros rest-of-season ranks (`ff_simulate(latest_rankings = ffs_ros_rankings())`).
+The record already banked (`ffs_current_record()`, stored on the simulation as
+`standings`) is added to every simulated season before seeding on wins, then
+points-for. Berths come from the league (`playoff_teams`, read off Sleeper), and
+the title odds play a fixed bracket of that size with byes to the top seeds. A
+guillotine league (Sleeper type 3) gets survival odds instead
+(`ffs_guillotine_odds()`).
+
+Each franchise also gets a **posture** (`ffs_team_posture()`: Contender /
+Bubble / Seller (aging roster) / Rebuilding / Long shot) and a **need**
+(`ffs_team_needs()`: the position where its simulated starters score furthest
+below the league median). From those, per league:
+
+- **targets**: veterans (past a positional age line, or with redraft value at
+  least 15% above dynasty value; 500+ redraft value either way) on teams that
+  are out of it, flagged where they fill your need
+- **pitches**: your veterans, and the contenders whose need they fill
+
+Outputs to `dev/league_sims/playoff_odds/<date>/`: `odds.csv`, `needs.csv`,
+`targets.csv`, `pitches.csv` and `playoff_odds.html` (a "My leagues" board, then
+one tab per league). Every run appends to `dev/league_sims/playoff_odds/history.csv`,
+which is where the page's "since last run" arrows come from.
+
+The simulation is saved as `dev/league_sims/<league_id>/<date>/simulation.rds`,
+the file `waiver_wire.R` reuses, so a waiver report run the same day prices
+claims on the same base.
+
 ## Waiver wire (`dev/suite/waiver_wire.R`) — when you want a move priced
 
 The watchlist says who is worth a look; this says what a specific swap is

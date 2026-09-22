@@ -21,6 +21,11 @@
 #' @param version projection method: "v2" (default) maps preseason rank to weekly ranks then weekly ranks to scores, "v1" maps preseason rank directly to scores, "v3" (experimental) resamples whole historical weekly-rank trajectories to preserve within-season correlation
 #' @param lineup_method "efficiency" (default) scales hindsight-optimal lineups by a random efficiency factor; "rank" (experimental, requires version "v2"/"v3") sets lineups from simulated weekly rankings like a real manager, so efficiency emerges from the start/sit decision
 #' @param lineup_noise_sd manager evaluation error (points sd) for lineup_method "rank"; see `ffs_optimise_lineups()`
+#' @param latest_rankings optional rankings to simulate from, in the shape of
+#'   [ffs_latest_rankings()] (e.g. [ffs_ros_rankings()] for a live
+#'   rest-of-season scrape). `NULL` reads `ffs_latest_rankings("draft")`
+#' @param playoff_teams playoff berths, used to seed the simulated seasons.
+#'   `NULL` reads it off a Sleeper league and otherwise assumes 6
 #' @param return one of c("default", "all") - what objects to return in the output list
 #'
 #' @examples
@@ -52,6 +57,8 @@ ff_simulate <- function(conn,
                         version = c("v2", "v1", "v3"),
                         lineup_method = c("efficiency", "rank"),
                         lineup_noise_sd = 0,
+                        latest_rankings = NULL,
+                        playoff_teams = NULL,
                         return = c("default", "all")) {
 
   #### TEST ####
@@ -108,7 +115,10 @@ ff_simulate <- function(conn,
 
   scoring_history <- ffscrapr::ff_scoringhistory(conn, base_seasons)
 
-  latest_rankings <- ffs_latest_rankings(type = "draft")
+  if (is.null(latest_rankings)) latest_rankings <- ffs_latest_rankings(type = "draft")
+  assert_df(latest_rankings, c("fantasypros_id", "pos", "ecr"))
+  if (is.null(playoff_teams)) playoff_teams <- .ffs_playoff_teams(conn)
+  checkmate::assert_int(playoff_teams, lower = 1)
 
   franchises <- ffs_franchises(conn)
   rosters <- ffs_rosters(conn)
@@ -121,6 +131,8 @@ ff_simulate <- function(conn,
 
   if (actual_schedule) {
     schedule <- ffs_schedule(conn)
+    # the games already played, added to every simulated season before seeding
+    standings <- ffs_current_record(conn)
 
     weeks <- unique(schedule$week)
 
@@ -140,7 +152,8 @@ ff_simulate <- function(conn,
             gp_model = gp_model,
             version = version,
             actual_schedule = actual_schedule,
-            base_seasons = list(base_seasons)
+            base_seasons = list(base_seasons),
+            playoff_teams = playoff_teams
           )
         ),
         class = "ff_simulation")
@@ -271,7 +284,8 @@ ff_simulate <- function(conn,
           base_seasons = list(base_seasons),
           pos_filter = list(pos_filter),
           lineup_method = lineup_method,
-          lineup_noise_sd = lineup_noise_sd
+          lineup_noise_sd = lineup_noise_sd,
+          playoff_teams = playoff_teams
         )
       ),
       class = "ff_simulation"
@@ -307,12 +321,16 @@ ff_simulate <- function(conn,
           base_seasons = list(base_seasons),
           pos_filter = list(pos_filter),
           lineup_method = lineup_method,
-          lineup_noise_sd = lineup_noise_sd
+          lineup_noise_sd = lineup_noise_sd,
+          playoff_teams = playoff_teams
         )
       ),
       class = "ff_simulation"
     )
   }
+
+  # the banked record: seeding adds it to every simulated season
+  if (actual_schedule) out$standings <- standings
 
   vcli_rule("Simulation complete! {format(Sys.time())}")
 

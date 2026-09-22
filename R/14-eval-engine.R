@@ -87,6 +87,19 @@
   season_grp <- match(seasons, season_lv)
   n_season <- length(season_lv)
 
+  # banked record per franchise column, and the berths the league seeds for;
+  # a simulation that predates them carries neither (zero offsets, 6 berths)
+  n_playoff <- .ffs_sim_playoff_teams(base_simulation)
+  w0 <- pf0 <- numeric(nT)
+  st <- base_simulation$standings
+  if (!is.null(st) && NROW(st)) {
+    i <- match(fids, as.character(st$franchise_id))
+    w0 <- st$wins[i]
+    pf0 <- st$points_for[i]
+    w0[is.na(w0)] <- 0
+    pf0[is.na(pf0)] <- 0
+  }
+
   zero <- matrix(0, n_fw, nT)
   games <- zero; games[msk_idx] <- 1
   GP_s <- rowsum(games, season_grp, reorder = TRUE)
@@ -121,6 +134,11 @@
     hwp_s <- round(HW_s / GP_s, 3)
     awp_s <- round(APW_s / APG_s, 3)
 
+    # --- the games already banked, added to every season (as .ffs_seed does)
+    # after the win percentages, which stay a rest-of-season rate
+    HW_s <- HW_s + rep(w0, each = n_season)
+    PF_s <- PF_s + rep(pf0, each = n_season)
+
     # --- playoff seeding: wins, then points-for, ties broken by franchise order
     rk <- matrix(0L, n_season, nT)
     for (j in seq_len(nT)) {
@@ -140,7 +158,7 @@
       h2h_winpct = colMeans(hwp_s),
       allplay_winpct = colMeans(awp_s),
       points_for = colMeans(PF_s),
-      playoff_pct = colMeans(rk <= 6L)
+      playoff_pct = colMeans(rk <= n_playoff)
     )
 
     # --- championship bracket over the same seeding
@@ -158,7 +176,7 @@
       franchise_id = rep(fids, each = n_season),
       lg_rank = as.vector(rk)
     )
-    champ <- .ffs_champion_pct_core(strength, ssdt)
+    champ <- .ffs_champion_pct_core(strength, ssdt, n_playoff)
     agg <- merge(agg, champ, by = "franchise_id", all.x = TRUE)
     agg[is.na(agg$champion_pct), "champion_pct"] <- 0
     agg[is.na(agg$top_seed_pct), "top_seed_pct"] <- 0

@@ -4,12 +4,14 @@
 \alias{.ffs_champion_pct_core}
 \title{Championship bracket from a pre-computed strength table}
 \usage{
-.ffs_champion_pct_core(strength, ss)
+.ffs_champion_pct_core(strength, ss, playoff_teams = 6L)
 }
 \arguments{
 \item{strength}{a data.table: franchise_id, mu, sd (sd already floored > 0)}
 
 \item{ss}{season summary with a \code{lg_rank} seeding column}
+
+\item{playoff_teams}{berths in the bracket (any size; byes go to the top seeds)}
 }
 \value{
 a data.table: franchise_id, champion_pct, top_seed_pct

@@ -10,3 +10,6 @@ data/
 
 # the watchlist page is regenerated weekly and published as an artifact
 league_sims/waivers/**/*.html
+
+# the playoff odds page is regenerated per run and published as an artifact
+league_sims/playoff_odds/**/*.html

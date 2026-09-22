@@ -224,6 +224,60 @@ ffs_schedule <- function(conn) {
   return(schedule)
 }
 
+#' Current record: the games already banked
+#'
+#' The complement of [ffs_schedule()], which keeps only the unplayed games: this
+#' reads the played ones (`result` present) and totals them per franchise. A
+#' rest-of-season simulation adds these to every simulated season before it
+#' seeds the playoffs - without them a 3-0 team and an 0-3 team start level.
+#'
+#' A week is either banked here or simulated by [ffs_schedule()], never both: a
+#' week the platform has not finalised yet has no `result`, so it is simulated.
+#'
+#' @param conn a connection object as created by `ffscrapr::ff_connect()` and friends
+#'
+#' @return a data.table with one row per franchise: `franchise_id`, `wins` (a
+#'   tie counts half), `losses`, `ties`, `points_for`, `games`. Every franchise
+#'   in the schedule is present, with zeros if it has not played.
+#' @export
+ffs_current_record <- function(conn) {
+  franchise_id <- result <- NULL
+  s <- data.table::as.data.table(ffscrapr::ff_schedule(conn))
+  s[, franchise_id := as.character(franchise_id)]
+  played <- s[!is.na(result)]
+  rec <- played[, list(
+    wins = sum(result == "W") + 0.5 * sum(result == "T"),
+    losses = sum(result == "L"),
+    ties = sum(result == "T"),
+    points_for = sum(as.numeric(get("franchise_score")), na.rm = TRUE),
+    games = .N
+  ), by = "franchise_id"]
+  all_ids <- data.table::data.table(franchise_id = unique(s$franchise_id))
+  rec <- merge(all_ids, rec, by = "franchise_id", all.x = TRUE)
+  for (cc in c("wins", "losses", "ties", "points_for", "games")) {
+    data.table::set(rec, i = which(is.na(rec[[cc]])), j = cc, value = 0)
+  }
+  rec[]
+}
+
+#' Playoff berths in a league
+#'
+#' Sleeper publishes it in the league settings; nothing else here does, so any
+#' other platform (or a failed read) falls back to the long-standing default.
+#'
+#' @param conn a league connection
+#' @param default berths to assume when the platform does not say
+#' @return an integer
+#' @keywords internal
+.ffs_playoff_teams <- function(conn, default = 6L) {
+  if (!inherits(conn, "sleeper_conn")) return(as.integer(default))
+  n <- tryCatch(
+    ffscrapr::sleeper_getendpoint(paste0("league/", conn$league_id))$content$settings$playoff_teams,
+    error = function(e) NULL)
+  n <- suppressWarnings(as.integer(n))
+  if (!length(n) || is.na(n) || n < 1L) as.integer(default) else n
+}
+
 #' Repeat fantasy schedules
 #'
 #' This function repeats an actual `ffs_schedule()` by the appropriate number of seasons.

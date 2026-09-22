@@ -47,9 +47,8 @@ ffs_draftpicks <- function(conn) {
   sw <- data.table::as.data.table(ffs_summarise_week(
     optimal_scores = base_simulation$optimal_scores,
     schedules = base_simulation$schedules))
-  ss <- data.table::as.data.table(ffs_summarise_season(summary_week = sw))
-  ss[, lg_rank := data.table::frank(list(-h2h_wins, -points_for), ties.method = "first"),
-     by = season]
+  # the games already played count toward the finish, as they do in the league
+  ss <- .ffs_seed(ffs_summarise_season(summary_week = sw), base_simulation$standings)
 
   n_teams <- length(unique(ss$franchise_id))
   n_seas  <- length(unique(ss$season))

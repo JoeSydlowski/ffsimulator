@@ -4,22 +4,24 @@
 \alias{.ffs_champion_pct}
 \title{Championship + top-seed probability from a deterministic playoff bracket}
 \usage{
-.ffs_champion_pct(sw, ss)
+.ffs_champion_pct(sw, ss, playoff_teams = 6L)
 }
 \arguments{
 \item{sw}{weekly summary (\code{ffs_summarise_week} output) with \code{team_score}}
 
 \item{ss}{season summary with a \code{lg_rank} seeding column}
+
+\item{playoff_teams}{berths in the bracket}
 }
 \value{
 a data.table: franchise_id, champion_pct, top_seed_pct (sum to 1 each)
 }
 \description{
 Reuses the already-simulated weekly team scores instead of re-simulating
-playoff weeks. For each of the simulated seasons the top-6 seeds are taken
-from \code{ss} (the same wins-then-points-for seeding used for berth odds), then a
-standard fixed 6-team bracket (seeds 1-2 bye; R1 3v6 & 4v5; semis 1-vs-(4/5)
-and 2-vs-(3/6); final) is resolved by \strong{win-probability propagation}, not
+playoff weeks. For each of the simulated seasons the top \code{playoff_teams}
+seeds are taken from \code{ss} (the same wins-then-points-for seeding used for
+berth odds), then a fixed bracket (6 teams: seeds 1-2 bye; R1 3v6 & 4v5;
+semis 1-vs-(4/5) and 2-vs-(3/6); final) is resolved by \strong{win-probability propagation}, not
 random draws: each matchup uses \code{P(A>B) = pnorm((muA-muB)/sqrt(sdA^2+sdB^2))}
 from each franchise's weekly-score mean/sd. Deterministic on purpose so the
 paired leave-one-out delta carries no extra Monte-Carlo bracket noise (same

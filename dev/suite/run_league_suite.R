@@ -30,7 +30,7 @@ config <- list(
   # TRUE = condition on your real (known) schedule; FALSE = average over
   # random schedules (use when the schedule isn't released yet)
   actual_schedule = as.logical(Sys.getenv("FFS_ACTUAL_SCHEDULE", "TRUE")),
-  playoff_slots = 6L,
+  # playoff berths are read off the league (ff_simulate's playoff_teams)
   # Positions the simulation starts. DEF is never simulable (no DEF rows exist in
   # scoring history, and pos_filter is arg_match-capped), so a DEF slot drops out
   # for every franchise alike - uniform, and harmless. K is kept, but only because
@@ -98,21 +98,21 @@ if (is.null(sim$summary_season)) {
 saveRDS(sim, file.path(out, "simulation.rds"))
 fwrite(sim$summary_simulation, file.path(out, "summary_simulation.csv"))
 
-ss <- as.data.table(sim$summary_season)
-# wins then points-for, deterministic (matches .ffs_franchise_summary)
-ss[, lg_rank := frank(list(-h2h_wins, -points_for), ties.method = "first"), by = season]
+# wins then points-for, deterministic, with the games already played counted in
+ss <- ffsimulator:::.ffs_seed(sim$summary_season, sim$standings)
+n_playoff <- ffsimulator:::.ffs_sim_playoff_teams(sim)
 odds <- ss[, list(
   mean_wins = mean(h2h_wins),
   p25_wins = quantile(h2h_wins, .25),
   p75_wins = quantile(h2h_wins, .75),
   mean_pf = mean(points_for),
-  playoff_pct = mean(lg_rank <= config$playoff_slots),
+  playoff_pct = mean(lg_rank <= n_playoff),
   top_seed_pct = mean(lg_rank == 1),
   last_pct = mean(lg_rank == max(lg_rank))
 ), by = franchise_name][order(-mean_wins)]
 # championship odds from the deterministic playoff bracket (ceiling-aware; berth
 # odds wash out week-to-week variance, titles do not) - reported for comparison
-champ_tbl <- ffsimulator:::.ffs_champion_pct(as.data.table(sim$summary_week), ss)
+champ_tbl <- ffsimulator:::.ffs_champion_pct(as.data.table(sim$summary_week), ss, n_playoff)
 champ_tbl <- merge(champ_tbl, unique(ss[, list(franchise_id, franchise_name)]),
                    by = "franchise_id")
 odds <- merge(odds, champ_tbl[, list(franchise_name, champion_pct)],
