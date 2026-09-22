@@ -418,14 +418,24 @@ ffs_sleeper_lineups <- function(league_id, week = NULL) {
   }
   # a week's matchup carries the lineup as it was actually set for that week
   wk <- if (!is.null(week)) get_json(paste0("league/", league_id, "/matchups/", week)) else NULL
+  # A starter who is not on the lineup's own player list is stale: a guillotine
+  # league keeps an eliminated team's last eight starters in every later week's
+  # matchup while its roster is empty, which showed ten free agents in "Don't be
+  # Chopped" as still owned. Blank those slots ("0") so they read as empty.
+  keep_rostered <- function(starters, players) {
+    s <- as.character(unlist(starters))
+    p <- as.character(unlist(players))
+    s[!s %in% p] <- "0"
+    s
+  }
   wk_starters <- if (!is.null(wk)) stats::setNames(
-    lapply(wk, function(m) as.character(unlist(m$starters))),
+    lapply(wk, function(m) keep_rostered(m$starters, m$players)),
     vapply(wk, function(m) as.character(m$roster_id), character(1))) else NULL
 
   rows <- lapply(rosters, function(r) {
     fid <- as.character(r$roster_id)
     st <- if (!is.null(wk_starters) && !is.null(wk_starters[[fid]])) wk_starters[[fid]] else
-      as.character(unlist(r$starters))
+      keep_rostered(r$starters, r$players)
     all_players <- as.character(unlist(r$players))
     st_rows <- if (length(st)) data.table::data.table(
       franchise_id = fid,
