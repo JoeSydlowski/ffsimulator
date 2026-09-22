@@ -60,7 +60,8 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
   total_fantasy_points_exp <- total_fantasy_points <- NULL
   snap_pct_recent <- snap_pct_prior <- exp_pts_recent <- exp_pts_prior <- NULL
   fpts_recent <- games_recent <- snap_trend <- exp_pts_trend <- NULL
-  fpoe_recent <- player <- pos <- pkey <- team <- NULL
+  fpoe_recent <- player <- pos <- pkey <- team <- wi <- NULL
+  snap_wk <- xfp_wk <- fp_wk <- NULL
 
   ids <- data.table::as.data.table(nflreadr::load_ff_playerids())
   ids <- ids[!is.na(fantasypros_id),
@@ -91,11 +92,26 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
     i_id <- match(base[[idcol]], by_id[[idcol]])
     i_key <- match(base$pkey, by_key$pkey)
     for (cc in intersect(cols, names(agg))) {
-      v <- by_id[[cc]][i_id]
-      w <- by_key[[cc]][i_key]
-      data.table::set(base, j = cc, value = data.table::fifelse(is.na(v), w, v))
+      data.table::set(base, j = cc, value = .ffs_pick(by_id[[cc]][i_id], by_key[[cc]][i_key]))
     }
     base
+  }
+
+  # one value per week on a shared axis, so a page can draw the trend and not
+  # just the window mean; a week he did not play stays NA
+  weekly_vecs <- function(dt, idcol, vals, weeks) {
+    if (is.null(dt) || !NROW(dt)) return(NULL)
+    long <- dt[, lapply(.SD, mean, na.rm = TRUE), by = c(idcol, "pkey", "week"),
+               .SDcols = unname(vals)]
+    data.table::setnames(long, unname(vals), names(vals))
+    long[, wi := match(week, weeks)]
+    long[, lapply(.SD, function(y) {
+      x <- rep(NA_real_, length(weeks))
+      y <- round(y, 3)
+      y[is.nan(y)] <- NA_real_
+      x[wi] <- y
+      list(x)
+    }), by = c(idcol, "pkey"), .SDcols = names(vals)]
   }
 
   snaps <- tryCatch(
@@ -140,11 +156,31 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
     }
   }
 
+  played <- c(if (!is.null(snaps)) snaps$week, if (!is.null(opp)) opp$week)
+  weeks <- if (length(played)) seq_len(max(played, na.rm = TRUE)) else integer(0)
+  snap_wk <- if (!is.null(snap_agg)) {
+    s <- weekly_vecs(snaps, "pfr_player_id", c(snap_wk = "offense_pct"), weeks)
+    data.table::setnames(s, "pfr_player_id", "pfr_id")
+    s
+  }
+  opp_wk <- if (!is.null(opp_agg)) {
+    o <- weekly_vecs(opp, "player_id",
+                     c(xfp_wk = "total_fantasy_points_exp", fp_wk = "total_fantasy_points"),
+                     weeks)
+    data.table::setnames(o, "player_id", "gsis_id")
+    o
+  }
+
   out <- data.table::copy(ids)
   out <- attach_usage(out, snap_agg, "pfr_id",
                       c("snap_pct_recent", "snap_pct_prior", "games_recent", "games_prior"))
   out <- attach_usage(out, opp_agg, "gsis_id",
                       c("exp_pts_recent", "exp_pts_prior", "fpts_recent", "fpts_prior"))
+  out <- attach_usage(out, snap_wk, "pfr_id", "snap_wk")
+  out <- attach_usage(out, opp_wk, "gsis_id", c("xfp_wk", "fp_wk"))
+  for (nm in c("snap_wk", "xfp_wk", "fp_wk")) {
+    if (!nm %in% names(out)) data.table::set(out, j = nm, value = list(vector("list", nrow(out))))
+  }
   # a whole window can be missing this early in a season - keep the shape stable
   for (nm in c("snap_pct_recent", "snap_pct_prior", "games_recent", "games_prior",
                "exp_pts_recent", "exp_pts_prior", "fpts_recent", "fpts_prior")) {
@@ -159,7 +195,8 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
              list(fantasypros_id, player, pos, team, games_recent,
                   snap_pct_recent, snap_pct_prior, snap_trend,
                   exp_pts_recent, exp_pts_prior, exp_pts_trend,
-                  fpts_recent, fpoe_recent)]
+                  fpts_recent, fpoe_recent, snap_wk, xfp_wk, fp_wk)]
+  data.table::setattr(out, "weeks", weeks)
   out[]
 }
 

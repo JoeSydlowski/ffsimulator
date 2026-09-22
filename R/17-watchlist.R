@@ -77,6 +77,94 @@ ffs_ros_rankings <- function(season = nflreadr::most_recent_season(),
   as.data.frame(rows)
 }
 
+#' Live rankings for the upcoming week, scraped from FantasyPros
+#'
+#' (EXPERIMENTAL) The weekly counterpart of [ffs_ros_rankings()]. The
+#' DynastyProcess mirror behind `ffs_latest_rankings(type = "week")` can sit
+#' days behind, which for a lineup call is the whole point lost, so this reads
+#' the weekly positional pages directly - plus one flex page, which puts every
+#' flex-eligible player on a single scale so a flex slot can be filled by rank.
+#'
+#' Falls back to `ffs_latest_rankings(type = "week")` (with no flex columns)
+#' when `ffpros` is missing or every page fails.
+#'
+#' @param ppr points per reception: 1, 0.5 or 0
+#' @param pos_filter positions to scrape
+#' @param flex `"flex"` (RB/WR/TE) or `"superflex"` (QB too): which flex page
+#'   to read
+#'
+#' @return a dataframe: `fantasypros_id`, `player`, `pos`, `team`, `ecr`,
+#'   `pos_rank`, `opp`, `flex_ecr`, `flex_rank`, `scrape_date`, `source`
+#' @export
+ffs_week_rankings <- function(ppr = 1,
+                              pos_filter = c("QB", "RB", "WR", "TE"),
+                              flex = c("flex", "superflex")) {
+  flex <- rlang::arg_match(flex)
+  fantasypros_id <- player <- pos <- team <- ecr <- pos_rank <- NULL
+
+  scoring <- if (ppr >= 1) "ppr-" else if (ppr > 0) "half-point-ppr-" else ""
+  page_of <- function(p) {
+    lp <- tolower(p)
+    if (lp %in% c("qb", "k", "dst")) lp else paste0(scoring, lp)
+  }
+  read_page <- function(page) {
+    x <- tryCatch(ffpros::fp_rankings(page = page),
+                  error = function(e) {
+                    cli::cli_alert_warning("{page}: {conditionMessage(e)}")
+                    NULL
+                  })
+    if (is.null(x) || !NROW(x)) NULL else data.table::as.data.table(x)
+  }
+
+  fallback <- function(why) {
+    cli::cli_alert_warning("live weekly scrape unavailable ({why}) - using {.fn ffs_latest_rankings}")
+    lr <- data.table::as.data.table(ffs_latest_rankings(type = "week"))
+    lr[, pos := .ffs_pos(pos)]
+    lr <- lr[pos %in% .ffs_pos(pos_filter) & !is.na(ecr)]
+    data.table::setorder(lr, pos, ecr)
+    lr[, pos_rank := seq_len(.N), by = "pos"]
+    as.data.frame(lr[, list(fantasypros_id = as.character(fantasypros_id), player, pos,
+                            team, ecr, pos_rank, opp = NA_character_,
+                            flex_ecr = NA_real_, flex_rank = NA_integer_,
+                            scrape_date = get("scrape_date"), source = "dynastyprocess")])
+  }
+
+  if (!rlang::is_installed("ffpros")) return(fallback("ffpros not installed"))
+
+  rows <- lapply(pos_filter, function(p) {
+    x <- read_page(page_of(p))
+    if (is.null(x)) return(NULL)
+    data.table::data.table(
+      fantasypros_id = as.character(x$fantasypros_id),
+      player = x$player_name,
+      pos = .ffs_pos(p),
+      team = x$team,
+      ecr = suppressWarnings(as.numeric(x$ecr)),
+      pos_rank = suppressWarnings(as.integer(sub("^[A-Za-z]+", "", x$pos_rank))),
+      opp = if ("player_opponent" %in% names(x)) as.character(x$player_opponent) else NA_character_
+    )
+  })
+  rows <- data.table::rbindlist(Filter(Negate(is.null), rows))
+  if (!nrow(rows)) return(fallback("every page failed"))
+  rows[is.na(pos_rank), pos_rank := NA_integer_]
+  rows[, pos_rank := data.table::fifelse(is.na(pos_rank),
+    as.integer(data.table::frank(ecr, ties.method = "first")), pos_rank), by = "pos"]
+
+  fx <- read_page(paste0(scoring, flex))
+  if (!is.null(fx)) {
+    fx <- unique(data.table::data.table(
+      fantasypros_id = as.character(fx$fantasypros_id),
+      flex_ecr = suppressWarnings(as.numeric(fx$ecr)),
+      flex_rank = suppressWarnings(as.integer(fx$rank))), by = "fantasypros_id")
+    rows <- merge(rows, fx, by = "fantasypros_id", all.x = TRUE)
+  } else {
+    rows[, `:=`(flex_ecr = NA_real_, flex_rank = NA_integer_)]
+  }
+  rows[, `:=`(scrape_date = Sys.Date(), source = "fantasypros")]
+  data.table::setorder(rows, pos, ecr)
+  as.data.frame(rows)
+}
+
 #' Players the Sleeper universe is adding or dropping
 #'
 #' (EXPERIMENTAL) Sleeper publishes the most-added and most-dropped players
@@ -415,11 +503,24 @@ ffs_sleeper_lineups <- function(league_id, week = NULL) {
   i_id <- match(base$fantasypros_id, by_id$fantasypros_id)
   i_key <- match(base$pkey, by_key$pkey)
   for (cc in cols) {
-    v <- by_id[[cc]][i_id]
-    w <- by_key[[cc]][i_key]
-    data.table::set(base, j = cc, value = data.table::fifelse(is.na(v), w, v))
+    data.table::set(base, j = cc, value = .ffs_pick(by_id[[cc]][i_id], by_key[[cc]][i_key]))
   }
   base
+}
+
+#' First non-missing of two aligned vectors, list columns included
+#'
+#' `fifelse()` cannot take a list, and the weekly usage vectors are one.
+#'
+#' @param v,w vectors (or lists) of the same length
+#' @return `v`, with its gaps filled from `w`; a list comes back wrapped for
+#'   `data.table::set()`
+#' @keywords internal
+.ffs_pick <- function(v, w) {
+  if (!is.list(v)) return(data.table::fifelse(is.na(v), w, v))
+  miss <- vapply(v, function(x) is.null(x) || all(is.na(x)), logical(1))
+  v[miss] <- w[miss]
+  list(v)
 }
 
 #' Weekly waiver watchlist for a league
@@ -433,8 +534,11 @@ ffs_sleeper_lineups <- function(league_id, week = NULL) {
 #'   fantasy is doing about him, right now
 #' - **usage** (`snap_pct`, `xfp_g`, `fp_g`, `fpoe`): what his team is actually
 #'   giving him, which moves first when a role changes
-#' - **next week** (`proj`): Sleeper's own projection for the upcoming week, in
-#'   this league's scoring
+#'   (`snap_wk`, `xfp_wk`, `fp_wk` carry the same three week by week, as list
+#'   columns on the axis in `attr(usage, "weeks")`)
+#' - **next week** (`proj`, `wk_rank`, `flex_rank`, `opp`): Sleeper's own
+#'   projection in this league's scoring, and the FantasyPros weekly positional
+#'   and flex ranks from [ffs_week_rankings()]
 #' - **value** (`redraft_value`, `dynasty_value`): what the trade market pays
 #'
 #' Every join falls back from `fantasypros_id` to a cleaned name and position
@@ -462,6 +566,8 @@ ffs_sleeper_lineups <- function(league_id, week = NULL) {
 #' @param ppr the league's points per reception, which picks the scoring
 #'   variant of the projection
 #' @param pos_filter positions to include
+#' @param flex_pos the positions this league's flex slot takes; `flex_rank`
+#'   ranks the weekly flex consensus over these alone
 #' @param my_franchise optional franchise_id: marks your own players `mine`
 #' @param include_unranked also carry players FantasyPros does not rank at all,
 #'   when the usage or market data says they are live (default `TRUE`). Their
@@ -484,13 +590,14 @@ ffs_waiver_watchlist <- function(conn,
                                  lineups = NULL,
                                  ppr = 1,
                                  pos_filter = c("QB", "RB", "WR", "TE"),
+                                 flex_pos = c("RB", "WR", "TE"),
                                  my_franchise = NULL,
                                  include_unranked = TRUE,
                                  unranked_min_snap = 0,
                                  unranked_min_xfp = 0) {
   fantasypros_id <- pos <- ecr <- status <- mine <- signal <- NULL
   rostered_by <- franchise_id <- player <- team <- ranked <- pkey <- NULL
-  wk_rank <- NULL
+  wk_rank <- flex_rank <- flex_ecr <- NULL
 
   if (is.null(ros)) ros <- ffs_ros_rankings(pos_filter = pos_filter)
   r <- data.table::as.data.table(ros)[pos %in% pos_filter & !is.na(ecr)]
@@ -621,9 +728,10 @@ ffs_waiver_watchlist <- function(conn,
 
   if (!is.null(usage)) {
     u <- data.table::as.data.table(usage)
-    keep <- intersect(c("fantasypros_id", "player", "pos", "games_recent",
+    keep <- intersect(c("fantasypros_id", "player", "pos", "team", "games_recent",
                         "snap_pct_recent", "exp_pts_recent", "fpts_recent",
-                        "fpoe_recent", "snap_trend", "exp_pts_trend"), names(u))
+                        "fpoe_recent", "snap_trend", "exp_pts_trend",
+                        "snap_wk", "xfp_wk", "fp_wk"), names(u))
     u <- u[, keep, with = FALSE]
     u[, `:=`(fantasypros_id = as.character(fantasypros_id),
              pkey = .ffs_pkey(player, pos, team))]
@@ -631,7 +739,8 @@ ffs_waiver_watchlist <- function(conn,
       c("games_recent", "snap_pct_recent", "exp_pts_recent", "fpts_recent", "fpoe_recent"),
       c("games", "snap_pct", "xfp_g", "fp_g", "fpoe"), skip_absent = TRUE)
     out <- .ffs_attach(out, u, intersect(
-      c("games", "snap_pct", "xfp_g", "fp_g", "fpoe", "snap_trend", "exp_pts_trend"),
+      c("games", "snap_pct", "xfp_g", "fp_g", "fpoe", "snap_trend", "exp_pts_trend",
+        "snap_wk", "xfp_wk", "fp_wk"),
       names(u)))
   }
 
@@ -660,11 +769,22 @@ ffs_waiver_watchlist <- function(conn,
 
   if (!is.null(weekly) && NROW(weekly)) {
     wk <- data.table::as.data.table(weekly)
+    col_or_na <- function(nm, na) if (nm %in% names(wk)) wk[[nm]] else rep(na, nrow(wk))
     wk <- wk[, list(fantasypros_id = as.character(fantasypros_id),
                     pkey = .ffs_pkey(player, pos, team),
-                    wk_ecr = suppressWarnings(as.numeric(get("ecr"))))]
+                    wk_ecr = suppressWarnings(as.numeric(get("ecr"))),
+                    flex_ecr = suppressWarnings(as.numeric(col_or_na("flex_ecr", NA_real_))),
+                    opp = as.character(col_or_na("opp", NA_character_)))]
     wk <- unique(wk[!is.na(get("wk_ecr"))], by = "pkey")
-    out <- .ffs_attach(out, wk, "wk_ecr")
+    out <- .ffs_attach(out, wk, c("wk_ecr", "flex_ecr", "opp"))
+    # re-ranked over what THIS league's flex slot takes, so a WR/TE-only flex
+    # reads correctly and a kicker or a 1QB quarterback stays blank
+    out[, flex_rank := {
+      v <- rep(NA_integer_, .N)
+      ok <- !is.na(flex_ecr) & pos %in% flex_pos
+      if (any(ok)) v[ok] <- as.integer(data.table::frank(flex_ecr[ok], ties.method = "first"))
+      v
+    }]
     # a positional rank for the week reads better than a raw consensus number
     out[, wk_rank := {
       v <- rep(NA_integer_, .N)
@@ -741,7 +861,8 @@ ffs_waiver_watchlist <- function(conn,
   front <- intersect(c("player", "pos", "team", "status", "rostered_by", "mine",
                        "ranked", "signal", "pos_rank", "ecr", "ecr_delta", "roster_pct",
                        "trend_add", "trend_drop",
-                       "proj", "wk_rank", "wk_ecr", "snap_pct", "xfp_g", "fp_g", "injury",
+                       "proj", "wk_rank", "wk_ecr", "flex_rank", "flex_ecr", "opp",
+                       "snap_pct", "xfp_g", "fp_g", "injury",
                        "starting", "slot", "nfl_depth", "nfl_depth_pos",
                        "fpoe", "games", "redraft_value", "dynasty_value",
                        "value_trend_30d", "bye", "sd", "fantasypros_id"), names(out))

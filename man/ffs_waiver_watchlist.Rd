@@ -16,6 +16,7 @@ ffs_waiver_watchlist(
   lineups = NULL,
   ppr = 1,
   pos_filter = c("QB", "RB", "WR", "TE"),
+  flex_pos = c("RB", "WR", "TE"),
   my_franchise = NULL,
   include_unranked = TRUE,
   unranked_min_snap = 0,
@@ -40,6 +41,9 @@ ffs_waiver_watchlist(
 variant of the projection}
 
 \item{pos_filter}{positions to include}
+
+\item{flex_pos}{the positions this league's flex slot takes; \code{flex_rank}
+ranks the weekly flex consensus over these alone}
 
 \item{my_franchise}{optional franchise_id: marks your own players \code{mine}}
 
@@ -67,8 +71,11 @@ has him for the rest of the season, and which way it is moving
 fantasy is doing about him, right now
 \item \strong{usage} (\code{snap_pct}, \code{xfp_g}, \code{fp_g}, \code{fpoe}): what his team is actually
 giving him, which moves first when a role changes
-\item \strong{next week} (\code{proj}): Sleeper's own projection for the upcoming week, in
-this league's scoring
+(\code{snap_wk}, \code{xfp_wk}, \code{fp_wk} carry the same three week by week, as list
+columns on the axis in \code{attr(usage, "weeks")})
+\item \strong{next week} (\code{proj}, \code{wk_rank}, \code{flex_rank}, \code{opp}): Sleeper's own
+projection in this league's scoring, and the FantasyPros weekly positional
+and flex ranks from \code{\link[=ffs_week_rankings]{ffs_week_rankings()}}
 \item \strong{value} (\code{redraft_value}, \code{dynasty_value}): what the trade market pays
 }
 

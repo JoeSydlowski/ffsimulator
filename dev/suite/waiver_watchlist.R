@@ -57,9 +57,18 @@ projections <- tryCatch(
                           pos_filter = config$pos_filter),
   error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
 
-message("fantasypros weekly rankings ...")
-weekly <- tryCatch(ffs_latest_rankings(type = "week"),
-                   error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
+# live weekly positional + flex ranks, one scrape per scoring and flex type
+week_cache <- new.env(parent = emptyenv())
+week_for <- function(ppr, flex) {
+  key <- paste0("ppr", ppr, "_", flex)
+  if (is.null(week_cache[[key]])) {
+    message("scraping FantasyPros weekly rankings (", ppr, " ppr, ", flex, ") ...")
+    week_cache[[key]] <- tryCatch(
+      ffs_week_rankings(ppr = ppr, pos_filter = config$pos_filter, flex = flex),
+      error = function(e) {message("  unavailable: ", conditionMessage(e)); NULL})
+  }
+  week_cache[[key]]
+}
 
 message("sleeper player file (injuries + NFL depth chart) ...")
 sleeper_players <- tryCatch(ffs_sleeper_players(pos_filter = config$pos_filter),
@@ -126,6 +135,14 @@ build_league <- function(league_id) {
                 "WRRB_FLEX", "SUPER_FLEX", "SUPERFLEX"), slots)]))
   lg_pos <- intersect(config$pos_filter, unname(lg_pos))
   if (!length(lg_pos)) lg_pos <- intersect(config$pos_filter, c("QB", "RB", "WR", "TE"))
+
+  # the widest flex slot the league has decides the flex scale
+  flex_type <- if (any(slots %in% c("SUPER_FLEX", "SUPERFLEX"))) "superflex" else "flex"
+  flex_pos <- if (flex_type == "superflex") c("QB", "RB", "WR", "TE") else
+    if ("FLEX" %in% slots) c("RB", "WR", "TE") else
+      unique(c(if ("WRRB_FLEX" %in% slots) c("WR", "RB"),
+               if ("REC_FLEX" %in% slots) c("WR", "TE")))
+  if (!length(flex_pos)) flex_pos <- c("RB", "WR", "TE")
   cli::cli_rule("{lname} - {ltype}{
     if (superflex) ' superflex' else ' 1QB'}, {ppr} ppr, {teams} teams, {paste(lg_pos, collapse = '/')}")
 
@@ -143,12 +160,13 @@ build_league <- function(league_id) {
     values = fc_for(if (superflex) 2 else 1, teams, ppr),
     trending = trending,
     projections = projections,
-    weekly = weekly,
+    weekly = week_for(ppr, flex_type),
     sleeper_players = sleeper_players,
     lineups = tryCatch(ffs_sleeper_lineups(league_id, week = week),
                        error = function(e) NULL),
     ppr = ppr,
     pos_filter = lg_pos,
+    flex_pos = flex_pos,
     my_franchise = my_id))
 
   list(
@@ -160,6 +178,11 @@ build_league <- function(league_id) {
     ppr = ppr,
     teams = teams,
     my_team = my_name,
+    flex_label = if (flex_type == "superflex") "SF" else "FLEX",
+    flex_pos = flex_pos,
+    # what a trade costs here: a keeper roster turns over slowly enough to price
+    # like dynasty
+    value_key = if (ltype == "redraft") "redraft_value" else "dynasty_value",
     rows = w
   )
 }
@@ -175,17 +198,23 @@ for (lid in config$league_ids) {
 }
 if (!length(leagues)) stop("no leagues built")
 
-# one table for every league, for your own slicing
-fwrite(rbindlist(lapply(leagues, function(l)
-  cbind(league = l$name, as.data.table(l$rows))), fill = TRUE),
-  file.path(out, "watchlist.csv"))
+# one table for every league, for your own slicing; the week-by-week vectors go
+# in as "0.74|0.81" strings, which fwrite cannot do itself for a player with none
+csv <- rbindlist(lapply(leagues, function(l)
+  cbind(league = l$name, as.data.table(l$rows))), fill = TRUE)
+for (cc in names(csv)[vapply(csv, is.list, logical(1))]) {
+  set(csv, j = cc, value = vapply(csv[[cc]], function(x)
+    if (is.null(x)) NA_character_ else paste(x, collapse = "|"), character(1)))
+}
+fwrite(csv, file.path(out, "watchlist.csv"))
 
 ## ---- PAGE --------------------------------------------------------------------
 # columns the page shows, in order; everything else stays in the CSV
 show <- c("player", "pos", "team", "bye", "status", "rostered_by", "mine", "ranked", "signal",
           "pos_rank", "ecr", "ecr_delta", "roster_pct", "trend_add", "trend_drop",
-          "proj", "wk_rank", "injury", "starting", "slot", "slot_no", "nfl_depth",
-          "snap_pct", "xfp_g", "fp_g", "redraft_value", "dynasty_value")
+          "proj", "wk_rank", "flex_rank", "opp", "injury", "starting", "slot", "slot_no",
+          "nfl_depth", "snap_pct", "xfp_g", "fp_g", "snap_wk", "xfp_wk", "fp_wk",
+          "redraft_value", "dynasty_value")
 
 payload <- lapply(leagues, function(l) {
   d <- as.data.table(l$rows)
@@ -195,6 +224,7 @@ payload <- lapply(leagues, function(l) {
   list(id = l$id, name = l$name, type = l$type, qb = l$qb, ppr = l$ppr,
        slots = l$slots,
        teams = l$teams, my_team = l$my_team,
+       flex_label = l$flex_label, flex_pos = l$flex_pos, value_key = l$value_key,
        n_fa = sum(d$status == "free agent"),
        rows = d)
 })
@@ -208,7 +238,9 @@ meta <- list(
   week = as.integer(nflreadr::get_current_week()),
   season = config$season,
   trend_hours = config$trend_hours,
-  lookback = config$lookback
+  lookback = config$lookback,
+  # the axis every snap_wk / xfp_wk / fp_wk vector is aligned to
+  weeks = I(as.integer(attr(usage, "weeks")))
 )
 
 json <- jsonlite::toJSON(list(meta = meta, leagues = payload),
@@ -482,7 +514,7 @@ td.sig{text-align:left; width:104px}
 .chipflag.bad{background:var(--surface-2); color:var(--down); border:1px solid var(--down)}
 .chipflag.good{background:var(--accent-soft); color:var(--accent-ink); border:1px solid var(--accent)}
 .lrow{
-  display:grid; grid-template-columns:46px 1fr 48px; gap:8px; align-items:center;
+  display:grid; grid-template-columns:46px 1fr 56px 50px; gap:8px; align-items:center;
   padding:5px 0; border-top:1px solid var(--line); font-size:12.5px;
 }
 .lrow:first-of-type{border-top:0}
@@ -496,6 +528,20 @@ td.sig{text-align:left; width:104px}
   font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; text-align:right;
 }
 .steals{margin-top:8px; border-top:1px dashed var(--line-strong); padding-top:6px}
+.lrow .val{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-3); text-align:right}
+.lrow .opp{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-3); margin-left:6px}
+
+/* week-by-week strip: the window number on top, each week exact below it */
+td.tr{vertical-align:top}
+.trend{display:flex; flex-direction:column; align-items:flex-end; gap:3px}
+.wks{display:inline-grid; grid-auto-flow:column; grid-auto-columns:25px; gap:2px}
+.wk{
+  font-size:10px; line-height:1.15; text-align:center; border-radius:3px;
+  padding:2px 0 1px; background:var(--surface-2); color:var(--ink);
+}
+.wk i{display:block; font-style:normal; font-size:8.5px; color:var(--ink-3)}
+.wk.miss{background:transparent; color:var(--ink-3); outline:1px dashed var(--line)}
+.slot .wks{margin-top:4px; grid-auto-columns:23px}
 @media (max-width:520px){
   h1{font-size:19px}
   .wrap{padding-inline:12px}
@@ -551,16 +597,18 @@ body_bits <- paste0(
     <h2>What the columns mean</h2>
     <dl>
       <div><dt>Signal</dt><dd>Average of the percentile ranks below, taken <em>within position</em> across everyone in the league, rostered and free alike &mdash; so a claim and the man you&rsquo;d cut sort in one list. An opening sort, not a projection.</dd></div>
-      <div><dt>The three views</dt><dd><b>Board</b> is the sortable table. <b>NFL depth</b> takes one real team and stacks its players by snap share, so a backfield reads as a backfield. <b>League depth</b> lays out every franchise&rsquo;s stack at one position in rest-of-season rank order, with the wire on the bottom row in green.</dd></div>
+      <div><dt>The views</dt><dd><b>Board</b> is the sortable table. <b>NFL depth</b> takes one real team and stacks its players by recent snap share, left to right, with each week&rsquo;s snaps underneath &mdash; so a backfield reads as a backfield, and a changing one shows it. <b>League depth</b> lays out every franchise&rsquo;s stack at one position in rest-of-season rank order, with the wire on the bottom row in green.</dd></div>
       <div><dt>mine / unranked</dt><dd><span class="tag-mine">mine</span> is on your roster. <span class="unranked">unranked</span> means FantasyPros lists no rest-of-season rank for him at all &mdash; he is here because his snaps or the Sleeper market say he is playing.</dd></div>
       <div><dt>Rank</dt><dd>FantasyPros rest-of-season consensus, with the week&rsquo;s movement.</dd></div>
       <div><dt>Own%</dt><dd>Share of all leagues that roster him. High and still free here is the classic miss.</dd></div>
       <div><dt>Adds / Drops</dt><dd>Sleeper claims across every league in the window. Moves hours after news, days before rankings. Read them next to Own% &mdash; a player most leagues already roster can only be added in the few where he is free.</dd></div>
       <div><dt>Proj</dt><dd>Sleeper&rsquo;s projection for the upcoming week, in this league&rsquo;s scoring. The only column about next Sunday rather than the rest of the season.</dd></div>
-      <div><dt>Snap%</dt><dd>Share of his team&rsquo;s offensive snaps, recent window.</dd></div>
-      <div><dt>xFP/g</dt><dd>Expected fantasy points per game from opportunity alone &mdash; volume without the finishing luck.</dd></div>
-      <div><dt>FP/g</dt><dd>Points he actually scored. Far above xFP/g is production you should not bank on.</dd></div>
+      <div><dt>Wk rank / Flex</dt><dd>FantasyPros consensus for the coming week, scraped live: by position, and on the flex scale (<b>SF</b> in superflex leagues) over just the positions this league&rsquo;s flex slot takes.</dd></div>
+      <div><dt>Snap%</dt><dd>Share of his team&rsquo;s offensive snaps. The top number is the recent-window average and is what the column sorts on; under it, each week exactly, shaded against the best week anyone at his position has had. <i>bye</i> is his bye; a dash is a week he did not play. Hover for the whole season.</dd></div>
+      <div><dt>xFP/g</dt><dd>Expected fantasy points per game from opportunity alone &mdash; volume without the finishing luck. Same week strip.</dd></div>
+      <div><dt>FP/g</dt><dd>Points he actually scored (full PPR, whatever this league scores). Far above xFP/g is production you should not bank on.</dd></div>
       <div><dt>Redraft / Dynasty</dt><dd>FantasyCalc trade-market value at this league&rsquo;s size and format.</dd></div>
+      <div><dt>Lineups</dt><dd>&ldquo;Likely&rdquo; lineups are filled by the weekly rank, not the Sleeper projection &mdash; positional rank for a positional slot, flex rank for a flex one. The right-hand number is trade value: dynasty in dynasty and keeper leagues, redraft otherwise.</dd></div>
     </dl>
   </section>
 </div>
@@ -585,12 +633,13 @@ body_bits <- paste0(
     {k:"pos_rank",      h:"Rank",    type:"rank"},
     {k:"proj",          h:"Proj",    type:"num1"},
     {k:"wk_rank",       h:"Wk rank", type:"posrank"},
+    {k:"flex_rank",     h:"Flex",    type:"flex"},
     {k:"roster_pct",    h:"Own%",    type:"pct1"},
     {k:"trend_add",     h:"Adds",    type:"count"},
     {k:"trend_drop",    h:"Drops",   type:"count"},
-    {k:"snap_pct",      h:"Snap%",   type:"frac"},
-    {k:"xfp_g",         h:"xFP/g",   type:"num1"},
-    {k:"fp_g",          h:"FP/g",    type:"num1"},
+    {k:"snap_pct",      h:"Snap%",   type:"trend", wk:"snap_wk", fmt:"pct"},
+    {k:"xfp_g",         h:"xFP/g",   type:"trend", wk:"xfp_wk",  fmt:"num"},
+    {k:"fp_g",          h:"FP/g",    type:"trend", wk:"fp_wk",   fmt:"num"},
     {k:"redraft_value", h:"Redraft", type:"int"},
     {k:"dynasty_value", h:"Dynasty", type:"int"}
   ];
@@ -604,10 +653,59 @@ body_bits <- paste0(
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
     return ({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"})[c]; }); }
 
+  // ---- week-by-week strip ------------------------------------------------
+  // the last few played weeks, each with its exact value, tinted against the
+  // best week anyone at the position has had in this league
+  var WEEKS = [].concat(meta.weeks || []);
+  var SHOW_WEEKS = 6;
+  var scaleCache = {};
+  function wkVec(r, key){
+    var v = r[key];
+    if(v===null||v===undefined) return [];
+    // a one-week season arrives unboxed, and jsonlite writes an NA inside a list
+    // column as the string "NA" whatever na= says
+    return (Array.isArray(v) ? v : [v]).map(function(x){ return typeof x==="number" ? x : null; });
+  }
+  function scaleMax(key, pos){
+    var id = state.league+"|"+key+"|"+pos;
+    if(scaleCache[id]!=null) return scaleCache[id];
+    var m = 0;
+    leagues[state.league].rows.forEach(function(r){
+      if(r.pos!==pos) return;
+      wkVec(r, key).forEach(function(x){ if(x!=null && x>m) m = x; });
+    });
+    return (scaleCache[id] = m || 1);
+  }
+  function fmtWk(x, fmt){ return fmt==="pct" ? String(Math.round(x*100)) : x.toFixed(1); }
+  function weekStrip(r, key, fmt){
+    var vec = wkVec(r, key);
+    if(!WEEKS.length || !vec.some(function(x){ return x!=null; })) return "";
+    var mx = scaleMax(key, r.pos);
+    var full = WEEKS.map(function(w, i){
+      var x = vec[i];
+      return "W"+w+" "+(x==null ? (r.bye===w ? "bye" : "-") : fmtWk(x, fmt));
+    }).join("  ");
+    var from = Math.max(0, WEEKS.length - SHOW_WEEKS);
+    var cells = WEEKS.slice(from).map(function(w, j){
+      var x = vec[from + j];
+      if(x==null) return "<span class=\\"wk miss\\"><i>"+w+"</i>"+(r.bye===w ? "bye" : "&ndash;")+"</span>";
+      var a = Math.round(8 + 37 * Math.max(0, Math.min(1, x / mx)));
+      return "<span class=\\"wk\\" style=\\"background:color-mix(in srgb, var(--accent) "+a+
+             "%, var(--surface-2))\\"><i>"+w+"</i>"+fmtWk(x, fmt)+"</span>";
+    }).join("");
+    return "<span class=\\"wks\\" title=\\""+esc(full)+"\\">"+cells+"</span>";
+  }
+
   function cell(row, col){
     var v = row[col.k];
+    if(col.type==="trend"){
+      var top = (v===null||v===undefined) ? "<span class=\\"dim\\">&mdash;</span>" :
+        (col.fmt==="pct" ? String(Math.round(v*100)) : v.toFixed(1));
+      return "<td class=\\"tr\\"><span class=\\"trend\\"><span>"+top+"</span>"+
+             weekStrip(row, col.wk, col.fmt)+"</span></td>";
+    }
     if(col.type==="name"){
-      var sub = [row.team||"FA", row.bye?("bye "+row.bye):null].filter(Boolean).join(" &middot; ");
+      var sub = [row.team||"FA", row.opp||null, row.bye?("bye "+row.bye):null].filter(Boolean).join(" &middot; ");
       if(row.ranked===false) sub += " &middot; <span class=\\"unranked\\">unranked</span>";
       if(row.status!=="free agent" && !row.mine) sub += " &middot; <span class=\\"owner\\">"+esc(row.rostered_by)+"</span>";
       var tag = row.mine ? "<span class=\\"tag-mine\\">mine</span>" : "";
@@ -630,6 +728,7 @@ body_bits <- paste0(
       return "<td>"+esc(row.pos)+v+ds+"</td>";
     }
     if(col.type==="posrank") return "<td>"+esc(row.pos)+v+"</td>";
+    if(col.type==="flex") return "<td>"+esc(leagues[state.league].flex_label||"FLEX")+v+"</td>";
     if(col.type==="pct1") return "<td>"+v.toFixed(1)+"</td>";
     if(col.type==="frac") return "<td>"+Math.round(v*100)+"</td>";
     if(col.type==="num1") return "<td>"+v.toFixed(1)+"</td>";
@@ -667,35 +766,39 @@ body_bits <- paste0(
   // shared cell: a player in a depth slot, shaded by what he projects -------
   // a player in a depth slot. Colour says one thing only - can I have him -
   // and every number carries its own label.
-  function slotCell(r, _unused, kind){
+  function slotCell(r, strip, kind){
     if(!r) return "<div class=\\"slot empty-slot\\"></div>";
     var bits = [];
-    if(r.proj!=null) bits.push("<b>"+r.proj.toFixed(1)+"</b> proj");
     if(r.wk_rank!=null) bits.push("<b>"+r.pos+r.wk_rank+"</b> wk");
+    if(r.proj!=null) bits.push("<b>"+r.proj.toFixed(1)+"</b> proj");
     if(r.snap_pct!=null) bits.push("<b>"+Math.round(r.snap_pct*100)+"%</b> snap");
     var inj = r.injury ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" : "";
     var own = (kind==="" && r.rostered_by) ?
       "<span class=\\"ownedby\\">"+esc(r.rostered_by)+"</span>" : "";
     return "<div class=\\"slot "+kind+"\\"><span class=\\"nm"+(r.ranked===false?" un":"")+"\\">"+
-      esc(r.player)+inj+"</span><span class=\\"mt\\">"+bits.join(" &middot; ")+"</span>"+own+"</div>";
+      esc(r.player)+inj+"</span><span class=\\"mt\\">"+bits.join(" &middot; ")+"</span>"+
+      (strip ? weekStrip(r, "snap_wk", "pct") : "")+own+"</div>";
   }
 
   function kindOf(r){ return !r ? "" : (r.mine ? "mine" : (r.status==="free agent" ? "fa" : "")); }
 
+  // who actually plays, not where the team prints him: recent snap share first,
+  // then the depth chart, then the weekly rank for men who have not played
   function depthSort(a,b){
+    var as = a.snap_pct==null?-1:a.snap_pct, bs = b.snap_pct==null?-1:b.snap_pct;
+    if(as!==bs) return bs-as;
     var ad = a.nfl_depth, bd = b.nfl_depth;
     if(ad!=null && bd!=null && ad!==bd) return ad-bd;
     if(ad!=null && bd==null) return -1;
     if(ad==null && bd!=null) return 1;
-    var as = a.snap_pct==null?-1:a.snap_pct, bs = b.snap_pct==null?-1:b.snap_pct;
-    if(as!==bs) return bs-as;
-    return (b.proj==null?-1:b.proj) - (a.proj==null?-1:a.proj);
+    var ar = a.wk_rank==null?9999:a.wk_rank, br = b.wk_rank==null?9999:b.wk_rank;
+    return ar-br;
   }
 
-  function gridHead(first, pos, cols, tmpl){
+  function gridHead(first, pos, cols, tmpl, label){
     return "<div class=\\"gridrow\\" style=\\""+tmpl+"\\"><span class=\\"gridhead\\">"+first+"</span>"+
       Array.apply(null,{length:cols}).map(function(_,i){
-        return "<span class=\\"gridhead\\">"+pos+(i+1)+"</span>"; }).join("")+"</div>";
+        return "<span class=\\"gridhead\\">"+(label ? label(i) : pos+(i+1))+"</span>"; }).join("")+"</div>";
   }
 
   // ---- NFL depth: every team at one position, in NFL depth-chart order -----
@@ -711,16 +814,17 @@ body_bits <- paste0(
     var teams = Object.keys(byTeam).sort();
     var cols = Math.min(5, Math.max.apply(null, teams.map(function(t){
       return byTeam[t].length; }).concat([1])));
-    var tmpl = "grid-template-columns:70px repeat("+cols+",minmax(150px,1fr))";
+    var tmpl = "grid-template-columns:70px repeat("+cols+",minmax(160px,1fr))";
     var body = teams.map(function(t){
       var list = byTeam[t].slice().sort(depthSort);
       return "<div class=\\"gridrow\\" style=\\""+tmpl+"\\">"+
         "<div class=\\"owncell\\">"+esc(t)+"</div>"+
         Array.apply(null,{length:cols}).map(function(_,i){
-          return slotCell(list[i], 0, kindOf(list[i])); }).join("")+"</div>";
+          return slotCell(list[i], true, kindOf(list[i])); }).join("")+"</div>";
     }).join("");
+    var snapLabel = function(i){ return pos+(i+1)+" by snaps"; };
     document.getElementById("nflwrap").innerHTML = teams.length ?
-      ("<div class=\\"grid\\">"+gridHead("Team", pos, cols, tmpl)+body+"</div>") :
+      ("<div class=\\"grid\\">"+gridHead("Team", pos, cols, tmpl, snapLabel)+body+"</div>") :
       "<div class=\\"empty\\">Nothing matches that search.</div>";
   }
 
@@ -773,8 +877,11 @@ body_bits <- paste0(
   function isOut(r){ return !!r.injury && OUT_STATUS.indexOf(r.injury)!==-1; }
   function onBye(r){ return r.bye!=null && r.bye===meta.week; }
   function unavailable(r){ return isOut(r) || onBye(r); }
+  function isFlexSlot(slot){
+    return ["FLEX","SUPER_FLEX","SUPERFLEX","REC_FLEX","WRRB_FLEX","WRRB-FLEX"].indexOf(slot)!==-1;
+  }
   function fits(slot, pos){
-    if(slot===pos) return true;
+    if(slot===pos || (slot==="DEF" && pos==="DST")) return true;
     if(slot==="FLEX") return ["RB","WR","TE"].indexOf(pos)!==-1;
     if(slot==="SUPER_FLEX"||slot==="SUPERFLEX") return ["QB","RB","WR","TE"].indexOf(pos)!==-1;
     if(slot==="REC_FLEX") return ["WR","TE"].indexOf(pos)!==-1;
@@ -783,20 +890,46 @@ body_bits <- paste0(
   }
   // greedy best-available fill: the lineup a manager who was paying attention
   // would set, which is what you are really playing against
+  // The FantasyPros weekly rank decides it, not the Sleeper projection: the
+  // positional rank for a positional slot, the flex rank for a flex one. A man
+  // with no rank only gets in behind every ranked one, on projection.
+  function rankFor(r, slot){ return isFlexSlot(slot) ? r.flex_rank : r.wk_rank; }
+  function better(slot){
+    return function(a, b){
+      var ka = rankFor(a, slot), kb = rankFor(b, slot);
+      if(ka!=null && kb!=null) return ka-kb;
+      if(ka!=null) return -1;
+      if(kb!=null) return 1;
+      return (b.proj==null?-1:b.proj) - (a.proj==null?-1:a.proj);
+    };
+  }
   function projectLineup(roster, slots){
-    var pool = roster.filter(function(r){ return !unavailable(r) && r.proj!=null; })
-                     .sort(function(a,b){ return b.proj-a.proj; });
-    var taken = {}, picks = [];
-    slots.forEach(function(sl){
-      var pick = null;
-      for(var i=0;i<pool.length;i++){
-        var r = pool[i];
-        if(taken[r.player] || !fits(sl, r.pos)) continue;
-        pick = r; taken[r.player] = true; break;
-      }
-      picks.push({slot: sl, player: pick});
+    var pool = roster.filter(function(r){
+      return !unavailable(r) && (r.wk_rank!=null || r.flex_rank!=null || r.proj!=null); });
+    var taken = {}, picks = slots.map(function(sl){ return {slot: sl, player: null}; });
+    // positional slots first, so a flex never takes the man a slot needs
+    var order = slots.map(function(sl, i){ return i; }).sort(function(i, j){
+      return (isFlexSlot(slots[i])?1:0) - (isFlexSlot(slots[j])?1:0) || i-j; });
+    order.forEach(function(i){
+      var sl = slots[i];
+      var cands = pool.filter(function(r){ return !taken[r.player] && fits(sl, r.pos); })
+                      .sort(better(sl));
+      if(cands.length){ picks[i].player = cands[0]; taken[cands[0].player] = true; }
     });
     return picks;
+  }
+  function rankLabel(r, slot){
+    var L = leagues[state.league];
+    if(isFlexSlot(slot) && r.flex_rank!=null) return (L.flex_label||"FLEX")+r.flex_rank;
+    if(r.wk_rank!=null) return r.pos+r.wk_rank;
+    return r.proj!=null ? r.proj.toFixed(1)+"p" : "&mdash;";
+  }
+  function slotShort(slot){
+    return ({SUPER_FLEX:"SF", SUPERFLEX:"SF", REC_FLEX:"W/T", WRRB_FLEX:"W/R", "WRRB-FLEX":"W/R"})[slot] || slot;
+  }
+  function fmtVal(v){
+    if(v==null) return "&mdash;";
+    return v>=1000 ? (v/1000).toFixed(1)+"k" : String(Math.round(v));
   }
 
   function drawLineups(){
@@ -811,15 +944,34 @@ body_bits <- paste0(
     Object.keys(teams).forEach(function(n){
       if(teams[n].some(function(r){return r.mine;})) myName = n;
     });
-    // the weakest starter in MY likely lineup at each position: anything on
-    // another bench that clears it is a player who would start for me
-    var myFloor = {};
+    // the weakest starter in MY likely lineup at each position, and in my flex
+    // slots on the flex scale: anything on another bench that clears either is
+    // a player who would start for me
+    var myFloor = {}, myFlexFloor = null;
     if(myName){
       projectLineup(teams[myName], slots).forEach(function(p){
-        if(!p.player || p.player.proj==null) return;
-        var pos = p.player.pos;
-        if(myFloor[pos]==null || p.player.proj < myFloor[pos]) myFloor[pos] = p.player.proj;
+        if(!p.player) return;
+        var r = p.player;
+        if(r.wk_rank!=null && (myFloor[r.pos]==null || r.wk_rank > myFloor[r.pos])) myFloor[r.pos] = r.wk_rank;
+        if(isFlexSlot(p.slot) && r.flex_rank!=null &&
+           (myFlexFloor==null || r.flex_rank > myFlexFloor)) myFlexFloor = r.flex_rank;
       });
+    }
+    var flexPos = [].concat(L.flex_pos || ["RB","WR","TE"]);
+    function beats(r){
+      if(unavailable(r)) return null;
+      if(r.wk_rank!=null && myFloor[r.pos]!=null && r.wk_rank < myFloor[r.pos])
+        return r.pos+myFloor[r.pos];
+      if(myFlexFloor!=null && r.flex_rank!=null && flexPos.indexOf(r.pos)!==-1 &&
+         r.flex_rank < myFlexFloor) return (L.flex_label||"FLEX")+myFlexFloor;
+      return null;
+    }
+    var vk = L.value_key || "redraft_value";
+    var vname = vk==="dynasty_value" ? "dynasty" : "redraft";
+    function benchSort(a, b){
+      var fa = a.flex_rank!=null ? a.flex_rank : (a.wk_rank!=null ? 500+a.wk_rank : 9999);
+      var fb = b.flex_rank!=null ? b.flex_rank : (b.wk_rank!=null ? 500+b.wk_rank : 9999);
+      return fa-fb;
     }
     var names = Object.keys(teams).sort(function(a,b){
       if(a===myName) return -1;
@@ -835,11 +987,8 @@ body_bits <- paste0(
       var likely = projectLineup(roster, slots);
       var likelyIds = {};
       likely.forEach(function(p){ if(p.player) likelyIds[p.player.player] = p.slot; });
-      var bench = roster.filter(function(r){ return !likelyIds[r.player]; })
-        .sort(function(a,b){ return (b.proj==null?-1:b.proj)-(a.proj==null?-1:a.proj); });
-      var steals = isMine ? [] : bench.filter(function(r){
-        return r.proj!=null && !unavailable(r) && myFloor[r.pos]!=null && r.proj > myFloor[r.pos];
-      }).slice(0,4);
+      var bench = roster.filter(function(r){ return !likelyIds[r.player] && !r.starting; }).sort(benchSort);
+      var steals = isMine ? [] : bench.filter(function(r){ return beats(r)!=null; }).slice(0,4);
       var broken = set.filter(unavailable);
 
       var chips = "";
@@ -849,24 +998,36 @@ body_bits <- paste0(
       if(steals.length) chips += "<span class=\\"chipflag good\\">"+steals.length+
         " benched who would start for you</span>";
 
-      var setBy = {};
-      set.forEach(function(r){ setBy[r.slot_no] = r; });
+      var setBy = {}, setIds = {};
+      set.forEach(function(r){ setBy[r.slot_no] = r; setIds[r.player] = true; });
+      // a swap is a starter who is not in the likely lineup at all - the same
+      // men in a different slot order is not a change anyone needs to make
+      var incoming = likely.filter(function(p){ return p.player && !setIds[p.player.player]; })
+                           .map(function(p){ return p.player; });
       var lines = likely.map(function(p, i){
         var cur = setBy[i+1];
-        var pick = p.player;
-        var swap = (cur && pick && cur.player!==pick.player) || (!cur && pick);
+        var pick = null;
+        if(!cur || !likelyIds[cur.player]){
+          var j = incoming.findIndex(function(m){ return fits(p.slot, m.pos); });
+          if(j===-1 && !cur) j = incoming.length ? 0 : -1;
+          if(j!==-1) pick = incoming.splice(j, 1)[0];
+        }
+        var swap = !!pick;
         var shown = cur || pick;
-        if(!shown) return "<div class=\\"lrow\\"><span class=\\"slotname\\">"+esc(p.slot)+
-          "</span><span class=\\"who dim\\">empty</span><span class=\\"num\\">&mdash;</span></div>";
+        if(!shown) return "<div class=\\"lrow\\"><span class=\\"slotname\\">"+esc(slotShort(p.slot))+
+          "</span><span class=\\"who dim\\">empty</span><span class=\\"num\\">&mdash;</span>"+
+          "<span class=\\"val\\"></span></div>";
         var why = isOut(shown) ? "<span class=\\"inj\\">"+esc(shown.injury)+"</span>" :
                   (onBye(shown) ? "<span class=\\"inj\\">BYE</span>" : "");
-        var alt = (swap && pick) ? "<span class=\\"likely\\">likely "+esc(pick.player)+
-          " "+(pick.proj!=null?pick.proj.toFixed(1):"")+"</span>" : "";
+        var alt = (swap && cur) ? "<span class=\\"likely\\">likely "+esc(pick.player)+
+          " "+rankLabel(pick, p.slot)+"</span>" : "";
+        var opp = shown.opp ? "<span class=\\"opp\\">"+esc(shown.opp)+"</span>" : "";
         return "<div class=\\"lrow"+(cur&&unavailable(cur)?" bad":"")+"\\">"+
-          "<span class=\\"slotname\\">"+esc(p.slot)+"</span>"+
+          "<span class=\\"slotname\\">"+esc(slotShort(p.slot))+"</span>"+
           "<span class=\\"who\\"><b>"+esc(shown.player)+"</b><span class=\\"posmini\\">"+
-          esc(shown.pos)+"</span>"+why+alt+"</span>"+
-          "<span class=\\"num\\">"+(shown.proj==null?"&mdash;":shown.proj.toFixed(1))+"</span></div>";
+          esc(shown.pos)+"</span>"+opp+why+alt+"</span>"+
+          "<span class=\\"num\\">"+rankLabel(shown, p.slot)+"</span>"+
+          "<span class=\\"val\\">"+fmtVal(shown[vk])+"</span></div>";
       }).join("");
 
       var benchTop = bench.slice(0, 6);
@@ -875,17 +1036,19 @@ body_bits <- paste0(
           var isSteal = steals.indexOf(r)!==-1;
           var why = isOut(r) ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" :
                     (onBye(r) ? "<span class=\\"inj\\">BYE</span>" : "");
-          var tag = isSteal ? "<span class=\\"tag fa\\">beats your "+
-            myFloor[r.pos].toFixed(1)+"</span>" : "";
+          var tag = isSteal ? "<span class=\\"tag fa\\">beats your "+beats(r)+"</span>" : "";
+          var bslot = flexPos.indexOf(r.pos)!==-1 ? "FLEX" : r.pos;
           return "<div class=\\"lrow"+(isSteal?" good":"")+"\\">"+
             "<span class=\\"slotname\\">BN</span><span class=\\"who\\"><b>"+esc(r.player)+
             "</b><span class=\\"posmini\\">"+esc(r.pos)+"</span>"+why+tag+"</span>"+
-            "<span class=\\"num\\">"+(r.proj==null?"&mdash;":r.proj.toFixed(1))+"</span></div>";
+            "<span class=\\"num\\">"+rankLabel(r, bslot)+"</span>"+
+            "<span class=\\"val\\">"+fmtVal(r[vk])+"</span></div>";
         }).join("")+"</div>") : "";
 
-      var total = likely.reduce(function(s,p){ return s + (p.player&&p.player.proj||0); }, 0);
+      // what the starters would cost to trade for, on this league&rsquo;s value scale
+      var total = likely.reduce(function(s,p){ return s + (p.player&&p.player[vk]||0); }, 0);
       return "<div class=\\"lineup"+(isMine?" mine":"")+"\\">"+
-        "<h3>"+esc(n)+"<span class=\\"tot\\">"+total.toFixed(1)+" likely proj</span></h3>"+
+        "<h3>"+esc(n)+"<span class=\\"tot\\">starters "+fmtVal(total)+" "+vname+"</span></h3>"+
         (chips?("<div class=\\"chiprow\\">"+chips+"</div>"):"")+
         lines+benchLines+"</div>";
     }).join("");
@@ -934,7 +1097,8 @@ body_bits <- paste0(
       var on = state.sort===c.k;
       var arw = on ? "<span class=\\"arw\\">"+(state.dir===1?"&#9650;":"&#9660;")+"</span>" : "";
       return "<th"+(on?" aria-sort=\\""+(state.dir===1?"ascending":"descending")+"\\"":"")+
-             "><button type=\\"button\\" data-k=\\""+c.k+"\\">"+c.h+arw+"</button></th>";
+             "><button type=\\"button\\" data-k=\\""+c.k+"\\">"+
+             (c.k==="flex_rank" ? esc(L.flex_label||"Flex") : c.h)+arw+"</button></th>";
     }).join("");
 
     var rs = rows();
@@ -954,16 +1118,24 @@ body_bits <- paste0(
     var b = e.target.closest(".tab"); if(!b) return;
     state.league = +b.dataset.i;
     [].forEach.call(tabs.children, function(t){ t.setAttribute("aria-selected", t===b); });
+    buildChips();
     draw();
   });
 
-  var POS = ["ALL"].concat(leagues.reduce(function(a,l){
-    l.rows.forEach(function(r){ if(a.indexOf(r.pos)===-1) a.push(r.pos); }); return a; }, [])
-    .sort(function(a,b){ return ["QB","RB","WR","TE"].indexOf(a) - ["QB","RB","WR","TE"].indexOf(b); }));
+  // chips come from the league on screen, so a kicker chip only shows up in the
+  // league that starts one
+  var POS_ORDER = ["QB","RB","WR","TE","K","DST"];
   var chips = document.getElementById("poschips");
-  chips.innerHTML = POS.map(function(p){
-    return "<button type=\\"button\\" class=\\"chip\\" data-pos=\\""+p+"\\" aria-pressed=\\""+(p==="ALL")+"\\">"+p+"</button>";
-  }).join("");
+  function buildChips(){
+    var have = [];
+    leagues[state.league].rows.forEach(function(r){ if(have.indexOf(r.pos)===-1) have.push(r.pos); });
+    have.sort(function(a,b){ return POS_ORDER.indexOf(a) - POS_ORDER.indexOf(b); });
+    if(state.pos!=="ALL" && have.indexOf(state.pos)===-1) state.pos = "ALL";
+    chips.innerHTML = ["ALL"].concat(have).map(function(p){
+      return "<button type=\\"button\\" class=\\"chip\\" data-pos=\\""+p+"\\" aria-pressed=\\""+(p===state.pos)+"\\">"+p+"</button>";
+    }).join("");
+  }
+  buildChips();
   chips.addEventListener("click", function(e){
     var b = e.target.closest(".chip"); if(!b) return;
     state.pos = b.dataset.pos;
@@ -993,7 +1165,7 @@ body_bits <- paste0(
     else {
       state.sort = k;
       // a name and a rank read best ascending; every other column is a bigger-is-better number
-      state.dir = (k==="player" || k==="pos_rank") ? 1 : -1;
+      state.dir = (k==="player" || k==="pos_rank" || k==="wk_rank" || k==="flex_rank") ? 1 : -1;
     }
     draw();
   });
