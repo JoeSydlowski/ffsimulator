@@ -37,8 +37,11 @@ config <- list(
   # snaps and expected points only exist for the skill positions
   usage_pos = c("QB", "RB", "WR", "TE"),
   lookback = as.integer(Sys.getenv("FFS_LOOKBACK", "3")),
-  trend_hours = as.integer(Sys.getenv("FFS_TREND_HOURS", "24"))
+  trend_hours = as.integer(Sys.getenv("FFS_TREND_HOURS", "24")),
+  # keeper leagues that get next season's keeper price on their tab: Galletti
+  keeper_leagues = strsplit(Sys.getenv("FFS_KEEPER_LEAGUES", "1339817277222031360"), ",")[[1]]
 )
+source(here::here("dev", "suite", "keeper_next_year.R"))
 
 day <- format(Sys.Date())
 out <- here::here("dev", "league_sims", "waivers", day)
@@ -154,11 +157,12 @@ build_league <- function(league_id) {
   my_id <- if (nrow(hit) == 1) as.character(hit$franchise_id[[1]]) else NULL
   my_name <- if (nrow(hit) == 1) hit$franchise_name[[1]] else NA_character_
 
+  fc <- fc_for(if (superflex) 2 else 1, teams, ppr)
   w <- as.data.table(ffs_waiver_watchlist(
     conn,
     ros = ros_for(ppr),
     usage = usage,
-    values = fc_for(if (superflex) 2 else 1, teams, ppr),
+    values = fc,
     trending = trending,
     projections = projections,
     weekly = week_for(ppr, flex_type),
@@ -170,7 +174,24 @@ build_league <- function(league_id) {
     flex_pos = flex_pos,
     my_franchise = my_id))
 
+  # a keeper league mid-season: what each player would cost to keep next year,
+  # priced off this year's draft (see dev/suite/keeper_next_year.R)
+  keeper <- league_id %in% config$keeper_leagues && !is.null(fc)
+  if (keeper) {
+    kk <- tryCatch({
+      picks <- keeper_draft_picks(league_id)
+      bar <- keeper_round_bar(league_id, config$season, picks = picks)
+      keeper_next_year(w[, list(fantasypros_id, player, pos)], picks, bar, fc)
+    }, error = function(e) {message("  keeper columns unavailable: ", conditionMessage(e)); NULL})
+    if (is.null(kk)) keeper <- FALSE else {
+      kcols <- c("draft_rd", "kept_now", "keep_cost", "top2", "cost_source",
+                 "dyn_rank", "keep_bar", "keep_margin")
+      w[, (kcols) := kk[, kcols, with = FALSE]]
+    }
+  }
+
   list(
+    keeper = keeper,
     id = league_id,
     name = lname,
     slots = slots[!slots %in% c("BN", "IR", "TAXI")],
@@ -216,13 +237,17 @@ show <- c("player", "pos", "team", "bye", "status", "rostered_by", "mine", "rank
           "proj", "wk_rank", "flex_rank", "opp", "injury", "starting", "slot", "slot_no",
           "nfl_depth", "snap_pct", "xfp_g", "fp_g", "snap_wk", "xfp_wk", "fp_wk",
           "redraft_value", "dynasty_value")
+keep_show <- c("draft_rd", "kept_now", "keep_cost", "top2", "cost_source",
+               "dyn_rank", "keep_bar", "keep_margin")
 
 payload <- lapply(leagues, function(l) {
   d <- as.data.table(l$rows)
-  for (cc in setdiff(show, names(d))) d[, (cc) := NA]
-  d <- d[, show, with = FALSE]
+  cols <- c(show, if (isTRUE(l$keeper)) keep_show)
+  for (cc in setdiff(cols, names(d))) d[, (cc) := NA]
+  d <- d[, cols, with = FALSE]
   # jsonlite writes NA as null, which the page treats as "no data"
   list(id = l$id, name = l$name, type = l$type, qb = l$qb, ppr = l$ppr,
+       keeper = isTRUE(l$keeper),
        slots = l$slots,
        teams = l$teams, my_team = l$my_team,
        flex_label = l$flex_label, flex_pos = l$flex_pos, value_key = l$value_key,
@@ -486,7 +511,6 @@ td.sig{text-align:left; width:104px}
 .slot .ownedby{display:block; font-size:10px; color:var(--ink-3); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .slot.own{background:var(--surface)}
 .posmini{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-3); margin-left:6px}
-.likely{display:block; font-size:10.5px; color:var(--accent-ink); margin-top:1px}
 .benchhead{font-family:Archivo,sans-serif; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-bottom:2px}
 .inj{
   margin-left:6px; font-family:"IBM Plex Mono",monospace; font-size:9.5px;
@@ -530,7 +554,56 @@ td.sig{text-align:left; width:104px}
 }
 .steals{margin-top:8px; border-top:1px dashed var(--line-strong); padding-top:6px}
 .lrow .val{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-3); text-align:right}
-.lrow .opp{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-3); margin-left:6px}
+.lrow .opp,.tfrow .opp{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-3); margin-left:6px}
+.bpos{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-3); margin:6px 0 0}
+.setdiff{font-size:11.5px; color:var(--ink-2); margin:0 0 8px}
+
+/* trade finder: who would start where */
+.tfblock{margin-bottom:22px}
+.tfblock h3{
+  font-family:Archivo,sans-serif; font-size:13px; margin:0 0 2px;
+  display:flex; align-items:baseline; gap:8px;
+}
+.tfblock h3 .cnt{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-3); font-weight:400}
+.tfnote{font-size:12.5px; color:var(--ink-2); margin:0 0 8px; max-width:760px}
+.tfscroll{
+  overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; box-shadow:var(--shadow);
+}
+.tf{min-width:720px}
+.tfrow{
+  display:grid; grid-template-columns:minmax(190px,1.5fr) minmax(120px,1fr) 88px 44px minmax(160px,1.3fr) 56px;
+  gap:10px; align-items:center; padding:7px 12px; border-top:1px solid var(--line); font-size:12.5px;
+}
+.tfrow.tfhead{
+  border-top:0; font-family:Archivo,sans-serif; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-3); padding-block:9px 5px;
+}
+.tfrow.grpstart{border-top:1px solid var(--line-strong)}
+.tfrow .who b,.tfrow .repl b{font-weight:500}
+.tfrow .owner{color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.tfrow .num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; text-align:right}
+.tfrow .val{color:var(--ink-3); font-size:11px}
+.tfrow .slotname{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--ink-3)}
+.tfrow span:nth-child(3),.tfrow span:nth-child(6){text-align:right}
+.tfrow .good,.repl .good{color:var(--accent-ink)}
+.tfcards summary{
+  cursor:pointer; font-family:Archivo,sans-serif; font-size:13px; font-weight:600;
+  padding:8px 0 12px; color:var(--ink-2);
+}
+.tfcards summary:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+/* on a phone each row stacks: player + rank, owner + value, slot + who he replaces */
+@media (max-width:640px){
+  .tf{min-width:0}
+  .tfrow.tfhead{display:none}
+  .tfrow{
+    grid-template-columns:40px 1fr auto; row-gap:3px;
+    grid-template-areas:"who who rank" "owner owner val" "slot repl repl";
+  }
+  .tfrow .who{grid-area:who} .tfrow .owner{grid-area:owner}
+  .tfrow .num{grid-area:rank} .tfrow .num.val{grid-area:val}
+  .tfrow .slotname{grid-area:slot} .tfrow .repl{grid-area:repl}
+}
 
 /* week-by-week strip: the window number on top, each week exact below it */
 td.tr{vertical-align:top}
@@ -577,6 +650,7 @@ body_bits <- paste0(
       <button type="button" data-scope="fa" aria-pressed="false">Free agents</button>
       <button type="button" data-scope="mine" aria-pressed="false">My roster</button>
       <button type="button" data-scope="all" aria-pressed="false">Everyone</button>
+      <button type="button" data-scope="keep" aria-pressed="false" hidden>Keeper targets</button>
     </div>
     <div class="chips" id="poschips" role="group" aria-label="Position"></div>
     <input id="q" type="search" placeholder="Search player or team" autocomplete="off">
@@ -592,7 +666,7 @@ body_bits <- paste0(
 
   <div id="nflwrap" hidden></div>
   <div id="leaguewrap" class="gridwrap" hidden></div>
-  <div id="lineupwrap" class="lineups" hidden></div>
+  <div id="lineupwrap" hidden></div>
 
   <section class="legend">
     <h2>What the columns mean</h2>
@@ -609,7 +683,8 @@ body_bits <- paste0(
       <div><dt>xFP/g</dt><dd>Expected fantasy points per game from opportunity alone &mdash; volume without the finishing luck. Same week strip.</dd></div>
       <div><dt>FP/g</dt><dd>Points he actually scored (full PPR, whatever this league scores). Far above xFP/g is production you should not bank on.</dd></div>
       <div><dt>Redraft / Dynasty</dt><dd>FantasyCalc trade-market value at this league&rsquo;s size and format.</dd></div>
-      <div><dt>Lineups</dt><dd>&ldquo;Likely&rdquo; lineups are filled by the weekly rank, not the Sleeper projection &mdash; positional rank for a positional slot, flex rank for a flex one. The right-hand number is trade value: dynasty in dynasty and keeper leagues, redraft otherwise.</dd></div>
+      <div><dt>Keeper columns</dt><dd>Keeper leagues only. <b>Drafted</b> is the round he went in this year&rsquo;s draft (<i>K</i> = kept there; <i>UDFA</i> = nobody drafted him). <b>Keep &rsquo;27</b> is what he costs to keep next year: that round minus one, floored at R1, and the round follows him through drops and trades. <i>ADP</i> marks a never-drafted player, priced off next year&rsquo;s ADP &mdash; stood in for here by his dynasty rank &mdash; so claiming him buys no discount. <i>top-2</i> marks rounds 1&ndash;2: only one of those can be kept. <b>Dyn rk</b> is the FantasyCalc superflex dynasty rank at this league&rsquo;s size. <b>Margin</b> is the board rank a pick in his keeper round actually returned in this year&rsquo;s draft, minus his dynasty rank: above zero, he should beat the pick he costs. <b>Keeper targets</b> lists your roster and the wire by margin.</dd></div>
+      <div><dt>Lineups</dt><dd>Projected lineups are filled by the weekly rank, not the Sleeper projection &mdash; positional rank for a positional slot, flex rank for a flex one &mdash; skipping anyone out or on bye. &ldquo;Would start&rdquo; means exactly that: add the player to that roster, re-fill the lineup the same way, and see whether he makes it and who drops out, so a QB is only ever weighed against a QB or superflex starter. Ranks show by position (QB18); the flex-scale rank rides along only for a flex slot. The right-hand number is trade value: dynasty in dynasty and keeper leagues, redraft otherwise.</dd></div>
     </dl>
   </section>
 </div>
@@ -644,6 +719,14 @@ body_bits <- paste0(
     {k:"redraft_value", h:"Redraft", type:"int"},
     {k:"dynasty_value", h:"Dynasty", type:"int"}
   ];
+  // keeper leagues: the price to keep him next season, right after the name
+  var KEEP_COLS = [
+    {k:"draft_rd",    h:"Drafted",  type:"drafted"},
+    {k:"keep_cost",   h:"Keep &rsquo;27", type:"keepcost"},
+    {k:"dyn_rank",    h:"Dyn rk",   type:"int"},
+    {k:"keep_margin", h:"Margin",   type:"margin"}
+  ];
+  function colsFor(L){ return L.keeper ? [COLS[0]].concat(KEEP_COLS, COLS.slice(1)) : COLS; }
 
   function fmtCount(v){
     if(v===null||v===undefined) return "";
@@ -720,7 +803,22 @@ body_bits <- paste0(
              "<span class=\\"fill\\" style=\\"width:"+pc+"%\\"></span></span>"+
              "<span class=\\"val\\">"+v.toFixed(2)+"</span></span></td>";
     }
+    if(col.type==="drafted"){
+      if(v===null||v===undefined) return "<td class=\\"dim\\">UDFA</td>";
+      return "<td>R"+v+(row.kept_now ? " <span class=\\"dim\\" title=\\"kept this year\\">K</span>" : "")+"</td>";
+    }
     if(v===null||v===undefined||v!==v) return "<td class=\\"dim\\">&mdash;</td>";
+    if(col.type==="keepcost"){
+      var tags = "";
+      if(row.cost_source==="adp") tags += " <span class=\\"dim\\" title=\\"never drafted: priced off next year&rsquo;s ADP\\">ADP</span>";
+      if(row.top2) tags += " <span class=\\"delta down\\" title=\\"a round 1-2 pick: only one can be kept\\">top-2</span>";
+      return "<td>R"+v+tags+"</td>";
+    }
+    if(col.type==="margin"){
+      var cls = v>0 ? "delta up" : (v<0 ? "delta down" : "dim");
+      return "<td title=\\"a R"+row.keep_cost+" pick returned board rank "+row.keep_bar+"\\"><span class=\\""+cls+"\\">"+
+        (v>0?"+":"")+v+"</span></td>";
+    }
     if(col.type==="rank"){
       var d = row.ecr_delta, ds = "";
       if(d!==null&&d!==undefined&&d!==0){
@@ -744,6 +842,7 @@ body_bits <- paste0(
       if(state.scope==="compare" && r.status!=="free agent" && !r.mine) return false;
       if(state.scope==="fa" && r.status!=="free agent") return false;
       if(state.scope==="mine" && !r.mine) return false;
+      if(state.scope==="keep" && ((r.status!=="free agent" && !r.mine) || r.keep_margin==null)) return false;
       if(state.pos!=="ALL" && r.pos!==state.pos) return false;
       if(state.q){
         var hay = (r.player+" "+(r.team||"")).toLowerCase();
@@ -873,7 +972,7 @@ body_bits <- paste0(
       "<div class=\\"grid\\">"+gridHead("Franchise", pos, cols, tmpl)+body+faRow+"</div>";
   }
 
-  // ---- Lineups: what is set, what they will probably set, and the bench ----
+  // ---- Lineups: who would start where, i.e. the trades that fit ----
   var OUT_STATUS = ["Out","IR","Doubtful","Sus","PUP","NA","COV"];
   function isOut(r){ return !!r.injury && OUT_STATUS.indexOf(r.injury)!==-1; }
   function onBye(r){ return r.bye!=null && r.bye===meta.week; }
@@ -907,35 +1006,82 @@ body_bits <- paste0(
   function projectLineup(roster, slots){
     var pool = roster.filter(function(r){
       return !unavailable(r) && (r.wk_rank!=null || r.flex_rank!=null || r.proj!=null); });
-    var taken = {}, picks = slots.map(function(sl){ return {slot: sl, player: null}; });
+    var taken = [], picks = slots.map(function(sl){ return {slot: sl, player: null}; });
     // positional slots first, so a flex never takes the man a slot needs
     var order = slots.map(function(sl, i){ return i; }).sort(function(i, j){
       return (isFlexSlot(slots[i])?1:0) - (isFlexSlot(slots[j])?1:0) || i-j; });
     order.forEach(function(i){
       var sl = slots[i];
-      var cands = pool.filter(function(r){ return !taken[r.player] && fits(sl, r.pos); })
+      var cands = pool.filter(function(r){ return taken.indexOf(r)===-1 && fits(sl, r.pos); })
                       .sort(better(sl));
-      if(cands.length){ picks[i].player = cands[0]; taken[cands[0].player] = true; }
+      if(cands.length){ picks[i].player = cands[0]; taken.push(cands[0]); }
     });
     return picks;
   }
-  function rankLabel(r, slot){
-    var L = leagues[state.league];
-    if(isFlexSlot(slot) && r.flex_rank!=null) return (L.flex_label||"FLEX")+r.flex_rank;
-    if(r.wk_rank!=null) return r.pos+r.wk_rank;
-    return r.proj!=null ? r.proj.toFixed(1)+"p" : "&mdash;";
+  // The one test for "would he start there": put him on that roster, re-fill
+  // the lineup the same way, and see whether he makes it and who drops out.
+  // Slot rules, byes and injuries all come along for free - a quarterback can
+  // only ever push out someone in a QB or superflex slot.
+  function wouldStart(roster, cand, slots){
+    if(unavailable(cand)) return null;
+    var before = projectLineup(roster, slots);
+    var after = projectLineup(roster.concat([cand]), slots);
+    var hit = null, inAfter = [];
+    after.forEach(function(p){
+      if(!p.player) return;
+      inAfter.push(p.player);
+      if(p.player===cand) hit = p;
+    });
+    if(!hit) return null;
+    var out = null;
+    before.forEach(function(p){
+      if(p.player && !out && inAfter.indexOf(p.player)===-1) out = p;
+    });
+    // out.slot is where the dropped man was starting; null means an empty slot
+    return {slot: hit.slot, displaced: out ? out.player : null, from: out ? out.slot : null};
   }
   function slotShort(slot){
     return ({SUPER_FLEX:"SF", SUPERFLEX:"SF", REC_FLEX:"W/T", WRRB_FLEX:"W/R", "WRRB-FLEX":"W/R"})[slot] || slot;
+  }
+  // always the positional weekly rank first, so a QB is only ever compared as
+  // a QB; the flex-scale rank rides along only when the slot is a flex one
+  function rankText(r, slot){
+    var L = leagues[state.league];
+    var s = r.wk_rank!=null ? r.pos+r.wk_rank :
+            (r.proj!=null ? r.proj.toFixed(1)+"p" : "&mdash;");
+    if(slot && isFlexSlot(slot) && r.flex_rank!=null)
+      s += " <span class=\\"dim\\">"+(L.flex_label||"FLEX")+r.flex_rank+"</span>";
+    return s;
+  }
+  function whoText(r){
+    var bits = "<b>"+esc(r.player)+"</b><span class=\\"posmini\\">"+esc(r.pos)+
+      (r.team?" "+esc(r.team):"")+"</span>";
+    if(r.opp) bits += "<span class=\\"opp\\">"+esc(r.opp)+"</span>";
+    if(isOut(r)) bits += "<span class=\\"inj\\">"+esc(r.injury)+"</span>";
+    else if(onBye(r)) bits += "<span class=\\"inj\\">BYE</span>";
+    return bits;
   }
   function fmtVal(v){
     if(v==null) return "&mdash;";
     return v>=1000 ? (v/1000).toFixed(1)+"k" : String(Math.round(v));
   }
+  function byWeekRank(a, b){
+    var ka = a.wk_rank!=null ? a.wk_rank : 9999, kb = b.wk_rank!=null ? b.wk_rank : 9999;
+    return ka-kb || (b.proj==null?-1:b.proj) - (a.proj==null?-1:a.proj);
+  }
+  var POS_ORDER = ["QB","RB","WR","TE","K","DST"];
+  function posIdx(p){ var i = POS_ORDER.indexOf(p); return i===-1 ? 99 : i; }
+  function replacesText(res){
+    if(!res.displaced) return "<span class=\\"good\\">fills an empty "+esc(slotShort(res.slot))+"</span>";
+    return "<b>"+esc(res.displaced.player)+"</b> <span class=\\"dim\\">"+
+      rankText(res.displaced, res.from)+"</span>";
+  }
 
   function drawLineups(){
     var L = leagues[state.league];
     var slots = L.slots || [];
+    var vk = L.value_key || "redraft_value";
+    var vname = vk==="dynasty_value" ? "dynasty" : "redraft";
     var teams = {};
     L.rows.forEach(function(r){
       if(r.status!=="rostered" || !r.rostered_by) return;
@@ -945,125 +1091,182 @@ body_bits <- paste0(
     Object.keys(teams).forEach(function(n){
       if(teams[n].some(function(r){return r.mine;})) myName = n;
     });
-    // the weakest starter in MY likely lineup at each position, and in my flex
-    // slots on the flex scale: anything on another bench that clears either is
-    // a player who would start for me
-    var myFloor = {}, myFlexFloor = null;
-    if(myName){
-      projectLineup(teams[myName], slots).forEach(function(p){
-        if(!p.player) return;
-        var r = p.player;
-        if(r.wk_rank!=null && (myFloor[r.pos]==null || r.wk_rank > myFloor[r.pos])) myFloor[r.pos] = r.wk_rank;
-        if(isFlexSlot(p.slot) && r.flex_rank!=null &&
-           (myFlexFloor==null || r.flex_rank > myFlexFloor)) myFlexFloor = r.flex_rank;
-      });
-    }
-    var flexPos = [].concat(L.flex_pos || ["RB","WR","TE"]);
-    function beats(r){
-      if(unavailable(r)) return null;
-      if(r.wk_rank!=null && myFloor[r.pos]!=null && r.wk_rank < myFloor[r.pos])
-        return r.pos+myFloor[r.pos];
-      if(myFlexFloor!=null && r.flex_rank!=null && flexPos.indexOf(r.pos)!==-1 &&
-         r.flex_rank < myFlexFloor) return (L.flex_label||"FLEX")+myFlexFloor;
-      return null;
-    }
-    var vk = L.value_key || "redraft_value";
-    var vname = vk==="dynasty_value" ? "dynasty" : "redraft";
-    function benchSort(a, b){
-      var fa = a.flex_rank!=null ? a.flex_rank : (a.wk_rank!=null ? 500+a.wk_rank : 9999);
-      var fb = b.flex_rank!=null ? b.flex_rank : (b.wk_rank!=null ? 500+b.wk_rank : 9999);
-      return fa-fb;
-    }
     var names = Object.keys(teams).sort(function(a,b){
       if(a===myName) return -1;
       if(b===myName) return 1;
       return a.localeCompare(b);
     });
+    var posOk = function(r){ return state.pos==="ALL" || r.pos===state.pos; };
 
-    var html = names.map(function(n){
+    // every team: its projected lineup, and the bench is everyone not in it
+    var likely = {}, bench = {};
+    names.forEach(function(n){
+      likely[n] = projectLineup(teams[n], slots);
+      var inIt = likely[n].map(function(p){ return p.player; });
+      bench[n] = teams[n].filter(function(r){ return inIt.indexOf(r)===-1; });
+    });
+
+    // A: their bench men who would start for me
+    var forMe = [];
+    // B: my bench men who would start for them
+    var forThem = [];
+    if(myName){
+      names.forEach(function(n){
+        if(n===myName) return;
+        bench[n].forEach(function(r){
+          if(!posOk(r)) return;
+          var res = wouldStart(teams[myName], r, slots);
+          if(res) forMe.push({r: r, owner: n, res: res});
+        });
+      });
+      bench[myName].forEach(function(r){
+        if(!posOk(r)) return;
+        names.forEach(function(n){
+          if(n===myName) return;
+          var res = wouldStart(teams[n], r, slots);
+          if(res) forThem.push({r: r, owner: n, res: res});
+        });
+      });
+    }
+    var byPosRank = function(a, b){
+      return posIdx(a.r.pos)-posIdx(b.r.pos) || byWeekRank(a.r, b.r) || a.owner.localeCompare(b.owner);
+    };
+    forMe.sort(byPosRank);
+    forThem.sort(byPosRank);
+    var starterFor = {};
+    forMe.forEach(function(x){ starterFor[x.r.player+"|"+x.owner] = x.res; });
+
+    var posName = state.pos==="ALL" ? "" : state.pos+" ";
+    function tfHead(cols){
+      return "<div class=\\"tfrow tfhead\\">"+cols.map(function(c){
+        return "<span>"+c+"</span>"; }).join("")+"</div>";
+    }
+    var aHtml = "<section class=\\"tfblock\\"><h3>Their bench, would start for you"+
+      "<span class=\\"cnt\\">"+forMe.length+"</span></h3>"+
+      "<p class=\\"tfnote\\">Each "+posName+"player sitting outside another team&rsquo;s projected lineup "+
+      "who would make <em>your</em> projected lineup this week, and the man of yours he would push out.</p>"+
+      (forMe.length ? "<div class=\\"tfscroll\\"><div class=\\"tf\\">"+
+        tfHead(["Player","Owner","Wk rank","Slot","Replaces your",vname])+
+        forMe.map(function(x){
+          return "<div class=\\"tfrow\\"><span class=\\"who\\">"+whoText(x.r)+"</span>"+
+            "<span class=\\"owner\\">"+esc(x.owner)+"</span>"+
+            "<span class=\\"num\\">"+rankText(x.r, x.res.slot)+"</span>"+
+            "<span class=\\"slotname\\">"+esc(slotShort(x.res.slot))+"</span>"+
+            "<span class=\\"repl\\">"+replacesText(x.res)+"</span>"+
+            "<span class=\\"num val\\">"+fmtVal(x.r[vk])+"</span></div>";
+        }).join("")+"</div></div>"
+      : "<div class=\\"empty\\">"+(myName ? "No "+posName+"bench player elsewhere would start for you this week." :
+          "Your team was not found in this league.")+"</div>")+
+      "</section>";
+
+    var bHtml = "<section class=\\"tfblock\\"><h3>Your bench, would start for them"+
+      "<span class=\\"cnt\\">"+forThem.length+"</span></h3>"+
+      "<p class=\\"tfnote\\">Each "+posName+"player on your bench who would make another team&rsquo;s projected lineup "+
+      "this week, and who he would start over &mdash; a thin QB room in superflex, a bye, an injury.</p>"+
+      (forThem.length ? "<div class=\\"tfscroll\\"><div class=\\"tf\\">"+
+        tfHead(["Your player","Team","Wk rank","Slot","Starts over their",vname])+
+        forThem.map(function(x, i){
+          var first = i===0 || forThem[i-1].r!==x.r;
+          return "<div class=\\"tfrow"+(first?" grpstart":"")+"\\">"+
+            "<span class=\\"who\\">"+(first ? whoText(x.r) : "<span class=\\"dim\\">&#8627;</span>")+"</span>"+
+            "<span class=\\"owner\\">"+esc(x.owner)+"</span>"+
+            "<span class=\\"num\\">"+(first ? rankText(x.r, x.res.slot) : "")+"</span>"+
+            "<span class=\\"slotname\\">"+esc(slotShort(x.res.slot))+"</span>"+
+            "<span class=\\"repl\\">"+replacesText(x.res)+"</span>"+
+            "<span class=\\"num val\\">"+(first ? fmtVal(x.r[vk]) : "")+"</span></div>";
+        }).join("")+"</div></div>"
+      : "<div class=\\"empty\\">"+(myName ? "None of your "+posName+"bench would start anywhere else this week." :
+          "Your team was not found in this league.")+"</div>")+
+      "</section>";
+
+    // team cards: the projected lineup, then the whole bench by position
+    var cards = names.map(function(n){
       var roster = teams[n];
       var isMine = n===myName;
-      var set = roster.filter(function(r){ return r.starting; })
-        .sort(function(a,b){ return (a.slot_no||99)-(b.slot_no||99); });
-      var likely = projectLineup(roster, slots);
-      var likelyIds = {};
-      likely.forEach(function(p){ if(p.player) likelyIds[p.player.player] = p.slot; });
-      var bench = roster.filter(function(r){ return !likelyIds[r.player] && !r.starting; }).sort(benchSort);
-      var steals = isMine ? [] : bench.filter(function(r){ return beats(r)!=null; }).slice(0,4);
+      var set = roster.filter(function(r){ return r.starting; });
+      var proj = likely[n];
+      var projIds = proj.map(function(p){ return p.player; });
+      var benchedSet = set.filter(function(r){ return projIds.indexOf(r)===-1; });
+      var promoted = proj.filter(function(p){ return p.player && set.indexOf(p.player)===-1; })
+                         .map(function(p){ return p.player; });
       var broken = set.filter(unavailable);
+      var nFor = isMine ? 0 : forMe.filter(function(x){ return x.owner===n; }).length;
 
       var chips = "";
       if(!set.length) chips += "<span class=\\"chipflag bad\\">no lineup set</span>";
       if(broken.length) chips += "<span class=\\"chipflag bad\\">"+broken.length+
         " starter"+(broken.length>1?"s":"")+" out or on bye</span>";
-      if(steals.length) chips += "<span class=\\"chipflag good\\">"+steals.length+
-        " benched who would start for you</span>";
+      if(nFor) chips += "<span class=\\"chipflag good\\">"+nFor+" benched who would start for you</span>";
 
-      var setBy = {}, setIds = {};
-      set.forEach(function(r){ setBy[r.slot_no] = r; setIds[r.player] = true; });
-      // a swap is a starter who is not in the likely lineup at all - the same
-      // men in a different slot order is not a change anyone needs to make
-      var incoming = likely.filter(function(p){ return p.player && !setIds[p.player.player]; })
-                           .map(function(p){ return p.player; });
-      var lines = likely.map(function(p, i){
-        var cur = setBy[i+1];
-        var pick = null;
-        if(!cur || !likelyIds[cur.player]){
-          var j = incoming.findIndex(function(m){ return fits(p.slot, m.pos); });
-          if(j===-1 && !cur) j = incoming.length ? 0 : -1;
-          if(j!==-1) pick = incoming.splice(j, 1)[0];
-        }
-        var swap = !!pick;
-        var shown = cur || pick;
-        if(!shown) return "<div class=\\"lrow\\"><span class=\\"slotname\\">"+esc(slotShort(p.slot))+
+      var diff = (set.length && (benchedSet.length || promoted.length)) ?
+        "<p class=\\"setdiff\\">Set lineup differs: starts "+
+          (benchedSet.length ? benchedSet.map(function(r){ return "<b>"+esc(r.player)+"</b>"; }).join(", ") : "nobody extra")+
+          "; the projection would start "+
+          (promoted.length ? promoted.map(function(r){ return "<b>"+esc(r.player)+"</b>"; }).join(", ") : "nobody else")+
+          " instead.</p>" : "";
+
+      var lines = proj.map(function(p){
+        if(!p.player) return "<div class=\\"lrow\\"><span class=\\"slotname\\">"+esc(slotShort(p.slot))+
           "</span><span class=\\"who dim\\">empty</span><span class=\\"num\\">&mdash;</span>"+
           "<span class=\\"val\\"></span></div>";
-        var why = isOut(shown) ? "<span class=\\"inj\\">"+esc(shown.injury)+"</span>" :
-                  (onBye(shown) ? "<span class=\\"inj\\">BYE</span>" : "");
-        var alt = (swap && cur) ? "<span class=\\"likely\\">likely "+esc(pick.player)+
-          " "+rankLabel(pick, p.slot)+"</span>" : "";
-        var opp = shown.opp ? "<span class=\\"opp\\">"+esc(shown.opp)+"</span>" : "";
-        return "<div class=\\"lrow"+(cur&&unavailable(cur)?" bad":"")+"\\">"+
+        var r = p.player;
+        return "<div class=\\"lrow\\">"+
           "<span class=\\"slotname\\">"+esc(slotShort(p.slot))+"</span>"+
-          "<span class=\\"who\\"><b>"+esc(shown.player)+"</b><span class=\\"posmini\\">"+
-          esc(shown.pos)+"</span>"+opp+why+alt+"</span>"+
-          "<span class=\\"num\\">"+rankLabel(shown, p.slot)+"</span>"+
-          "<span class=\\"val\\">"+fmtVal(shown[vk])+"</span></div>";
+          "<span class=\\"who\\">"+whoText(r)+"</span>"+
+          "<span class=\\"num\\">"+rankText(r, p.slot)+"</span>"+
+          "<span class=\\"val\\">"+fmtVal(r[vk])+"</span></div>";
       }).join("");
 
-      var benchTop = bench.slice(0, 6);
-      var benchLines = benchTop.length ? ("<div class=\\"steals\\"><div class=\\"benchhead\\">Bench</div>"+
-        benchTop.map(function(r){
-          var isSteal = steals.indexOf(r)!==-1;
-          var why = isOut(r) ? "<span class=\\"inj\\">"+esc(r.injury)+"</span>" :
-                    (onBye(r) ? "<span class=\\"inj\\">BYE</span>" : "");
-          var tag = isSteal ? "<span class=\\"tag fa\\">beats your "+beats(r)+"</span>" : "";
-          var bslot = flexPos.indexOf(r.pos)!==-1 ? "FLEX" : r.pos;
-          return "<div class=\\"lrow"+(isSteal?" good":"")+"\\">"+
-            "<span class=\\"slotname\\">BN</span><span class=\\"who\\"><b>"+esc(r.player)+
-            "</b><span class=\\"posmini\\">"+esc(r.pos)+"</span>"+why+tag+"</span>"+
-            "<span class=\\"num\\">"+rankLabel(r, bslot)+"</span>"+
+      var bn = bench[n].slice().sort(function(a,b){
+        return posIdx(a.pos)-posIdx(b.pos) || byWeekRank(a, b); });
+      var lastPos = null;
+      var benchLines = bn.length ? ("<div class=\\"steals\\"><div class=\\"benchhead\\">Bench</div>"+
+        bn.map(function(r){
+          var head = r.pos!==lastPos ? "<div class=\\"bpos\\">"+esc(r.pos)+"</div>" : "";
+          lastPos = r.pos;
+          var res = isMine ? null : starterFor[r.player+"|"+n];
+          var tag = res ? "<span class=\\"tag fa\\">starts for you over "+
+            (res.displaced ? esc(res.displaced.player) : "empty "+esc(slotShort(res.slot)))+"</span>" : "";
+          return head+"<div class=\\"lrow"+(res?" good":"")+"\\">"+
+            "<span class=\\"slotname\\">BN</span><span class=\\"who\\">"+whoText(r)+tag+"</span>"+
+            "<span class=\\"num\\">"+rankText(r)+"</span>"+
             "<span class=\\"val\\">"+fmtVal(r[vk])+"</span></div>";
         }).join("")+"</div>") : "";
 
       // what the starters would cost to trade for, on this league&rsquo;s value scale
-      var total = likely.reduce(function(s,p){ return s + (p.player&&p.player[vk]||0); }, 0);
+      var total = proj.reduce(function(s,p){ return s + (p.player&&p.player[vk]||0); }, 0);
       return "<div class=\\"lineup"+(isMine?" mine":"")+"\\">"+
         "<h3>"+esc(n)+"<span class=\\"tot\\">starters "+fmtVal(total)+" "+vname+"</span></h3>"+
         (chips?("<div class=\\"chiprow\\">"+chips+"</div>"):"")+
-        lines+benchLines+"</div>";
+        diff+lines+benchLines+"</div>";
     }).join("");
 
-    document.getElementById("lineupwrap").innerHTML = html ||
+    var wrap = document.getElementById("lineupwrap");
+    wrap.innerHTML = names.length ?
+      aHtml+bHtml+"<details class=\\"tfcards\\""+(state.cardsOpen?" open":"")+">"+
+        "<summary>Every team&rsquo;s projected lineup and full bench</summary>"+
+        "<div class=\\"lineups\\">"+cards+"</div></details>" :
       "<div class=\\"empty\\">No rosters for this league.</div>";
+    var det = wrap.querySelector("details");
+    if(det) det.addEventListener("toggle", function(){ state.cardsOpen = det.open; });
   }
 
   function draw(){
     var L = leagues[state.league];
+    // the keeper scope only exists on the tab of a keeper league
+    var kb = document.querySelector("#scope button[data-scope=keep]");
+    kb.hidden = !L.keeper;
+    if(!L.keeper && state.scope==="keep"){
+      state.scope = "compare"; state.sort = "signal"; state.dir = -1;
+      [].forEach.call(document.getElementById("scope").children, function(c){
+        c.setAttribute("aria-pressed", c.dataset.scope==="compare"); });
+    }
+    if(!L.keeper && ["draft_rd","keep_cost","dyn_rank","keep_margin"].indexOf(state.sort)!==-1){
+      state.sort = "signal"; state.dir = -1;
+    }
     // controls that only make sense in one view
     document.getElementById("scope").hidden = state.view!=="board";
     document.getElementById("q").hidden = (state.view==="league" || state.view==="lineups");
-    document.getElementById("poschips").hidden = state.view==="lineups";
     document.getElementById("boardwrap").hidden = state.view!=="board";
     document.getElementById("nflwrap").hidden = state.view!=="nfl";
     document.getElementById("leaguewrap").hidden = state.view!=="league";
@@ -1094,7 +1297,8 @@ body_bits <- paste0(
       " <span class=\\"dot\\">&middot;</span> "+L.teams+" teams"+
       " <span class=\\"dot\\">&middot;</span> <b>"+L.n_fa+"</b> ranked free agents";
 
-    document.getElementById("hrow").innerHTML = COLS.map(function(c){
+    var CS = colsFor(L);
+    document.getElementById("hrow").innerHTML = CS.map(function(c){
       var on = state.sort===c.k;
       var arw = on ? "<span class=\\"arw\\">"+(state.dir===1?"&#9650;":"&#9660;")+"</span>" : "";
       return "<th"+(on?" aria-sort=\\""+(state.dir===1?"ascending":"descending")+"\\"":"")+
@@ -1105,7 +1309,7 @@ body_bits <- paste0(
     var rs = rows();
     document.getElementById("tbody").innerHTML = rs.map(function(r){
       return "<tr"+(r.mine?" class=\\"is-mine\\"":"")+">"+
-        COLS.map(function(c){return cell(r,c);}).join("")+"</tr>";
+        CS.map(function(c){return cell(r,c);}).join("")+"</tr>";
     }).join("");
     document.getElementById("empty").hidden = rs.length > 0;
   }
@@ -1156,6 +1360,7 @@ body_bits <- paste0(
     var b = e.target.closest("button[data-scope]"); if(!b) return;
     state.scope = b.dataset.scope;
     [].forEach.call(this.children, function(c){ c.setAttribute("aria-pressed", c===b); });
+    if(state.scope==="keep"){ state.sort = "keep_margin"; state.dir = -1; }
     draw();
   });
 
@@ -1166,7 +1371,8 @@ body_bits <- paste0(
     else {
       state.sort = k;
       // a name and a rank read best ascending; every other column is a bigger-is-better number
-      state.dir = (k==="player" || k==="pos_rank" || k==="wk_rank" || k==="flex_rank") ? 1 : -1;
+      state.dir = (k==="player" || k==="pos_rank" || k==="wk_rank" || k==="flex_rank" ||
+                   k==="draft_rd" || k==="keep_cost" || k==="dyn_rank") ? 1 : -1;
     }
     draw();
   });

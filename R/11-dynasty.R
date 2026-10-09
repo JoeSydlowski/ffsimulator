@@ -53,6 +53,18 @@
 #'   which is what re-slots QBs into their superflex value. Fixes superflex
 #'   interval under-dispersion; leaves 1qb unchanged. Default `TRUE` (option
 #'   `ffsimulator.dyn_sflx_from_1qb`); set `FALSE` to train on native superflex.
+#' @param banked_points for a simulation made mid-season (one that only covers
+#'   the unplayed weeks): points each player has already scored, as
+#'   `fantasypros_id` + `points`. Season quality is judged against full-season
+#'   totals, so each simulated season becomes `points` plus the simulated weeks
+#'   scaled up to cover the rest of a `season_weeks`-week season. `NULL` (the
+#'   default) treats the simulation as the whole season.
+#' @param season_weeks weeks in the season the quality pools count (1:14)
+#' @param redraft_ranks optional `fantasypros_id` + `redraft_rank` (positional)
+#'   overriding the simulation's own rankings as the expectation a season is
+#'   judged against. Mid-season the simulation carries rest-of-season ranks,
+#'   which have already absorbed the weeks played; the history the quality pools
+#'   come from is preseason ranks, so pass those.
 #'
 #' @return a dataframe: one row per rostered player with `dyn_rank` (market-value
 #'   ordering when real values are supplied, else FantasyPros dynasty rank),
@@ -65,7 +77,9 @@
 #'   finds the mean overstates realized value change (QB worst, ~+50pts) while
 #'   the value-draw distribution itself is calibrated, making the median
 #'   ~unbiased. The mean remains the right statistic for additive capital
-#'   totals (portfolio sums, package comparisons).
+#'   totals (portfolio sums, package comparisons). The per-draw values ride
+#'   along as `attr(x, "draws")` (`fantasypros_id`, `sim_season`, `next_rank`,
+#'   `exited`, `next_value`), for probabilities of clearing a threshold.
 #'
 #' @export
 ffs_dynasty_outlook <- function(base_simulation,
@@ -73,13 +87,16 @@ ffs_dynasty_outlook <- function(base_simulation,
                                 max_transition_season = NULL,
                                 value_curve = function(rank) 10000 * exp(-0.023 * rank),
                                 dynasty_values = "fantasycalc",
-                                superflex_from_1qb = getOption("ffsimulator.dyn_sflx_from_1qb", TRUE)) {
+                                superflex_from_1qb = getOption("ffsimulator.dyn_sflx_from_1qb", TRUE),
+                                banked_points = NULL,
+                                season_weeks = 14L,
+                                redraft_ranks = NULL) {
   checkmate::assert_class(base_simulation, "ff_simulation")
   format <- rlang::arg_match(format)
 
   season <- fantasypros_id <- pos <- ecr <- rank <- age <- player_name <- NULL
   projected_score <- redraft_rank <- total <- q <- player_id <- fc_val <- NULL
-  cur_curve <- cur_value <- NULL
+  cur_curve <- cur_value <- banked <- sim_season <- NULL
   fp_rank <- pos_fp <- age_fp <- value <- pos_rank <- fp_dyn_rank <- NULL
 
   if (format == "auto") format <- .ffs_detect_qb_format(base_simulation$lineup_constraints)
@@ -232,8 +249,14 @@ ffs_dynasty_outlook <- function(base_simulation,
                    by = "fantasypros_id", all.x = TRUE)
 
   # current redraft positional rank from the sim's own rankings
-  lr <- data.table::as.data.table(base_simulation$latest_rankings)
-  lr[, redraft_rank := data.table::frank(ecr, ties.method = "first"), by = pos]
+  if (!is.null(redraft_ranks)) {
+    lr <- data.table::as.data.table(redraft_ranks)[
+      , list(fantasypros_id = as.character(fantasypros_id), redraft_rank = as.integer(redraft_rank))]
+    lr <- unique(lr[!is.na(fantasypros_id)], by = "fantasypros_id")
+  } else {
+    lr <- data.table::as.data.table(base_simulation$latest_rankings)
+    lr[, redraft_rank := data.table::frank(ecr, ties.method = "first"), by = pos]
+  }
   players <- merge(players, lr[, list(fantasypros_id, redraft_rank)],
                    by = "fantasypros_id", all.x = TRUE)
 
@@ -242,6 +265,32 @@ ffs_dynasty_outlook <- function(base_simulation,
   ps <- ps[ps$fantasypros_id %in% players$fantasypros_id]
   sim_totals <- ps[, list(total = sum(projected_score, na.rm = TRUE)),
                    by = list(fantasypros_id, sim_season = season)]
+  if (!is.null(banked_points)) {
+    # a mid-season simulation covers only the unplayed weeks: put the played
+    # ones back and stretch the simulated ones over whatever else the season
+    # has, so the total is on the same full-season scale as the quality pools
+    sim_weeks <- sort(unique(ps$week))
+    played <- min(sim_weeks) - 1L
+    stretch <- max(0, season_weeks - played) / length(sim_weeks)
+    bp <- data.table::as.data.table(banked_points)[
+      , list(banked = sum(as.numeric(points), na.rm = TRUE)),
+      by = list(fantasypros_id = as.character(fantasypros_id))]
+    sim_totals <- merge(sim_totals, bp, by = "fantasypros_id", all.x = TRUE)
+    sim_totals[, total := data.table::fcoalesce(banked, 0) + total * stretch]
+    sim_totals[, banked := NULL]
+    # a player with nothing left to simulate (season-ending injury, no longer
+    # ranked) still has a season: the points he banked. Dropping him would
+    # silently remove exactly the players whose outlook moved most.
+    gone <- setdiff(players$fantasypros_id, sim_totals$fantasypros_id)
+    if (length(gone)) {
+      seasons <- unique(sim_totals$sim_season)
+      if (!length(seasons)) seasons <- seq_len(base_simulation$simulation_params$n_seasons)
+      add <- data.table::CJ(fantasypros_id = gone, sim_season = seasons)
+      add <- merge(add, bp, by = "fantasypros_id", all.x = TRUE)
+      add[, total := data.table::fcoalesce(banked, 0)][, banked := NULL]
+      sim_totals <- rbind(sim_totals, add[, names(sim_totals), with = FALSE])
+    }
+  }
   sim_totals <- merge(sim_totals,
                       players[, list(fantasypros_id, pos, redraft_rank)],
                       by = "fantasypros_id", allow.cartesian = TRUE)
@@ -289,7 +338,10 @@ ffs_dynasty_outlook <- function(base_simulation,
     out, by = "fantasypros_id"
   )[order(-cur_value)]
 
-  return(as.data.frame(out))
+  out <- as.data.frame(out)
+  attr(out, "draws") <- as.data.frame(
+    draws[, list(fantasypros_id, sim_season, next_rank, exited, next_value)])
+  return(out)
 }
 
 #' Build dynasty transition pools
@@ -312,7 +364,7 @@ ffs_dynasty_outlook <- function(base_simulation,
                                           max_transition_season = NULL,
                                           weeks = 1:14) {
   season <- fantasypros_id <- pos <- rank <- age <- gsis_id <- week <- points <- NULL
-  next_rank <- redraft_rank <- total <- q <- NULL
+  next_rank <- redraft_rank <- total <- q <- last <- NULL
   draft_year <- draft_round <- first_season <- years_exp <- prev_pos_rank <- prev_delta <- NULL
 
   qb_format <- format  # avoid data.table NSE collision with the format column
@@ -361,9 +413,14 @@ ffs_dynasty_outlook <- function(base_simulation,
   transitions <- merge(transitions, prev, by = c("season", "fantasypros_id"), all.x = TRUE)
   transitions[, prev_delta := pos_rank - prev_pos_rank]
 
-  # realized season points (same weeks as the simulator)
-  sh <- data.table::as.data.table(scoring_history)[
-    !is.na(gsis_id) & week %in% weeks, list(season, gsis_id, points)
+  # realized season points (same weeks as the simulator). A season still in
+  # progress is not a season total: mid-season its 3-week sums would sit in the
+  # quality pools as if they were full years and drag every percentile, so only
+  # seasons that reached the last counted week are used.
+  sh_all <- data.table::as.data.table(scoring_history)
+  complete <- sh_all[, list(last = max(week)), by = season][last >= max(weeks)]$season
+  sh <- sh_all[
+    !is.na(gsis_id) & week %in% weeks & season %in% complete, list(season, gsis_id, points)
   ]
   dp_id <- data.table::as.data.table(ffscrapr::dp_playerids())[
     !is.na(gsis_id) & !is.na(fantasypros_id), c("fantasypros_id", "gsis_id")
@@ -380,6 +437,7 @@ ffs_dynasty_outlook <- function(base_simulation,
     redraft, unique(dynasty[, list(season, fantasypros_id, pos)]),
     by = c("season", "fantasypros_id")
   )
+  ranked_totals <- ranked_totals[season %in% complete]
   ranked_totals <- merge(ranked_totals, totals, by = c("season", "fantasypros_id"), all.x = TRUE)
   ranked_totals[is.na(total), total := 0]
   quality_pools <- ranked_totals[

@@ -263,15 +263,8 @@ pick_values <- function(kept_ids, forfeited) {
 
 #' Greedy keeper set by value-over-pick, respecting the assignment rules
 greedy_keepers <- function(cand, max_keepers, max_top2) {
-  cand <- cand[!is.na(base_round)][order(-value_over_pick)]
-  chosen <- character(0)
-  for (pid in cand$player_id) {
-    trial <- c(chosen, pid)
-    a <- ffs_assign_keeper_rounds(cand, trial, max_keepers = max_keepers, max_top2 = max_top2)
-    if (a$feasible) chosen <- trial
-    if (length(chosen) >= max_keepers) break
-  }
-  chosen
+  ffsimulator:::.ffs_greedy_keepers(cand, "value_over_pick", max_keepers = max_keepers,
+                                    max_top2 = max_top2)
 }
 
 declared_fids <- unique(D$declared$franchise_id)

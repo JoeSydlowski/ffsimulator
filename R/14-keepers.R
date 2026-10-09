@@ -167,6 +167,155 @@ ffs_assign_keeper_rounds <- function(costs, chosen_ids = NULL,
        rounds_used = sort(taken))
 }
 
+#' Greedy keeper set by value, respecting the assignment rules
+#'
+#' Walks candidates best-first and keeps each one whose addition leaves the set
+#' assignable (see [ffs_assign_keeper_rounds()]). Candidates with no price or a
+#' non-positive score are skipped.
+#'
+#' @param cand candidates - needs `player_id`, `base_round`, `top2_prev` and the
+#'   column named by `score`
+#' @param score name of the column to rank on (bigger is better)
+#' @param max_keepers,max_top2 as in [ffs_assign_keeper_rounds()]
+#' @param positive_only only keep candidates whose score is above zero
+#'
+#' @return a character vector of the chosen `player_id`s, best first
+#' @keywords internal
+.ffs_greedy_keepers <- function(cand, score = "value_over_pick", max_keepers = Inf,
+                                max_top2 = Inf, positive_only = FALSE) {
+  cand <- data.table::as.data.table(cand)
+  cand <- cand[!is.na(cand$base_round) & !is.na(cand[[score]])]
+  if (isTRUE(positive_only)) cand <- cand[cand[[score]] > 0]
+  cand <- cand[order(-cand[[score]])]
+  chosen <- character(0)
+  for (pid in as.character(cand$player_id)) {
+    trial <- c(chosen, pid)
+    a <- ffs_assign_keeper_rounds(cand, trial, max_keepers = max_keepers, max_top2 = max_top2)
+    if (a$feasible) chosen <- trial
+    if (length(chosen) >= max_keepers) break
+  }
+  chosen
+}
+
+# --- next season's keeper costs --------------------------------------------
+
+#' What every player would cost to keep NEXT season
+#'
+#' (EXPERIMENTAL) Mid-season, the draft that sets next year's keeper prices has
+#' already happened: it is this season's. This prices every player - rostered or
+#' free - off it. A player's drafted round follows him through drops, waivers and
+#' trades (a dropped 10th-rounder picked up off waivers still costs a 9th); only
+#' players nobody drafted are priced by ADP. A player kept this season appears
+#' in this draft at the round he was kept in, so he escalates from there.
+#'
+#' @param players a dataframe of players to price - needs `player_id` (the
+#'   platform id the draft uses) and, to price undrafted players, `fantasypros_id`
+#' @param picks this season's draft - needs `player_id` and `round`, and
+#'   optionally `is_keeper`
+#' @param adp_ranks optional `fantasypros_id` + `adp_rank`, pricing the undrafted
+#'   (next year's ADP is not known yet, so pass a proxy such as a dynasty rank)
+#' @param n_teams,escalator,floor_round,max_round as in [ffs_keeper_costs()]
+#'
+#' @return `players` with `draft_rd` (this season's round, `NA` if undrafted),
+#'   `kept_now` (he was a keeper in this draft), `keep_cost` (next season's base
+#'   round, before any collision bump), `top2` (drafted in rounds 1-2, for a
+#'   "one keeper from the top two rounds" rule) and `cost_source`
+#'
+#' @export
+ffs_next_keeper_costs <- function(players, picks, adp_ranks = NULL, n_teams = 12L,
+                                  escalator = 1L, floor_round = 1L, max_round = NULL) {
+  assert_df(players, "player_id")
+  assert_df(picks, c("player_id", "round"))
+  player_id <- fantasypros_id <- NULL
+
+  p <- data.table::as.data.table(data.table::copy(players))
+  p[, player_id := as.character(player_id)]
+  if (!"fantasypros_id" %in% names(p)) p[, fantasypros_id := NA_character_]
+  p[, fantasypros_id := as.character(fantasypros_id)]
+  .ffs_row <- kept_now <- NULL
+  p[, .ffs_row := seq_len(.N)]
+
+  pk <- data.table::as.data.table(picks)
+  pk[, player_id := as.character(player_id)]
+  kept <- if ("is_keeper" %in% names(pk)) {
+    pk$player_id[!is.na(pk$is_keeper) & as.logical(pk$is_keeper)]
+  } else character(0)
+
+  # ffs_keeper_costs wants a roster; a free agent simply has no franchise
+  shell <- p[, list(.ffs_row, player_id, fantasypros_id,
+                    franchise_id = NA_character_, pos = NA_character_)]
+  cst <- ffs_keeper_costs(shell, pk[, list(player_id, round)], adp_ranks = adp_ranks,
+                          n_teams = n_teams, escalator = escalator,
+                          floor_round = floor_round, max_round = max_round)
+  cst <- cst[, list(.ffs_row, draft_rd = get("prev_round"), keep_cost = get("base_round"),
+                    top2 = get("top2_prev"), cost_source = get("cost_source"))]
+  drop <- intersect(c("draft_rd", "kept_now", "keep_cost", "top2", "cost_source"), names(p))
+  if (length(drop)) p[, (drop) := NULL]
+  out <- merge(p, cst, by = ".ffs_row", all.x = TRUE, sort = TRUE)
+  out[, kept_now := player_id %in% kept]
+  out[, .ffs_row := NULL]
+  out[]
+}
+
+#' What a pick in each round actually returns
+#'
+#' (EXPERIMENTAL) In a keeper league the best players never reach the draft, so
+#' a round-r pick returns a much worse player than its nominal slot on the board.
+#' This measures it off a real draft: the board rank of every player taken who
+#' was NOT a keeper, against the overall pick he went at. It is the bar a keeper
+#' at that round has to clear.
+#'
+#' A single draft has only a handful of non-keeper picks per round (3-7 in an
+#' 8-team league with ~50 keepers), so a per-round median is noise - one reach
+#' in round 5 made rounds 5-8 identical. The bar is instead a log-log fit of
+#' board rank on overall pick across the whole draft, read at each round's
+#' middle pick; it fits as well as a linear one and, unlike it, gets round 1
+#' right. The raw per-round median is returned alongside for reference.
+#'
+#' @param picks a draft - needs `round`, `pick_no` (overall pick), `adp_rank`
+#'   (the board rank of the player taken) and optionally `is_keeper`
+#' Your slot matters as much as the round: in a snake draft the 1.01 has to be
+#' beaten by a round-1 keeper, but the same team's round-2 pick is the 16th
+#' overall. Pass `slot` to read the bar at that slot's own pick in every round.
+#'
+#' @param n_teams picks per round
+#' @param n_rounds rounds to report (default: the draft's last round)
+#' @param slot optional draft slot(s), `1..n_teams`: the bar is read at each
+#'   slot's snake-draft pick instead of the round's middle pick
+#'
+#' @return a data.table of `round`, `slot` (`NA` for the mid-round bar),
+#'   `pick` (overall pick the bar is read at), `bar_rank` (fitted), `med_rank`
+#'   (raw median of the round's non-keeper picks) and `n` (how many there were)
+#' @export
+ffs_round_bar <- function(picks, n_teams, n_rounds = NULL, slot = NULL) {
+  assert_df(picks, c("round", "pick_no", "adp_rank"))
+  checkmate::assert_int(n_teams, lower = 2)
+  if (!is.null(slot)) checkmate::assert_integerish(slot, lower = 1, upper = n_teams, any.missing = FALSE)
+  round <- adp_rank <- bar_rank <- pick_no <- n <- pick <- NULL
+  pk <- data.table::as.data.table(picks)
+  if ("is_keeper" %in% names(pk)) pk <- pk[is.na(pk$is_keeper) | !as.logical(pk$is_keeper)]
+  pk <- pk[!is.na(adp_rank) & adp_rank > 0]
+  if (nrow(pk) < 3L) stop("need at least 3 non-keeper picks with a board rank", call. = FALSE)
+  if (is.null(n_rounds)) n_rounds <- max(pk$round)
+
+  fit <- stats::lm(log(adp_rank) ~ log(pick_no), data = pk)
+  if (is.null(slot)) {
+    bar <- data.table::data.table(round = seq_len(n_rounds), slot = NA_integer_,
+                                  pick = (seq_len(n_rounds) - 1) * n_teams + (n_teams + 1) / 2)
+  } else {
+    bar <- data.table::CJ(round = seq_len(n_rounds), slot = as.integer(slot))
+    # snake: odd rounds run 1..n, even rounds run back n..1
+    bar[, pick := (round - 1) * n_teams +
+          data.table::fifelse(round %% 2L == 1L, slot, n_teams - slot + 1L)]
+  }
+  bar[, bar_rank := exp(stats::predict(fit, newdata = data.frame(pick_no = pick)))]
+  raw <- pk[, list(med_rank = as.numeric(stats::median(adp_rank)), n = .N), by = round]
+  bar <- merge(bar, raw, by = "round", all.x = TRUE)
+  bar[is.na(n), n := 0L]
+  data.table::setorderv(bar, c("slot", "round"))
+  bar[]
+}
+
 # --- draft board ------------------------------------------------------------
 
 #' Map snake-draft picks to franchises

@@ -148,6 +148,20 @@ Every ranked player in every league, with each signal that says something
 different about him, and no simulation anywhere: it scrapes rather than
 simulates, so all six leagues take about ninety seconds.
 
+> **Per-game columns are season averages over games he was ACTIVE for.** Two
+> things were wrong here and both are fixed in `ffs_usage_signals()`:
+> `load_ff_opportunity` only carries rows for players with expected points, so a
+> week of offensive snaps and no touch was missing entirely — 138 of 753
+> snap-weeks in 2026 weeks 1–2 (18%), including Calvin Ridley's 64%-of-snaps Week
+> 1 — which divided by the wrong denominator and roughly doubled per-game rates
+> for boom-or-bust players. The game universe now comes from `load_snap_counts`
+> (`offense_snaps > 0`) with the missing weeks added back as real zeros. And
+> `snap_pct`/`xfp_g`/`fp_g` used to be the *recent window*, which early in the
+> season collapses to a single game — the board was headlining last week under a
+> per-game heading. They are now `snap_pct_avg`/`exp_pts_avg`/`fp_avg`/`fpoe_avg`,
+> with the week-by-week values still in the cell. `*_recent`/`*_prior`/`*_trend`
+> are unchanged and still drive the trend columns.
+
 ```
 Rscript dev/suite/waiver_watchlist.R
 ```
@@ -356,6 +370,179 @@ trade-package future capital, `mkt_winnow`). The suite scrapes both QB formats a
 `dev/data/fantasycalc_values.parquet` via `fc_snapshot_append()` — a growing
 value time-series that also carries `trend_30day`, `redraft_value`,
 volatility, tier and ADP.
+
+## Dynasty mispricing — the fast signal leading the slow market
+
+Three scripts. The question: which dynasty players are priced wrong *right now* —
+falling cheaper than they should, or not rising fast enough with their production.
+The existing `ffs_dynasty_outlook()` cannot answer it, because it anchors to the
+market price and moves it with `(pos, age, market rank, format, simulated q)` and
+sees nothing that has actually happened this season.
+
+**`dev/suite/ecr_archive.R`** → `dev/data/ecr_panel.parquet`. Downloads
+DynastyProcess's FantasyPros ECR archive (one 39MB parquet) and reshapes it. This
+is the piece that unlocks everything: **323 weekly snapshots of the dynasty boards
+(1QB `dynasty-overall`, superflex `dynasty-op`) AND the redraft board, 2020-10-16
+to now, median gap 7 days**, keyed on `fantasypros_id`. The bundled
+`fp_dynasty_history()` has one snapshot per *season*, and FantasyPros itself only
+serves one per year (its `week=` argument is silently ignored), so scraping it
+ourselves is not an option — this archive is the only route. Re-run weekly; it is
+cached for 3 days (`FFS_ECR_REFRESH=1` forces).
+
+> **Two traps, both learned the hard way, both now handled in the study and the
+> board — anything else reading this panel must handle them too.**
+>
+> 1. **Never difference the stored `pct` across snapshots.** It is `rank/N` within
+>    one snapshot and is only safe for ordering *inside* that snapshot. Compare two
+>    snapshots by re-ranking on the players **common to both**.
+> 2. **`redraft-overall` is two different FantasyPros pages.** It is the preseason
+>    draft board (`ppr-cheatsheets.php`) until early September and the
+>    rest-of-season board (`ros-ppr-overall.php` ) after it — a different question
+>    over a smaller universe (525 → 404 players at the 2026-09-11 switch). Switch
+>    dates: 2021-09-10, 2022-09-16, 2023-09-15, 2024-09-27, 2025-09-12, 2026-09-11.
+>    A window must not cross one. `fp_page` is carried in the panel so you can check.
+>
+> Together these are not academic: dropping 121 players inflates every survivor's
+> percentile *in proportion to his rank*, which a cross-sectional z-score cannot
+> remove. It scored Dalton Kincaid as the biggest 1QB faller in the week his
+> redraft ECR went 113.7 → 105.7 — a real rise. Fixing it made the measured effect
+> **stronger**, so the bug was adding noise, not manufacturing signal.
+
+**`dev/suite/market_snapshot.R`** → `dev/data/market_panel.parquet`. Weekly
+FantasyCalc scrape via `fc_snapshot_append()`, unioned with the values that the
+waiver watchlist CSVs happen to have logged since 2026-09-15. Nobody archives
+*trade* prices — FantasyCalc and KTC serve only "current", and DynastyProcess's
+`values-players.csv` is a strictly monotone transform of its own ECR (spearman
+−0.998), so it carries no independent price information. **That series only exists
+going forward, from whenever we start logging it**, which is why this runs weekly.
+Carries `value_share` (share-of-pool) because the FantasyCalc pool deflates a
+couple of percent a week and raw value deltas contain a drift that looks like
+signal.
+
+**`dev/suite/leadlag_study.R`** → `dev/validate_outputs/leadlag_study_<date>.txt`.
+The gate. For every weekly anchor it measures the redraft percentile move over the
+prior *h* weeks against the dynasty percentile move over the *next* h weeks,
+partialling out the dynasty board's own momentum, with block-bootstrap inference
+(overlapping windows make the naive t meaningless).
+
+> **Result: all six format × horizon cells pass.** In-season partial IC +0.24 to
+> +0.28 (block-boot t 12–19), positive in every complete season, decile spread
+> positive in 88–98% of anchors. Out of season it roughly halves. **The signal is
+> asymmetric**: redraft fallers lose ~1–1.3 dynasty percentile points over the
+> following window, risers gain ~nothing — so the edge is mostly *sell before the
+> dynasty board marks him down*, consistent with this repo's older finding that
+> decline signals are firm and appreciation signals are shaky. Median realised
+> slope ≈ 0.07–0.09; that is the shrinkage, already attenuated.
+
+**The age split is the part that changes how you read the board.** Fit per band as
+`dyn_fwd ~ b0 + b1·fast`, in-season:
+
+| band | IC | baseline drift `b0` | risers | fallers |
+|---|---|---|---|---|
+| ≤23 | +0.19 | +0.005 | **−0.003** | +0.017 |
+| 24–26 | +0.24 | +0.006 | **−0.007** | +0.019 |
+| 27–29 | +0.24 | +0.011 | +0.003 | +0.027 |
+| 30+ | +0.21 | +0.016 | +0.012 | +0.028 |
+
+The *ranking* signal holds at every age — fallers always do worse than risers. But
+the *level* is age-determined: baseline decay triples from ≤23 to 30+, and the
+riser half **flips sign around 27**. Under 27 a redraft riser gains dynasty ground;
+over 27 he still loses it, just more slowly. So "redraft rose and dynasty hasn't
+followed" is a buy for a 24-year-old and a mirage for a 32-year-old — the dynasty
+board is right not to follow him. The board charges each player his band's drift
+before calling anything a BUY.
+
+*What it claims:* redraft ECR predicts dynasty ECR — one analyst consensus leading
+another. It is a forecast claim about **rankings**. Whether the trade price you
+actually pay lags the same way is a separate question that no historical data can
+settle; `market_snapshot.R`'s panel is what will answer it.
+
+**`dev/suite/ep_gap_study.R`** → `dev/validate_outputs/ep_gap_study_<date>.txt`. The obvious follow-up —
+does the market under-price *opportunity*? Signal is EP/g − FP/g season to date (expected fantasy points
+from `load_ff_opportunity`, weeks finished before the anchor); outcome is the same forward dynasty
+percentile move.
+
+> **Result: FAILED, and it reverses.** Scoring *below* your expected points predicts your dynasty ranking
+> getting **worse**, not better. Incremental IC — net of the board's own momentum *and* of the redraft-ECR
+> signal we already trade — is **−0.140 (h=2) / −0.175 (h=4)**, block-boot t −7 to −10, **0 of 6 seasons
+> positive**, both formats, all four age bands negative, survivor-only identical. So the
+> regression-to-opportunity heuristic is backwards here: outperforming your opportunity (FPOE) is what
+> predicts dynasty gains. Two mechanisms fit — efficiency is partly real (hands, YAC, QB, scheme), and
+> opportunity *follows* production, so xFP is a lagging snapshot rather than a claim on future usage.
+>
+> This does **not** contradict the redraft-ECR lead-lag: `corr(gap, redraft ECR move) = +0.22`, i.e. both
+> boards move against the underperformer. It does mean an "expected vs actual points" column — the staple
+> of weekly analyst columns — can be right about next week's points and still wrong about the dynasty
+> price. Any EP-versus-price chart must put FPOE, not the regression gap, on the buy axis.
+
+**`dev/suite/usage_shape_gate.R`** → `dev/validate_outputs/usage_shape_gate_<date>.txt`. The successor to
+the EP-gap null. If the gap fails *pooled* because it mixes noise with role loss, then the missing
+conditioner might be usage **shape** — a player's role, measured from usage shares only. Tests whether
+the `gap × shape` interaction predicts what happens to his *opportunity*. Uses no dynasty data at all
+by design, so the panel runs 2009–2025 rather than being capped by the ECR archive.
+
+> **Result: FAILED, across every arm.** Effect sizes (decile spread at a 1-SD gap shock, against a
+> 0.5 EP/team-game threshold): RB tilt axis −0.195 (prior-season shape), −0.558 (early-season, but
+> CI [−0.83, +0.26]), −0.349 (contemporaneous); WR aDOT axis −0.077 and +0.116 with permutation
+> p = 0.73 and 0.46 — a clean null, not an underpowered one. Every bootstrap CI includes zero except
+> the contemporaneous WR arm, which is the contaminated one.
+>
+> **The crude 3× slope spread that motivated this did not reproduce.** That spread (LOVOL-RECV −0.209
+> to LOVOL-RUSH −0.611) came from buckets crossing volume with tilt, measured *during* the gap window
+> and not residualised on volume. Once shape is (a) measured strictly before the shock, (b) volume-
+> residualised and (c) level-controlled, it goes away. Usage at *t* is caused by efficiency at *t−1*,
+> so a contemporaneous role label is entangled with the shock by construction — that entanglement was
+> the effect.
+>
+> **Specification sensitivity, reported rather than hidden:** team×season FE is ~5.7 rows per level
+> (490 levels / 2,800 RB rows), which absorbs signal and inflates variance — it is why the block-boot
+> CIs run 3–4× the permutation SDs. Dropping it raises RB θ from −0.110 to −0.243 (SE 0.136, t −1.8),
+> implying a decile spread near −0.43. Still under threshold, still not significant. The verdict does
+> not depend on the specification.
+>
+> **One arm was a design bug, now fixed and re-run:** the WR tilt axis was near-degenerate, because
+> WRs barely rush and percentile-ranking a near-constant rush share spreads ties arbitrarily
+> (`cor(S, target share)` = 0.80 for RB but 0.14 for WR). WR is now tested on aDOT, the genuinely
+> orthogonal receiver role axis.
+
+Per the pre-registered abandon conditions, the market layer was **not built** — an effect this size is
+not tradeable even if it were real. What survives from this line of work is the *lesson*, not a signal:
+role labels must be measured strictly before the shock they are supposed to condition, or they are
+just a restatement of it.
+
+**`dev/suite/mispricing_board.R`** → `dev/league_sims/mispricing/<date>/board_<format>.csv`.
+The weekly board, both formats, **no simulation** so it runs in a couple of
+minutes. `score = z(fast) − z(slow)` over the same window, both legs measured —
+"the price hasn't moved" is an assertion that sits inside weekly noise, so we
+compare like with like. Negative = the redraft board marked him down and dynasty
+has not caught up (SELL/FADE); positive = the reverse. A **BUY has to clear two
+bars** — a positive divergence score *and* an `exp_pct_move` that actually gains
+ground once his age band's baseline drift is charged; a riser who fails the second
+is labelled `rising, below drift` rather than sold to you as a bargain. The drift
+coefficients are read from the newest `leadlag_ageband_*.csv`, matched to the
+horizon nearest the realised window and pro-rated to its length, so the board and
+the study can never disagree. Columns include `age_band`, `b0`/`b1`,
+`exp_pct_move` and `exp_value_chg` (priced through the market's own value ladder),
+`price_moving` (is FantasyCalc already repricing him) and the `established` tier split — the cheap end of the board moves most and would
+otherwise crowd out the names worth trading. Every run appends to
+`dev/league_sims/mispricing/history.csv`: the formula is pre-registered, and that
+file is the forward test of it. Expect a real read after ~9 independent windows,
+i.e. an off-season verdict, not an October one.
+
+The board **shrinks its own window** rather than crossing the September page
+switch, and prints the span it actually used. Right after the switch that means a
+one-week window, which is thin and noisy; it widens by a week per snapshot. Treat
+early-September boards as provisional.
+
+Knobs: `FFS_MB_WINDOW` (4 weeks, an upper bound not a promise), `FFS_MB_MIN_VALUE`
+(1000 — below that, values swing tens of percent on nothing), `FFS_MB_TIER` (0.5),
+`FFS_MB_ESTABLISHED` (2500), `FFS_MB_SLOPE` (0.06, only a fallback when no age fit
+is on disk), `FFS_MB_SCRAPE=0` to reuse the stored panel.
+
+The board ranks the market; it does not know your roster. Cross the shortlist with
+a `trade_intel.R` run when you want to know whether a name helps *your* team, and
+take the top ~15 to a manual qualitative pass — there is no text/transcript
+pipeline here on purpose.
 
 ## Standalone studies
 

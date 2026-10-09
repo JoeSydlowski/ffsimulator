@@ -78,8 +78,14 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
   windowise <- function(dt) {
     if (!is.null(through_week)) dt <- dt[week <= through_week]
     if (!nrow(dt)) return(dt)
-    cut <- max(dt$week, na.rm = TRUE) - lookback + 1L
-    dt[, window := data.table::fifelse(week >= cut, "recent", "prior")][]
+    last <- max(dt$week, na.rm = TRUE)
+    first <- min(dt$week, na.rm = TRUE)
+    eff <- lookback
+    # early in the season a full lookback swallows every week, leaving "prior"
+    # empty and every *_trend column silently NA - at week 3 with lookback 3 not
+    # one player got a trend. Halve the window rather than emit nothing.
+    if (last - eff + 1L <= first) eff <- max(1L, (last - first + 1L) %/% 2L)
+    dt[, window := data.table::fifelse(week >= last - eff + 1L, "recent", "prior")][]
   }
 
   # id first, cleaned name + position second: the id maps are wrong often enough
@@ -131,6 +137,11 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
       snap_agg <- data.table::dcast(snap_agg, pfr_player_id + pkey ~ window,
                                     value.var = c("snap_pct", "games"), fill = NA)
       data.table::setnames(snap_agg, "pfr_player_id", "pfr_id")
+      # season-to-date snap share, the headline figure (see opp_avg below)
+      snap_avg <- snaps[, list(snap_pct_avg = mean(offense_pct, na.rm = TRUE),
+                               games_played = .N),
+                        by = c("pfr_player_id", "pkey")]
+      data.table::setnames(snap_avg, "pfr_player_id", "pfr_id")
     }
   }
 
@@ -147,12 +158,45 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
     opp <- windowise(opp[pos %in% .ffs_pos(pos_filter)])
     if (nrow(opp)) {
       opp[, pkey := .ffs_pkey(get("full_name"), pos, get("posteam"))]
+
+      # THE DENOMINATOR. A week he took offensive snaps counts as a game even if
+      # he never got a touch, but load_ff_opportunity only carries rows for
+      # players with expected points - in 2026 weeks 1-2 that dropped 138 of 753
+      # snap-weeks (18%), Calvin Ridley's 64%-of-snaps Week 1 among them.
+      # Averaging over its rows alone divides by the wrong denominator and
+      # inflates every per-game rate for exactly the boom-or-bust players a
+      # waiver board is meant to judge. Add the missing weeks back as real zeros.
+      if (!is.null(snaps) && nrow(snaps) && "offense_snaps" %in% names(snaps)) {
+        bridge <- unique(ids[!is.na(pfr_id) & !is.na(gsis_id),
+                             list(pfr_id, gsis_id, pkey)], by = "pfr_id")
+        act <- unique(snaps[offense_snaps > 0,
+                            list(pfr_id = as.character(pfr_player_id), week, window)])
+        act <- merge(act, bridge, by = "pfr_id")
+        miss <- act[!unique(opp[, list(gsis_id = player_id, week)]),
+                    on = c("gsis_id", "week")]
+        if (nrow(miss)) {
+          opp <- rbind(opp, data.table::data.table(
+            player_id = miss$gsis_id, week = miss$week, window = miss$window,
+            pkey = miss$pkey, total_fantasy_points_exp = 0, total_fantasy_points = 0
+          ), fill = TRUE)
+        }
+      }
+
       opp_agg <- opp[, list(exp_pts = mean(total_fantasy_points_exp, na.rm = TRUE),
                             fpts = mean(total_fantasy_points, na.rm = TRUE)),
                      by = c("player_id", "pkey", "window")]
       opp_agg <- data.table::dcast(opp_agg, player_id + pkey ~ window,
                                    value.var = c("exp_pts", "fpts"), fill = NA)
       data.table::setnames(opp_agg, "player_id", "gsis_id")
+
+      # season-to-date averages, over the same corrected denominator. These are
+      # what a board should headline: the recent window is one or two games and
+      # early in the year collapses to "last week", which is not a rate.
+      opp_avg <- opp[, list(exp_pts_avg = mean(total_fantasy_points_exp, na.rm = TRUE),
+                            fp_avg = mean(total_fantasy_points, na.rm = TRUE),
+                            games = .N),
+                     by = c("player_id", "pkey")]
+      data.table::setnames(opp_avg, "player_id", "gsis_id")
     }
   }
 
@@ -176,6 +220,10 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
                       c("snap_pct_recent", "snap_pct_prior", "games_recent", "games_prior"))
   out <- attach_usage(out, opp_agg, "gsis_id",
                       c("exp_pts_recent", "exp_pts_prior", "fpts_recent", "fpts_prior"))
+  if (exists("snap_avg", inherits = FALSE))
+    out <- attach_usage(out, snap_avg, "pfr_id", c("snap_pct_avg", "games_played"))
+  if (exists("opp_avg", inherits = FALSE))
+    out <- attach_usage(out, opp_avg, "gsis_id", c("exp_pts_avg", "fp_avg", "games"))
   out <- attach_usage(out, snap_wk, "pfr_id", "snap_wk")
   out <- attach_usage(out, opp_wk, "gsis_id", c("xfp_wk", "fp_wk"))
   for (nm in c("snap_wk", "xfp_wk", "fp_wk")) {
@@ -183,16 +231,21 @@ ffs_usage_signals <- function(season = nflreadr::most_recent_season(),
   }
   # a whole window can be missing this early in a season - keep the shape stable
   for (nm in c("snap_pct_recent", "snap_pct_prior", "games_recent", "games_prior",
-               "exp_pts_recent", "exp_pts_prior", "fpts_recent", "fpts_prior")) {
+               "exp_pts_recent", "exp_pts_prior", "fpts_recent", "fpts_prior",
+               "snap_pct_avg", "exp_pts_avg", "fp_avg", "games", "games_played")) {
     if (!nm %in% names(out)) data.table::set(out, j = nm, value = NA_real_)
   }
   out[, `:=`(
     snap_trend = snap_pct_recent - snap_pct_prior,
     exp_pts_trend = exp_pts_recent - exp_pts_prior,
-    fpoe_recent = fpts_recent - exp_pts_recent
+    fpoe_recent = fpts_recent - exp_pts_recent,
+    fpoe_avg = fp_avg - exp_pts_avg
   )]
+  # games: prefer the snap-count game total, which is the true activity record
+  out[, games := data.table::fifelse(is.na(games_played), games, games_played)]
   out <- out[!is.na(fantasypros_id),
-             list(fantasypros_id, player, pos, team, games_recent,
+             list(fantasypros_id, player, pos, team, games, games_recent,
+                  snap_pct_avg, exp_pts_avg, fp_avg, fpoe_avg,
                   snap_pct_recent, snap_pct_prior, snap_trend,
                   exp_pts_recent, exp_pts_prior, exp_pts_trend,
                   fpts_recent, fpoe_recent, snap_wk, xfp_wk, fp_wk)]

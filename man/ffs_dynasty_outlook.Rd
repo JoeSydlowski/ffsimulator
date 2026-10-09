@@ -10,7 +10,10 @@ ffs_dynasty_outlook(
   max_transition_season = NULL,
   value_curve = function(rank) 10000 * exp(-0.023 * rank),
   dynasty_values = "fantasycalc",
-  superflex_from_1qb = getOption("ffsimulator.dyn_sflx_from_1qb", TRUE)
+  superflex_from_1qb = getOption("ffsimulator.dyn_sflx_from_1qb", TRUE),
+  banked_points = NULL,
+  season_weeks = 14L,
+  redraft_ranks = NULL
 )
 }
 \arguments{
@@ -57,6 +60,21 @@ value/slotting (cross-section, curve, \code{pos_rank}->overall) stays superflex 
 which is what re-slots QBs into their superflex value. Fixes superflex
 interval under-dispersion; leaves 1qb unchanged. Default \code{TRUE} (option
 \code{ffsimulator.dyn_sflx_from_1qb}); set \code{FALSE} to train on native superflex.}
+
+\item{banked_points}{for a simulation made mid-season (one that only covers
+the unplayed weeks): points each player has already scored, as
+\code{fantasypros_id} + \code{points}. Season quality is judged against full-season
+totals, so each simulated season becomes \code{points} plus the simulated weeks
+scaled up to cover the rest of a \code{season_weeks}-week season. \code{NULL} (the
+default) treats the simulation as the whole season.}
+
+\item{season_weeks}{weeks in the season the quality pools count (1:14)}
+
+\item{redraft_ranks}{optional \code{fantasypros_id} + \code{redraft_rank} (positional)
+overriding the simulation's own rankings as the expectation a season is
+judged against. Mid-season the simulation carries rest-of-season ranks,
+which have already absorbed the weeks played; the history the quality pools
+come from is preseason ranks, so pass those.}
 }
 \value{
 a dataframe: one row per rostered player with \code{dyn_rank} (market-value
@@ -70,7 +88,9 @@ MEAN is inflated by the draw spread (Jensen) - the 11-holdout backtest
 finds the mean overstates realized value change (QB worst, ~+50pts) while
 the value-draw distribution itself is calibrated, making the median
 ~unbiased. The mean remains the right statistic for additive capital
-totals (portfolio sums, package comparisons).
+totals (portfolio sums, package comparisons). The per-draw values ride
+along as \code{attr(x, "draws")} (\code{fantasypros_id}, \code{sim_season}, \code{next_rank},
+\code{exited}, \code{next_value}), for probabilities of clearing a threshold.
 }
 \description{
 (EXPERIMENTAL) For every rostered player in a simulation, projects the

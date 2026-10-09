@@ -764,16 +764,20 @@ ffs_waiver_watchlist <- function(conn,
 
   if (!is.null(usage)) {
     u <- data.table::as.data.table(usage)
-    keep <- intersect(c("fantasypros_id", "player", "pos", "team", "games_recent",
-                        "snap_pct_recent", "exp_pts_recent", "fpts_recent",
-                        "fpoe_recent", "snap_trend", "exp_pts_trend",
+    # headline the SEASON averages, not the recent window. The recent window is
+    # one or two games and early in the year collapses to "last week", so the
+    # board was showing a single game under a per-game heading. The week-by-week
+    # values are already in snap_wk / xfp_wk / fp_wk for the cell to show.
+    keep <- intersect(c("fantasypros_id", "player", "pos", "team", "games",
+                        "snap_pct_avg", "exp_pts_avg", "fp_avg", "fpoe_avg",
+                        "snap_trend", "exp_pts_trend",
                         "snap_wk", "xfp_wk", "fp_wk"), names(u))
     u <- u[, keep, with = FALSE]
     u[, `:=`(fantasypros_id = as.character(fantasypros_id),
              pkey = .ffs_pkey(player, pos, team))]
     data.table::setnames(u,
-      c("games_recent", "snap_pct_recent", "exp_pts_recent", "fpts_recent", "fpoe_recent"),
-      c("games", "snap_pct", "xfp_g", "fp_g", "fpoe"), skip_absent = TRUE)
+      c("snap_pct_avg", "exp_pts_avg", "fp_avg", "fpoe_avg"),
+      c("snap_pct", "xfp_g", "fp_g", "fpoe"), skip_absent = TRUE)
     out <- .ffs_attach(out, u, intersect(
       c("games", "snap_pct", "xfp_g", "fp_g", "fpoe", "snap_trend", "exp_pts_trend",
         "snap_wk", "xfp_wk", "fp_wk"),

@@ -104,7 +104,10 @@ fc_snapshot_append <- function(db_path,
 
   dir.create(dirname(db_path), recursive = TRUE, showWarnings = FALSE)
   if (file.exists(db_path)) {
-    old <- data.table::as.data.table(arrow::read_parquet(db_path))
+    # mmap = FALSE: arrow memory-maps by default and Windows then refuses to
+    # overwrite the file we are about to rewrite ("user-mapped section open"),
+    # so every append to an existing database failed
+    old <- data.table::as.data.table(arrow::read_parquet(db_path, mmap = FALSE))
     old <- old[!(keyof(old) %in% unique(keyof(new)))]
     all <- rbind(old, new, fill = TRUE)
   } else {

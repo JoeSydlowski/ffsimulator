@@ -37,6 +37,75 @@ test_that("ADP-priced keepers are capped at the last round", {
   expect_equal(x$base_round, 17L)   # raw round 50 -> capped
 })
 
+test_that("next season's keeper costs follow the drafted round anywhere he goes", {
+  # this season's draft: a kept at R3, b drafted R1, c R2, d R14, e R10 then
+  # dropped (now a free agent), f drafted R6 and since traded
+  picks <- data.frame(player_id = c("a", "b", "c", "d", "e", "f"),
+                      round = c(3L, 1L, 2L, 14L, 10L, 6L),
+                      is_keeper = c(TRUE, NA, NA, NA, NA, NA))
+  players <- data.frame(
+    player_id = c("a", "b", "c", "d", "e", "f", "g", "h"),
+    fantasypros_id = c("fa", "fb", "fc", "fd", "fe", "ff", "fg", "fh"),
+    franchise_id = c("7", "7", "7", "7", NA, "3", NA, "2"),
+    stringsAsFactors = FALSE)
+  # g and h were never drafted: priced off the proxy board, h past the last round
+  adp <- data.frame(fantasypros_id = c("fg", "fh", "fe"), adp_rank = c(41L, 400L, 5L))
+
+  x <- ffs_next_keeper_costs(players, picks, adp, n_teams = 8L, max_round = 17L)
+  cost <- stats::setNames(x$keep_cost, x$player_id)
+  expect_equal(nrow(x), 8L)
+  expect_equal(x$player_id, players$player_id)     # input order kept
+  expect_equal(unname(cost["a"]), 2L)    # kept at R3 -> R2
+  expect_true(x$kept_now[x$player_id == "a"])
+  expect_equal(unname(cost["b"]), 1L)    # R1 stays R1
+  expect_equal(unname(cost["c"]), 1L)    # R2 -> R1 ...
+  expect_true(all(x$top2[x$player_id %in% c("b", "c")]))  # ... and both top-two
+  expect_equal(unname(cost["d"]), 13L)   # R14 -> R13
+  # dropped draftee: his round sticks, the (much better) ADP is ignored
+  expect_equal(unname(cost["e"]), 9L)
+  expect_equal(x$cost_source[x$player_id == "e"], "draft")
+  expect_equal(unname(cost["f"]), 5L)    # traded: still his drafted round
+  expect_equal(unname(cost["g"]), 6L)    # undrafted: ceiling(41/8)
+  expect_equal(x$cost_source[x$player_id == "g"], "adp")
+  expect_equal(unname(cost["h"]), 17L)   # capped at the last round
+  expect_true(is.na(x$draft_rd[x$player_id == "g"]))
+})
+
+test_that("round bar ignores keepers and reads a smooth fit at mid-round", {
+  # 4-team draft whose non-keepers go exactly at rank = 2 * pick; a keeper taken
+  # at pick 1 with rank 400 must not bend the fit
+  pick_no <- c(1:8, 13:16)
+  picks <- data.frame(round = ceiling(pick_no / 4), pick_no = pick_no,
+                      adp_rank = 2 * pick_no,
+                      is_keeper = c(TRUE, rep(NA, 11)))
+  picks$adp_rank[1] <- 400
+  b <- ffs_round_bar(picks, n_teams = 4L, n_rounds = 5L)
+  expect_equal(b$round, 1:5)
+  expect_equal(b$bar_rank, 2 * c(2.5, 6.5, 10.5, 14.5, 18.5), tolerance = 1e-8)
+  expect_equal(b$n, c(3L, 4L, 0L, 4L, 0L))  # round 3 and 5 had no picks: fitted
+  expect_true(is.na(b$med_rank[3]))
+  expect_false(is.unsorted(b$bar_rank))
+
+  # by slot: the snake turns, so slot 1 is best in odd rounds, worst in even
+  s <- ffs_round_bar(picks, n_teams = 4L, n_rounds = 2L, slot = c(1L, 4L))
+  expect_equal(s[slot == 1]$pick, c(1, 8))
+  expect_equal(s[slot == 4]$pick, c(4, 5))
+  expect_equal(s$bar_rank, 2 * s$pick, tolerance = 1e-8)
+  expect_lt(s[slot == 1 & round == 1]$bar_rank, s[slot == 4 & round == 1]$bar_rank)
+  expect_gt(s[slot == 1 & round == 2]$bar_rank, s[slot == 4 & round == 2]$bar_rank)
+})
+
+test_that("greedy keepers takes the best feasible set and skips infeasible pairs", {
+  cand <- data.frame(player_id = c("r1a", "r1b", "late", "mid", "neg"),
+                     base_round = c(1L, 1L, 13L, 6L, 9L),
+                     top2_prev = c(TRUE, TRUE, FALSE, FALSE, FALSE),
+                     surplus = c(900, 800, 700, 100, -50))
+  k <- .ffs_greedy_keepers(cand, "surplus", max_keepers = 8, max_top2 = 1,
+                           positive_only = TRUE)
+  expect_equal(k, c("r1a", "late", "mid"))  # r1b collides at R1; neg is dropped
+  expect_length(.ffs_greedy_keepers(cand, "surplus", max_keepers = 2), 2L)
+})
+
 test_that("round assignment bumps collisions up and forfeits the latest picks", {
   # three players all costing R15, plus R13 and R12 -> must occupy 11..15
   cst <- data.frame(player_id = c("a", "b", "c", "d", "e"),
