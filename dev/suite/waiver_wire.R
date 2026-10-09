@@ -32,10 +32,11 @@ config <- list(
   # every league sox05syd is in, from ffscrapr::sleeper_userleagues("sox05syd", 2026):
   # Goofball (10, SF dynasty) | JML (12, 1QB dynasty) | Dynasty Dimwits (12, SF
   # dynasty) | Galletti (8, SF keeper) | Ex-Athletes (12, SF REDRAFT) |
-  # Don't be Chopped (5, 1QB redraft - ff_schedule() cannot parse it, see below)
+  # Season 2 (5, 1QB guillotine from week 5 - ff_schedule() cannot parse it, see
+  # below; replaced Don't be Chopped, won and over by week 4)
   league_ids = strsplit(Sys.getenv("FFS_LEAGUE_ID", paste(
     "1312145437842497536", "1326464763936403456", "1359546500786434048",
-    "1339817277222031360", "1389724668889399296", "1403227684191870976",
+    "1339817277222031360", "1389724668889399296", "1413736327588896768",
     sep = ",")), ",")[[1]],
   platform = Sys.getenv("FFS_PLATFORM", "sleeper"),
   season   = as.integer(Sys.getenv("FFS_SEASON", "2026")),

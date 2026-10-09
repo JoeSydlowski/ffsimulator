@@ -109,6 +109,8 @@ td.name a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--li
 .chip.Bubble{color:var(--ink)}
 .chip.Seller{background:var(--warn-soft); border-color:var(--down); color:var(--down)}
 .chip.Rebuilding,.chip.Long{color:var(--ink-3)}
+.chip.Champion{background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); font-weight:600}
+tr.done td{color:var(--ink-2)}
 .need{font-family:"IBM Plex Mono",monospace; font-size:11.5px}
 .need b{color:var(--down); font-weight:500}
 .seeds{display:inline-grid; grid-auto-flow:column; grid-auto-columns:14px; gap:1px; vertical-align:middle}
@@ -157,7 +159,7 @@ td.name a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--li
       <div><dt>&#9650; / &#9660;</dt><dd>Change since the previous run of this report.</dd></div>
       <div><dt>Seeds</dt><dd>Each cell is one final seed, darker = likelier. The rule after a cell marks the playoff cut.</dd></div>
       <div><dt>Posture</dt><dd><b>Contender</b> (playoff 65%+ or title odds 1.5&times; a fair share), <b>Bubble</b> (30&ndash;65%), and below that <b>Seller</b> (an older-than-median roster in a dynasty or keeper league &mdash; the team with veterans to move), <b>Rebuilding</b> (young roster), or <b>Long shot</b> (redraft). Early in a season this mostly restates roster strength.</dd></div>
-      <div><dt>Need</dt><dd>The position where a teamThe position where a team&rsquo;s simulated starters score furthest below the league median, in points per week.rsquo;s simulated starters score furthest below the league median, in points per week (at least 1 point below counts).</dd></div>
+      <div><dt>Need</dt><dd>The position where a team&rsquo;s simulated starters score furthest below the league median, in points per week (at least 1 point below counts).</dd></div>
       <div><dt>Targets / Pitches</dt><dd><b>Targets</b>: veterans (past a positional age line &mdash; RB 26, WR 28, TE 29, QB 32 &mdash; or priced 15%+ higher for this season than the long run, and worth at least 500 redraft) on teams that are out of it. <b>Pitches</b>: your veterans, and the contenders whose need they fill. The list that suits your posture in the league comes first.</dd></div>
       <div><dt>Not modelled</dt><dd>Known multi-week absences are treated as random missed weeks, and teams fill holes only from their own benches (no waiver streaming).</dd></div>
     </dl>
@@ -261,10 +263,16 @@ td.name a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--li
         "<td>" + pct(r.bye_pct) + "</td><td>" + num(r.mean_seed) + "</td>" +
         "<td style=\"text-align:left\">" + postureChip(r.posture) + "</td>" + needCell(r) + "</tr>";
     }).join("");
+    // leagues that are over: the result, no odds
+    var done = (meta.finished || []).map(function(f){
+      return "<tr class=\"done\"><td class=\"name\">" + esc(f.name) + "<span class=\"sub\">" + esc(f.type) +
+        " &middot; finished</span></td><td colspan=\"5\" style=\"text-align:left\">" + esc(f.detail) + "</td>" +
+        "<td style=\"text-align:left\">" + postureChip(f.result) + "</td><td class=\"dim\">&mdash;</td></tr>";
+    }).join("");
     document.getElementById("view").innerHTML =
       "<div class=\"card tablewrap\"><table><thead><tr><th>League</th><th>Record (proj W)</th><th>Playoff</th><th>Champ / win</th>" +
       "<th>Bye</th><th>Avg seed</th><th style=\"text-align:left\">Posture</th><th>Need</th></tr></thead><tbody>" +
-      rows + "</tbody></table></div>";
+      rows + done + "</tbody></table></div>";
   }
 
   // ---- one league ------------------------------------------------------------

@@ -36,7 +36,7 @@ source(here::here("dev", "suite", "scoring_history_shim.R")); install_shim()
 config <- list(
   league_ids = strsplit(Sys.getenv("FFS_LEAGUE_ID", paste(
     "1312145437842497536", "1326464763936403456", "1359546500786434048",
-    "1339817277222031360", "1389724668889399296", "1403227684191870976",
+    "1339817277222031360", "1389724668889399296", "1413736327588896768",
     sep = ",")), ",")[[1]],
   season   = as.integer(Sys.getenv("FFS_SEASON", "2026")),
   my_team  = Sys.getenv("FFS_MY_TEAM", "sox05syd"),
@@ -52,7 +52,12 @@ config <- list(
   # a "need" is a position at least this many points per week below the median;
   # anything closer is noise, and showed up as "QB -0.0"
   need_min = 1,
-  top_targets = 25L
+  top_targets = 25L,
+  # leagues that are over: no longer simulated, shown on the page as a result
+  finished = list(
+    list(name = "Don't be Chopped", type = "guillotine", result = "Champion",
+         detail = "last of 5 standing after week 4, 617 points")
+  )
 )
 
 day <- format(Sys.Date())
@@ -345,7 +350,8 @@ payload <- lapply(leagues, function(l) {
 n_used <- unlist(lapply(leagues, function(l) l$n_sims %||% config$n_sims))
 meta <- list(generated = generated, n_min = min(n_used), n_max = max(n_used), season = config$season,
              week = as.integer(nflreadr::get_current_week()),
-             prev_generated = if (is.null(prev)) NA_character_ else max(prev$prev_generated))
+             prev_generated = if (is.null(prev)) NA_character_ else max(prev$prev_generated),
+             finished = config$finished)
 json <- jsonlite::toJSON(list(meta = meta, leagues = payload), auto_unbox = TRUE,
                          na = "null", digits = 4, dataframe = "rows")
 

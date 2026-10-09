@@ -24,10 +24,11 @@ devtools::load_all(here::here(), quiet = TRUE)
 options(ffpros.cache = "memory")
 
 config <- list(
-  # every league sox05syd is in (ffscrapr::sleeper_userleagues("sox05syd", 2026))
+  # every league sox05syd is in (ffscrapr::sleeper_userleagues("sox05syd", 2026));
+  # Season 2 (guillotine) replaced Don't be Chopped, which finished in week 4
   league_ids = strsplit(Sys.getenv("FFS_LEAGUE_ID", paste(
     "1312145437842497536", "1326464763936403456", "1359546500786434048",
-    "1339817277222031360", "1389724668889399296", "1403227684191870976",
+    "1339817277222031360", "1389724668889399296", "1413736327588896768",
     sep = ",")), ",")[[1]],
   season   = as.integer(Sys.getenv("FFS_SEASON", "2026")),
   my_team  = Sys.getenv("FFS_MY_TEAM", "sox05syd"),
@@ -122,7 +123,7 @@ build_league <- function(league_id) {
   superflex <- any(slots %in% c("SUPER_FLEX", "SUPERFLEX")) || sum(slots == "QB") > 1
   ppr <- suppressWarnings(as.numeric(raw$scoring_settings$rec))
   if (!length(ppr) || is.na(ppr)) ppr <- 1
-  ltype <- c("redraft", "keeper", "dynasty")[as.integer(raw$settings$type) + 1L]
+  ltype <- c("redraft", "keeper", "dynasty", "guillotine")[as.integer(raw$settings$type) + 1L]
   if (!length(ltype) || is.na(ltype)) ltype <- "redraft"
 
   # only carry the positions this league actually starts: Goofball is the one
@@ -182,7 +183,7 @@ build_league <- function(league_id) {
     flex_pos = flex_pos,
     # what a trade costs here: a keeper roster turns over slowly enough to price
     # like dynasty
-    value_key = if (ltype == "redraft") "redraft_value" else "dynasty_value",
+    value_key = if (ltype %in% c("redraft", "guillotine")) "redraft_value" else "dynasty_value",
     rows = w
   )
 }
