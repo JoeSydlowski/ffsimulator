@@ -1,0 +1,52 @@
+role,rank,name,team,carries,carry_share,snap,rush_yoe_att,rec_yoe_tgt,mate,mate_yoe_att,p_bench,injury,base,x_base
+committee/backup,1,Will Shipley,PHI,20,0.17,0.33,-0.94,-2.24,Saquon Barkley,-0.55,0.252,"",0.136251032204789,1.8
+committee/backup,2,Kendre Miller,NO,29,0.33,0.26,-1.16,-2.76,Travis Etienne,-0.44,0.223,"",0.136251032204789,1.6
+committee/backup,3,George Holani,SEA,26,0.19,0.37,-1.39,0.84,Emanuel Wilson,-0.51,0.198,Questionable wk5 (Ribs),0.136251032204789,1.5
+committee/backup,4,Keaton Mitchell,LAC,33,0.22,0.33,-0.65,-1.91,Omarion Hampton,-0.19,0.197,"",0.136251032204789,1.4
+committee/backup,5,Alvin Kamara,NO,28,0.31,0.32,-1.07,-2.99,Travis Etienne,-0.49,0.196,Questionable wk5 (Back),0.136251032204789,1.4
+committee/backup,6,MarShawn Lloyd,GB,40,0.4,0.39,-1.44,-1.36,Kaleb Johnson,-0.33,0.166,"",0.136251032204789,1.2
+committee/backup,7,Corey Kiner,NE,20,0.13,0.11,-0.33,,Rhamondre Stevenson,-0.28,0.159,"",0.136251032204789,1.2
+committee/backup,8,Tyler Allgeier,ARI,35,0.29,0.52,-0.61,-1.15,Jeremiyah Love,-0.32,0.148,"",0.136251032204789,1.1
+committee/backup,9,Blake Corum,LA,38,0.3,0.28,0.41,0.18,Kyren Williams,0.76,0.146,"",0.136251032204789,1.1
+committee/backup,11,Kaelon Black,SF,37,0.27,0.27,-0.41,,Christian McCaffrey,0.63,0.142,"",0.136251032204789,1
+committee/backup,12,Brian Robinson,ATL,51,0.31,0.33,-0.24,,Bijan Robinson,1.52,0.137,"",0.136251032204789,1
+committee/backup,13,Samaje Perine,CIN,27,0.24,0.37,-0.08,0.47,Chase Brown,-0.7,0.124,"",0.136251032204789,0.9
+committee/backup,14,Tank Bigsby,PHI,28,0.27,0.24,-0.98,,Saquon Barkley,-0.48,0.121,"",0.136251032204789,0.9
+committee/backup,15,David Montgomery,HOU,52,0.44,0.47,-1.36,0.42,Woody Marks,-0.69,0.116,"",0.136251032204789,0.9
+committee/backup,16,Chris Rodriguez Jr.,JAX,28,0.2,0.24,-0.08,,Bhayshul Tuten,-0.11,0.116,"",0.136251032204789,0.9
+committee/backup,17,Rachaad White,WAS,29,0.23,0.49,-0.21,-0.3,Jacory Croskey-Merritt,-0.75,0.114,"",0.136251032204789,0.8
+committee/backup,19,Najee Harris,NYG,27,0.25,0.18,-0.43,,Cam Skattebo,-0.77,0.102,"",0.136251032204789,0.7
+committee/backup,20,Woody Marks,HOU,43,0.37,0.53,-0.69,-2.04,David Montgomery,-1.36,0.096,"",0.136251032204789,0.7
+committee/backup,24,Saquon Barkley,PHI,36,0.35,0.42,0.63,-5,Tank Bigsby,-1.4,0.089,Out wk5 (Hamstring),0.136251032204789,0.7
+committee/backup,25,Braelon Allen,NYJ,57,0.44,0.61,-0.15,-2.95,Breece Hall,-0.96,0.083,"",0.136251032204789,0.6
+committee/backup,26,TreVeyon Henderson,NE,42,0.35,0.38,-0.44,,Rhamondre Stevenson,-0.2,0.082,"",0.136251032204789,0.6
+committee/backup,27,Kaleb Johnson,GB,27,0.35,0.26,-0.42,,MarShawn Lloyd,-1.03,0.076,"",0.136251032204789,0.6
+committee/backup,28,Mike Washington Jr.,LV,25,0.18,0.17,0.7,,Ashton Jeanty,-1.01,0.075,"",0.136251032204789,0.6
+committee/backup,29,Rhamondre Stevenson,NE,57,0.38,0.62,-0.16,-0.3,TreVeyon Henderson,-0.4,0.073,Questionable wk5 (Knee),0.136251032204789,0.5
+committee/backup,30,Ollie Gordon,MIA,47,0.36,0.46,0.91,-1.63,De'Von Achane,-0.92,0.064,"",0.136251032204789,0.5
+committee/backup,34,Kyle Monangai,CHI,60,0.38,0.41,1.35,0.68,D'Andre Swift,0.45,0.055,Out wk5 (Thumb),0.136251032204789,0.4
+committee/backup,36,D'Andre Swift,CHI,78,0.43,0.57,0.65,1.12,Kyle Monangai,1.01,0.052,"",0.136251032204789,0.4
+committee/backup,40,Christian McCaffrey,SF,61,0.44,0.69,0.72,-1.72,Kaelon Black,-0.43,0.036,"",0.136251032204789,0.3
+lead,10,Quinshon Judkins,CLE,73,0.58,0.6,-1.06,0.04,Raheim Sanders,2.31,0.146,"",0.0402576489533011,3.6
+lead,18,Jeremiyah Love,ARI,67,0.55,0.48,-0.59,-2.99,Tyler Allgeier,-0.12,0.102,"",0.0402576489533011,2.5
+lead,21,J.K. Dobbins,DEN,64,0.54,0.42,-0.46,-2.75,RJ Harvey,-0.52,0.094,"",0.0402576489533011,2.3
+lead,22,Jacory Croskey-Merritt,WAS,67,0.45,0.45,-0.71,0.83,Rachaad White,-0.5,0.094,"",0.0402576489533011,2.3
+lead,23,Omarion Hampton,LAC,73,0.5,0.46,-0.49,-0.36,Keaton Mitchell,-0.04,0.09,"",0.0402576489533011,2.2
+lead,31,Emanuel Wilson,SEA,73,0.53,0.4,-0.64,1.79,Jadarian Price,-0.75,0.058,"",0.0402576489533011,1.4
+lead,32,Derrick Henry,BAL,113,0.7,0.58,0.04,1.35,Justice Hill,2.35,0.056,"",0.0402576489533011,1.4
+lead,33,Chase Brown,CIN,71,0.62,0.7,-0.7,-1.27,Samaje Perine,-0.08,0.056,"",0.0402576489533011,1.4
+lead,35,Tony Pollard,TEN,68,0.63,0.52,-0.05,-3.47,Tyjae Spears,-1.18,0.053,"",0.0402576489533011,1.3
+lead,37,Cam Skattebo,NYG,81,0.55,0.65,-0.63,0.91,Najee Harris,-0.82,0.051,"",0.0402576489533011,1.3
+lead,38,Bhayshul Tuten,JAX,82,0.59,0.55,-0.09,2.47,Chris Rodriguez Jr.,-0.12,0.042,"",0.0402576489533011,1
+lead,39,Aaron Jones,MIN,97,0.64,0.73,-0.06,-1.7,Jordan Mason,-0.66,0.038,"",0.0402576489533011,0.9
+lead,41,Ashton Jeanty,LV,88,0.64,0.72,-0.87,0.99,Mike Washington Jr.,-0.1,0.036,Questionable wk5 (Ankle),0.0402576489533011,0.9
+lead,42,Kyren Williams,LA,70,0.55,0.69,0.91,-0.58,Blake Corum,0.2,0.028,"",0.0402576489533011,0.7
+lead,43,Bucky Irving,TB,77,0.57,0.61,0.97,-1.45,Kenny Gainwell,-1.1,0.028,"",0.0402576489533011,0.7
+lead,44,Javonte Williams,DAL,74,0.69,0.77,-0.01,-0.77,Tyler Goodson,-0.95,0.023,"",0.0402576489533011,0.6
+lead,45,Jonathan Taylor,IND,101,0.74,0.82,-0.2,0.05,Seth McGowan,-0.43,0.022,"",0.0402576489533011,0.5
+lead,46,Bijan Robinson,ATL,102,0.62,0.68,1.52,0.53,Brian Robinson,-0.24,0.015,"",0.0402576489533011,0.4
+lead,47,Chuba Hubbard,CAR,61,0.64,0.76,0.74,2.72,AJ Dillon,-1.72,0.013,"",0.0402576489533011,0.3
+lead,48,Jaylen Warren,PIT,70,0.65,0.76,1.38,3.76,Rico Dowdle,-1.45,0.01,Questionable wk3 (Shoulder),0.0402576489533011,0.2
+lead,49,Kenneth Walker III,KC,87,0.76,0.74,2.05,-1.33,Emmett Johnson,-0.77,0.007,"",0.0402576489533011,0.2
+lead,50,Jahmyr Gibbs,DET,105,0.81,0.77,0.61,0.16,Sione Vaki,-1.25,0.007,"",0.0402576489533011,0.2
+lead,51,James Cook,BUF,95,0.65,0.67,1.61,-2.99,Ray Davis,,0,"",0.0402576489533011,0

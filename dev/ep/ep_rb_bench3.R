@@ -23,8 +23,9 @@ hurt <- inj[status %in% c("Questionable", "Doubtful", "Out")]
 out_ <- inj[status %in% c("Doubtful", "Out")]
 
 rows <- list()
-for (s in SEAS) for (t in 4:14) {
-  w <- p[season == s & week > t - 4 & week <= t]
+K <- as.integer(Sys.getenv("FFS_EP_K", "4"))   # trailing window length (games)
+for (s in SEAS) for (t in K:14) {
+  w <- p[season == s & week > t - K & week <= t]
   rb <- w[position == "RB", .(g_tr = .N, carries = sum(carries), targets = sum(targets),
     ryoe = sum(rush_yds_oe), recoe = sum(rec_yds_oe), team_carries = sum(team_carries),
     snap_tr = mean(snap_pct), xfp_tr = mean(xfp), team = names(which.max(table(team)))), by = gsis_id]
@@ -33,12 +34,12 @@ for (s in SEAS) for (t in 4:14) {
   rb[, `:=`(tm_car = room_car - carries, tm_ryoe_yds = room_ryoe - ryoe)]
   # teammate RBs who were Out/Doubtful during the trailing window (all RBs on the roster that season)
   roster <- unique(p[season == s & position == "RB", .(gsis_id, team)])
-  mate_out <- merge(out_[season == s & week > t - 4 & week <= t, .(gsis_id)], roster, by = "gsis_id")[, .(mate_out = TRUE), by = team]
+  mate_out <- merge(out_[season == s & week > t - K & week <= t, .(gsis_id)], roster, by = "gsis_id")[, .(mate_out = TRUE), by = team]
   rb <- merge(rb, unique(mate_out), by = "team", all.x = TRUE)[is.na(mate_out), mate_out := FALSE]
   # own injury flag: hurt in week t or t+1..t+4
   own_h <- unique(hurt[season == s & week >= t & week <= t + 4, .(gsis_id, own_hurt = TRUE)])
   rb <- merge(rb, own_h, by = "gsis_id", all.x = TRUE)[is.na(own_hurt), own_hurt := FALSE]
-  rb <- rb[g_tr >= 3 & carries >= 20]
+  rb <- rb[g_tr >= K - 1 & carries >= 20]
   fu <- p[season == s & week > t & week <= t + 4 & position == "RB",
           .(g_fu = .N, carry_share_fu = sum(carries) / pmax(sum(team_carries), 1)), by = gsis_id]
   x <- merge(rb, fu[g_fu >= 3], by = "gsis_id")
@@ -96,4 +97,4 @@ dd <- d[!own_hurt & !mate_out]
 dd[, q := cut(frank(ryoe_att, ties.method = "random") / .N, c(0, .2, .4, .6, .8, 1), labels = c("Q1 worst", "Q2", "Q3", "Q4", "Q5 best"))]
 print(dd[, .(n = .N, ryoe_att = round(mean(ryoe_att), 2), benched = round(mean(benched), 3),
              lead_benched = round(mean(benched[carry_share_tr >= .45]), 3), cmte_benched = round(mean(benched[carry_share_tr < .45]), 3)), by = q][order(q)])
-saveRDS(list(d = d, res = res), file.path(S, "ep_rb_bench3.rds"))
+saveRDS(list(d = d, res = res, K = K), file.path(S, if (K == 4) "ep_rb_bench3.rds" else sprintf("ep_rb_bench3_k%d.rds", K)))
