@@ -1,0 +1,30 @@
+/*-- scss:defaults --*/
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:wght@500;600&display=swap');
+$body-bg: #fbfaf7;
+$body-color: #1f2933;
+$link-color: #2f6fb0;
+$font-family-sans-serif: "Source Sans 3", "Segoe UI", Helvetica, Arial, sans-serif;
+$presentation-heading-font: "Source Serif 4", Georgia, serif;
+$presentation-heading-color: #1f2933;
+$presentation-heading-font-weight: 600;
+$presentation-font-size-root: 34px;
+$presentation-h2-font-size: 1.45em;
+
+/*-- scss:rules --*/
+.reveal, .reveal p, .reveal li, .reveal td, .reveal th { font-family: $font-family-sans-serif; }
+.reveal h1, .reveal h2, .reveal h3 { font-family: $presentation-heading-font; }
+
+.reveal .slides section h2 { margin-bottom: 0.35em; letter-spacing: -0.01em; }
+.reveal .lede { font-size: 0.9em; color: #52606d; margin-top: -0.2em; }
+.reveal .big { font-size: 1.6em; line-height: 1.2; font-family: $presentation-heading-font; }
+.reveal .muted { color: #7b8794; }
+.reveal .now { color: #d9822b; font-weight: 600; }
+.reveal .later { color: #2f6fb0; font-weight: 600; }
+.reveal .small { font-size: 0.7em; }
+.reveal .slide-number { color: #9aa5b1; }
+.reveal table { font-size: 0.75em; }
+.reveal table th { border-bottom: 2px solid #1f2933; }
+.reveal .title-slide h1.title { font-size: 1.9em; line-height: 1.15; }
+.reveal section.title-slide .subtitle { color: #52606d; }
+.reveal .callout-box { border-left: 6px solid #d9822b; padding: 0.3em 0.8em; background: #fff; }
+.reveal svg text { font-family: $font-family-sans-serif; }

@@ -1,0 +1,621 @@
+---
+title: "If he has the season we expect,<br>what's he worth next year?"
+subtitle: "A simulation model of dynasty value"
+author: "Joe Sydlowski"
+format:
+  revealjs:
+    theme: [default, talk.scss]
+    embed-resources: true
+    slide-number: true
+    width: 1280
+    height: 720
+    margin: 0.06
+    transition: none
+    center: false
+    hash-type: number
+execute:
+  echo: false
+  warning: false
+  message: false
+knitr:
+  opts_chunk:
+    dev: "png"
+    dpi: 160
+    fig.width: 11
+    fig.height: 5.3
+    fig.align: "center"
+    out.width: "100%"
+---
+
+```{r setup}
+suppressPackageStartupMessages({
+  library(data.table); library(ggplot2); library(scales)
+})
+# side-by-side / stacked panels (gridExtra: the installed patchwork predates ggplot2 4)
+panels <- function(..., widths = NULL, ncol = NULL, title = NULL) {
+  ps <- list(...)
+  if (is.null(ncol)) ncol <- length(ps)
+  top <- if (!is.null(title)) grid::textGrob(title, x = 0.01, hjust = 0,
+                                             gp = grid::gpar(fontsize = 22, fontface = "bold", col = "#1f2933"))
+  g <- gridExtra::arrangeGrob(grobs = lapply(ps, ggplotGrob), ncol = ncol, widths = widths, top = top)
+  grid::grid.newpage()
+  grid::grid.draw(grid::grobTree(grid::rectGrob(gp = grid::gpar(fill = "#fbfaf7", col = NA)), g))
+}
+a <- readRDS("talk_data_a.rds")
+b <- readRDS("talk_data_b.rds")
+
+NOW <- "#d9822b"; LATER <- "#2f6fb0"; INK <- "#1f2933"; GREY <- "#9aa5b1"; ACT <- "#1f2933"
+MODEL <- "#2f6fb0"; OLD <- "#c2410c"; BG <- "#fbfaf7"
+theme_talk <- function(base = 17) {
+  theme_minimal(base_size = base, base_family = "sans") +
+    theme(plot.background = element_rect(fill = BG, colour = NA),
+          panel.background = element_rect(fill = BG, colour = NA),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(colour = "#e4e7eb", linewidth = 0.4),
+          axis.title = element_text(colour = "#52606d", size = rel(0.85)),
+          axis.text = element_text(colour = "#52606d"),
+          plot.title = element_text(face = "bold", colour = INK, size = rel(1.05)),
+          plot.subtitle = element_text(colour = "#52606d"),
+          legend.position = "top", legend.title = element_blank(),
+          strip.text = element_text(face = "bold", colour = INK, hjust = 0))
+}
+theme_set(theme_talk())
+k <- function(x) ifelse(abs(x) >= 1000, paste0(round(x / 1000, 1), "k"), round(x))
+curve_v <- function(rank) 10000 * exp(-0.023 * rank)
+
+o <- b$outlook
+pick <- function(pattern) o[grepl(pattern, player_name)][order(dyn_rank)][1]
+EX  <- pick("Saquon Barkley")    # main walk-through player
+P1  <- pick("James Cook")        # two-component pair: nearly the same price
+P2  <- pick("George Pickens")
+```
+
+## {.center}
+
+```{r ex-fan, fig.height=5.6}
+pts <- b$sim_points[fantasypros_id == EX$fantasypros_id]
+dr  <- b$draws[fantasypros_id == EX$fantasypros_id]
+p1 <- ggplot(pts, aes(total)) +
+  geom_histogram(bins = 45, fill = GREY, colour = BG) +
+  geom_vline(xintercept = median(pts$total), colour = INK, linewidth = 0.8) +
+  labs(title = "2,000 simulated 2026 seasons", subtitle = paste0("from his redraft rank (", EX$pos, EX$redraft_rank, ")"),
+       x = "Season fantasy points", y = NULL) +
+  theme(axis.text.y = element_blank(), panel.grid.major.y = element_blank())
+p2 <- ggplot(dr, aes(next_value)) +
+  geom_histogram(bins = 45, fill = LATER, colour = BG, alpha = 0.85) +
+  geom_vline(xintercept = EX$cur_value, colour = NOW, linewidth = 1.1) +
+  annotate("label", x = EX$cur_value, y = Inf, vjust = 1.3, label = paste0("today ", k(EX$cur_value)),
+           colour = NOW, fill = BG, label.size = 0, size = 5.5) +
+  labs(title = "...and what he's worth after each one",
+       subtitle = sprintf("rises in %d%%  ·  off the board in %d%%",
+                          round(100 * EX$p_rise), round(100 * EX$p_exit)),
+       x = "Dynasty value next preseason", y = NULL) +
+  scale_x_continuous(labels = k) +
+  theme(axis.text.y = element_blank(), panel.grid.major.y = element_blank())
+panels(p1, p2, title = EX$player_name)
+```
+
+::: notes
+Start with the picture. This is one player, `r EX$player_name`. On the left: 2,000 seasons simulated from where the redraft market ranks him. On the right: what his dynasty value looks like next preseason after each of those seasons. The orange line is what he costs today.
+
+The spike at zero on the left is seasons lost to injury. The lumps on the right are rank tiers; value climbs fast near the top.
+
+That right-hand picture is the whole project. Everything else is how I got it and how I know it's not lying.
+:::
+
+## Two markets, one of them sharp
+
+```{r markets, fig.height=5.2}
+ex_id <- "23000"   # Brian Thomas Jr.
+red <- a$panel_red[fp_page == "/nfl/rankings/ros-ppr-overall.php" &
+                   scrape_date >= as.Date("2025-09-12") & scrape_date <= as.Date("2026-01-10")]
+dyn <- a$panel_dyn[scrape_date >= as.Date("2025-09-12") & scrape_date <= as.Date("2026-07-31")]
+# rank among a fixed set of players present on every snapshot (board size can't move anyone)
+keep_r <- red[, .N, by = fantasypros_id][N == uniqueN(red$scrape_date)]$fantasypros_id
+keep_d <- dyn[, .N, by = fantasypros_id][N == uniqueN(dyn$scrape_date)]$fantasypros_id
+top <- red[scrape_date == min(scrape_date)][order(ecr)][1:150]$fantasypros_id
+common <- Reduce(intersect, list(keep_r, keep_d, top))
+red <- red[fantasypros_id %in% common][, rk := frank(ecr, ties.method = "first"), by = scrape_date]
+dyn <- dyn[fantasypros_id %in% common][, rk := frank(ecr, ties.method = "first"), by = scrape_date]
+l <- rbind(red[fantasypros_id == ex_id, .(scrape_date, rk, board = "Redraft (this season)")],
+           dyn[fantasypros_id == ex_id, .(scrape_date, rk, board = "Dynasty (all future seasons)")])
+lab <- l[, .SD[which.max(scrape_date)], by = board]
+p_line <- ggplot(l, aes(scrape_date, rk, colour = board)) +
+  geom_line(linewidth = 1.4) + geom_point(size = 1.6) +
+  geom_text(data = lab, aes(label = sub(" \\(.*", "", board)), hjust = -0.15, size = 5.5, fontface = "bold", show.legend = FALSE) +
+  scale_y_reverse(breaks = c(1, 10, 20, 30, 40, 50, 60)) +
+  scale_x_date(date_labels = "%b %Y", expand = expansion(mult = c(0.02, 0.32))) +
+  scale_colour_manual(values = c("Redraft (this season)" = NOW, "Dynasty (all future seasons)" = LATER)) +
+  labs(title = "Brian Thomas Jr., 2025", x = NULL, y = "Rank among the same 127 players") +
+  theme(legend.position = "none")
+ll <- copy(a$leadlag)[, Q := factor(Q, c("fallers", "mid", "risers"),
+                                    c("Redraft\nfell", "Flat", "Redraft\nrose"))]
+p_bar <- ggplot(ll, aes(Q, -100 * fwd, fill = Q)) +
+  geom_col(width = 0.6) + geom_hline(yintercept = 0, colour = INK) +
+  geom_text(aes(label = sprintf("%+.1f", -100 * fwd), vjust = ifelse(fwd > 0, 1.3, -0.4)), size = 5.5) +
+  scale_fill_manual(values = c(NOW, GREY, LATER), guide = "none") +
+  labs(title = "Every week, 2020-25", subtitle = "dynasty, next 4 weeks",
+       x = NULL, y = "Dynasty percentile points") +
+  scale_y_continuous(expand = expansion(mult = 0.2))
+panels(p_line, p_bar, widths = c(1.9, 1))
+```
+
+::: notes
+I spend a lot of time around Pinnacle, and the lesson there is you don't try to beat a sharp line. You take it as right and work out what follows from it.
+
+In fantasy the sharp line is redraft. Millions of people draft every year, rankings get re-priced every week, and what it's predicting settles every Sunday. Dynasty is a much thinner, slower market.
+
+Brian Thomas Jr. in 2025: redraft had him falling off a cliff by November, from 11th to around 60th among these players. Dynasty drifted down slowly and kept drifting all offseason, ending up mid-40s by spring. Same information, very different speeds.
+
+On the right is every in-season week since 2020. When redraft drops a player, dynasty marks him down over the next month. When redraft bumps a player, dynasty doesn't follow. That's the gap I want to work in.
+:::
+
+## The question
+
+::: {.big}
+Take the redraft market as right.
+
+If a player has **the season it expects**, what happens to his **dynasty value**?
+:::
+
+<br>
+
+::: {.small .muted}
+ffsimulator (Tan Ho, ffverse) came out of conversations Tan and I had: redraft rankings in, simulated seasons out.<br>
+This project is the next step: from those seasons to next year's dynasty value.
+:::
+
+::: notes
+The base package is ffsimulator. Tan Ho wrote it, and a lot of its design came out of conversations he and I had about how to turn rankings into seasons. It takes redraft rankings and simulates thousands of seasons.
+
+I wanted the next link in the chain. If I trust that simulated season, what does it do to the player's long-term price?
+
+On my role: I picked the question, decided what counts as working, and made every call on what shipped. I used an AI coding agent a lot to write code and run experiments. The judgment calls, and the "that number can't be right" moments, were mine.
+:::
+
+## How it works
+
+```{=html}
+<svg viewBox="0 0 1180 300" width="100%" role="img" aria-label="Pipeline from redraft rank to next-year value">
+  <defs><marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/></marker></defs>
+  <g font-size="21" fill="#1f2933" text-anchor="middle">
+    <rect x="5"   y="70" width="165" height="120" rx="12" fill="#fff" stroke="#d9822b" stroke-width="2.5"/>
+    <text x="87"  y="122" font-weight="600">Redraft rank</text><text x="87" y="150" fill="#52606d" font-size="17">the sharp line</text>
+    <rect x="205" y="70" width="165" height="120" rx="12" fill="#fff" stroke="#9aa5b1" stroke-width="2"/>
+    <text x="287" y="122" font-weight="600">2,000 seasons</text><text x="287" y="150" fill="#52606d" font-size="17">ffsimulator</text>
+    <rect x="405" y="70" width="165" height="120" rx="12" fill="#fff" stroke="#9aa5b1" stroke-width="2"/>
+    <text x="487" y="112" font-weight="600">How good</text><text x="487" y="138" font-weight="600">for him?</text><text x="487" y="164" fill="#52606d" font-size="17">season quality Q</text>
+    <rect x="605" y="70" width="165" height="120" rx="12" fill="#fff" stroke="#9aa5b1" stroke-width="2"/>
+    <text x="687" y="112" font-weight="600">Players like</text><text x="687" y="138" font-weight="600">him, before</text><text x="687" y="164" fill="#52606d" font-size="17">2015-2025</text>
+    <rect x="805" y="70" width="165" height="120" rx="12" fill="#fff" stroke="#9aa5b1" stroke-width="2"/>
+    <text x="887" y="112" font-weight="600">Borrow their</text><text x="887" y="138" font-weight="600">next-year move</text><text x="887" y="164" fill="#52606d" font-size="17">or exit</text>
+    <rect x="1005" y="70" width="170" height="120" rx="12" fill="#fff" stroke="#2f6fb0" stroke-width="2.5"/>
+    <text x="1090" y="122" font-weight="600">Next-year</text><text x="1090" y="150" font-weight="600">value</text>
+  </g>
+  <g stroke="#7b8794" stroke-width="2.5" marker-end="url(#ar)">
+    <line x1="172" y1="130" x2="200" y2="130"/><line x1="372" y1="130" x2="400" y2="130"/>
+    <line x1="572" y1="130" x2="600" y2="130"/><line x1="772" y1="130" x2="800" y2="130"/>
+    <line x1="972" y1="130" x2="1000" y2="130"/>
+  </g>
+  <g font-size="17" fill="#52606d" text-anchor="middle">
+    <text x="687" y="230">matched on position, age,</text><text x="687" y="252">dynasty rank and Q</text>
+    <text x="287" y="230">once per simulated season</text>
+  </g>
+</svg>
+```
+
+::: notes
+Here's the chain, once per simulated season. Start from his redraft rank. Simulate a season. Ask how good that season was for him specifically. Find players in history who looked like him: same position, similar age, similar dynasty rank, similar kind of season. Take one of their next-year moves, which might be falling off the board entirely, and apply it to him. Turn the resulting rank into value.
+
+Do that 2,000 times and you get the histogram from the first slide. No fitted curve anywhere in the middle. It's all resampled from what actually happened to real players.
+:::
+
+## 1. A season is only good relative to what was expected
+
+```{r q-pools, fig.height=5}
+qp <- a$quality_pools[pos == "WR"]
+pool <- function(r) qp[abs(redraft_rank - r) <= 3, .(total, who = paste0("Drafted around WR", r))]
+pp <- rbind(pool(3), pool(40))
+pts_mark <- round(quantile(pool(3)$total, 0.2) / 10) * 10
+pct <- pp[, .(q = mean(total < pts_mark)), by = who]
+ymax <- max(pp[, .(d = max(density(total)$y)), by = who]$d)
+ggplot(pp, aes(total, fill = who)) +
+  geom_density(alpha = 0.55, colour = NA, adjust = 1.1) +
+  geom_vline(xintercept = pts_mark, linewidth = 1, colour = INK) +
+  annotate("text", x = pts_mark, y = Inf, vjust = 1.5, hjust = -0.05, size = 5.5,
+           label = sprintf("%d points", pts_mark)) +
+  geom_label(data = pct, aes(x = ifelse(grepl("WR3$", who), pts_mark + 70, pts_mark - 70), y = ymax * 0.75,
+                             label = sprintf("%s:\nbetter than %d%%", who, round(100 * q))),
+             fill = BG, label.size = 0, size = 5, colour = c(LATER, NOW)[match(pct$who, sort(unique(pp$who)))]) +
+  scale_fill_manual(values = c(LATER, NOW), guide = "none") +
+  labs(x = "Season fantasy points (weeks 1-14)", y = NULL,
+       subtitle = "Every WR season since 2015, grouped by where he was drafted") +
+  theme(axis.text.y = element_blank(), panel.grid.major.y = element_blank())
+```
+
+::: notes
+First technique. Raw points don't mean much on their own. The same season is a smash for a guy drafted as WR40 and a disappointment for a WR3.
+
+So every season gets scored as a percentile against what history says players drafted in that spot actually did. I call it Q. Zero is the worst outcome for your draft slot, one is the best.
+
+This is also where the redraft market enters. Q is "how did he do against the efficient price."
+:::
+
+## 2. Borrow from players who looked like him
+
+```{r comps, fig.height=5.2}
+tr <- a$transitions[pos == EX$pos & !is.na(age)]
+tgt <- list(pos_rank = EX$dyn_pos_rank, age = EX$age, q = 0.5)
+tr[, w := pmax(0, 1 - abs(pos_rank - tgt$pos_rank) / 8) * pmax(0, 1 - abs(age - tgt$age) / 3) *
+          fifelse(is.na(q), 0.3, pmax(0, 1 - abs(q - tgt$q) / 0.25))]
+tr[, outcome := fifelse(exited, "Fell off the board", fifelse(next_pos_rank < pos_rank, "Moved up", "Moved down"))]
+n_eff <- round(sum(tr$w)^2 / sum(tr$w^2))
+view <- tr[pos_rank <= tgt$pos_rank + 20 & abs(age - tgt$age) <= 6]
+ggplot(view, aes(pos_rank, age)) +
+  geom_point(data = view[w == 0], colour = "#d5dae0", size = 2) +
+  geom_point(data = view[w > 0], aes(size = w, colour = outcome), alpha = 0.8) +
+  annotate("point", x = tgt$pos_rank, y = tgt$age, shape = 21, size = 9, stroke = 2, colour = INK) +
+  annotate("text", x = tgt$pos_rank, y = tgt$age + 0.9, label = EX$player_name, size = 5.5, fontface = "bold") +
+  scale_size_area(max_size = 9, guide = "none") +
+  scale_colour_manual(values = c("Moved up" = LATER, "Moved down" = NOW, "Fell off the board" = INK)) +
+  labs(x = paste0("Dynasty ", EX$pos, " rank going in"), y = "Age",
+       subtitle = sprintf("Past %ss, sized by weight for an as-expected season (~%d effective comps)", EX$pos, n_eff))
+```
+
+::: notes
+Second technique: no regression in the middle. For each simulated season I look for historical players with the same position, close in age, close in dynasty rank and close in Q. Closer counts more; the dots here are sized by weight. Then I pick one at random by weight and borrow what happened to him next year.
+
+Why not just fit a model? Because the outcomes are ugly. Ranks can't go above 1, a real share of players fall off the board entirely, and the distribution is skewed. Resampling gets all of that for free.
+
+The cost: every extra thing you match on shrinks the pool. That comes back later.
+:::
+
+## 3. Falling off the board is an outcome, not missing data
+
+```{r exits, fig.height=5}
+ec <- melt(a$exit_cal, id.vars = c("exit_bin", "n"), variable.name = "what")
+ec[, what := factor(what, c("pred", "actual"), c("We said", "Happened"))]
+ggplot(ec, aes(exit_bin, value, fill = what)) +
+  geom_col(position = position_dodge(0.7), width = 0.65) +
+  geom_text(aes(label = percent(value, 1)), position = position_dodge(0.7), vjust = -0.4, size = 5) +
+  scale_fill_manual(values = c(GREY, INK)) +
+  scale_y_continuous(labels = percent, expand = expansion(mult = c(0, 0.12))) +
+  labs(x = "Players grouped by our predicted chance of falling out of the rankings", y = NULL,
+       subtitle = "Out-of-sample, about 5,600 player-seasons")
+```
+
+::: notes
+A lot of value analysis quietly drops players who disappear. That throws away exactly the busts you most need to price.
+
+Here, falling out of the dynasty rankings is just one of the outcomes you can draw. And the probabilities hold up: when we say 1 in 3, about 1 in 3 fall off. This is out of sample, the same backtest I'll walk through in a minute.
+:::
+
+## One price, two assets
+
+```{r two-parts, fig.height=4.6}
+pair <- rbind(P1, P2)[, .(player_name, age, cur_value, win_now, win_later)]
+long <- melt(pair, id.vars = c("player_name", "age", "cur_value"), measure.vars = c("win_now", "win_later"))
+long[, variable := factor(variable, c("win_now", "win_later"), c("Win now (used up this season)", "Win later (still there next year)"))]
+long[, lbl := sprintf("%s\nage %.0f", player_name, age)]
+ggplot(long, aes(value, lbl, fill = variable)) +
+  geom_col(width = 0.6, position = position_stack(reverse = TRUE)) +
+  geom_text(aes(label = k(value)), position = position_stack(vjust = 0.5, reverse = TRUE), colour = "white", size = 6, fontface = "bold") +
+  scale_fill_manual(values = c(NOW, LATER)) +
+  scale_x_continuous(labels = k) +
+  labs(x = "Dynasty value today", y = NULL) +
+  theme(axis.text.y = element_text(size = 19, colour = INK, face = "bold"), panel.grid.major.y = element_blank())
+```
+
+::: {.small .muted}
+Win later = median value next preseason. Win now = today's price minus that.
+:::
+
+::: notes
+Here's why the first slide matters. A dynasty price is one number, but it's really two things stuck together: what the player helps you win this year, and what's left on the books next year.
+
+`r P1$player_name` and `r P2$player_name` cost about the same. But most of `r P1$player_name`'s price gets used up this season, and most of `r P2$player_name`'s survives it.
+
+If you're contending, the first one's fine. If you're rebuilding, you're paying for points you don't need. The market price can't tell you that. The split can.
+:::
+
+## How I know it works: the 11-holdout backtest
+
+```{r bt-design, fig.height=4.9}
+ho <- 2019:2025
+grid <- CJ(holdout = ho, season = 2015:2026)
+grid[, role := fifelse(season <= holdout, "Model can learn from", fifelse(season == holdout + 1, "Graded on", ""))]
+grid[season == holdout, role := "His actual season goes in"]
+grid[, role := factor(role, c("Model can learn from", "His actual season goes in", "Graded on", ""))]
+ggplot(grid[role != ""], aes(season, factor(holdout), fill = role)) +
+  geom_tile(colour = BG, linewidth = 1.5, height = 0.8) +
+  scale_fill_manual(values = c("#cbd2d9", "#9aa5b1", MODEL)) +
+  scale_x_continuous(breaks = 2015:2026) +
+  scale_y_discrete(labels = function(x) paste0("Test ", x, " → ", as.integer(x) + 1)) +
+  labs(x = NULL, y = NULL, subtitle = "Rolling forward one year at a time, never letting the model see the year it's graded on") +
+  theme(panel.grid = element_blank(), legend.position = "top")
+```
+
+::: {.small .muted}
+7 test years like this, plus 4 more (2022-25) in a second league format = 11 holdouts, about 5,300 player forecasts.
+:::
+
+::: notes
+This is the slide I want to slow down on, because it's the reason I trust anything else.
+
+Pick a year, say 2022. The model can only learn from player moves that finished by 2022. Then I take every ranked player that year and feed in the season he actually had. Not a simulated one, his real one. That isolates the part I built: given the season, does it get next year right? Then I draw 300 outcomes per player and grade them against the real 2023 dynasty rankings.
+
+Then slide forward a year and do it again. Seven years in the standard format, four more in a second format where you can start two QBs. Eleven separate tests, about 5,300 player forecasts, none of which the model saw.
+
+Rule I set at the start: a change only ships if it wins across these tests.
+:::
+
+## What "working" means
+
+```{r bt-results, fig.height=5}
+hc <- copy(a$holdout_cover)[, lab := paste(holdout, ifelse(format == "1qb", "", "(2nd format)"))]
+p_cov <- ggplot(hc, aes(cover80, reorder(lab, -as.integer(factor(format)) * 10000 - holdout))) +
+  annotate("rect", xmin = 0.75, xmax = 0.85, ymin = -Inf, ymax = Inf, fill = "#e4e7eb") +
+  geom_vline(xintercept = 0.8, colour = INK, linetype = 2) +
+  geom_point(size = 4.5, colour = MODEL) +
+  scale_x_continuous(labels = percent, limits = c(0.6, 0.95)) +
+  labs(title = "80% range: hit rate", x = "share of players inside it", y = NULL)
+ds <- melt(a$dose, id.vars = c("q_quart", "n"), variable.name = "what")
+ds[, what := factor(what, c("pred", "actual"), c("We said", "Happened"))]
+p_dose <- ggplot(ds, aes(q_quart, value, fill = what)) +
+  geom_col(position = position_dodge(0.7), width = 0.65) +
+  geom_hline(yintercept = 0, colour = INK) +
+  scale_fill_manual(values = c(GREY, INK)) +
+  labs(title = "Bad seasons cost more", x = NULL, y = "Positional ranks lost next year")
+panels(p_cov, p_dose, widths = c(1, 1.3))
+```
+
+::: notes
+Three things I check, all in plain terms.
+
+Left: when the model says there's an 80% chance he lands in this range, does he land in it about 80% of the time? Across the tests, mostly yes. The early years are low because there was less history to learn from back then.
+
+Right: does the season actually matter? Players who bust lose a lot more rank than players who smash, and the model gets the shape right. It's a bit light on how hard busts fall, which I'll come back to.
+
+And the exits from a couple of slides ago.
+:::
+
+## Why 11 tests and not 1
+
+```{r why11, fig.height=4.8}
+rb <- copy(a$rb_bias)[, lab := paste(holdout, ifelse(format == "1qb", "", "(2nd)"))]
+first <- rb[format == "1qb" & holdout == 2019]
+ggplot(rb, aes(bias, reorder(lab, -as.integer(factor(format)) * 10000 - holdout))) +
+  geom_vline(xintercept = 0, colour = INK) +
+  geom_segment(aes(x = 0, xend = bias, yend = lab), colour = GREY, linewidth = 1) +
+  geom_point(size = 4.5, colour = ifelse(rb$bias == max(rb$bias), NOW, MODEL)) +
+  annotate("text", x = max(rb$bias), y = rb[which.max(bias)]$lab, label = "  look at only this year\n  and you'd \"fix\" RBs", hjust = 0, size = 5, colour = NOW) +
+  scale_x_continuous(limits = c(-7, 12)) +
+  labs(x = "RB bias: actual minus predicted rank move", y = NULL,
+       subtitle = "Same model, same position, different year")
+```
+
+::: notes
+Early on I graded on a single year and saw what looked like a big running back bias. Easy fix, right?
+
+Here's that same number across all eleven tests. It swings from about minus 5 to plus 7 depending on the year. It's noise. If I'd tuned to the one year I happened to look at, I'd have made the model worse.
+
+That's the reason for eleven.
+:::
+
+## What didn't make it
+
+```{r features, fig.height=4.8}
+f <- copy(a$features)
+fw <- f[, .(wins = sum(diff > 0)), by = label]
+f <- merge(f, fw, by = "label")
+f[, lab := sprintf("%s  (%d of 11 better)", label, wins)]
+ggplot(f, aes(diff, reorder(lab, wins))) +
+  geom_vline(xintercept = 0, colour = INK) +
+  geom_jitter(height = 0.12, width = 0, size = 3.5, alpha = 0.75, colour = OLD) +
+  scale_x_continuous(labels = function(x) sprintf("%+.0f pts", 100 * x)) +
+  labs(x = "Change in 80%-range accuracy vs. the base model, each dot one test", y = NULL,
+       subtitle = "Each idea added one more thing to match players on")
+```
+
+::: notes
+I tried a lot of features that sound obviously useful: years in the league, draft round, last year's move, how much the experts disagree. Each one adds another thing to match comps on.
+
+None of them won. Not once in eleven tries for most of them.
+
+They're not useless. Rookies really do behave differently from vets at the same rank. But every extra thing you match on thins out the pool of comps, and with a few hundred moves per position the thinner pool costs more than the feature gives back. Knowing when to stop adding things was a big part of this.
+:::
+
+## The hard part: the model was too sure about stars
+
+```{r apex, fig.height=5}
+ap <- copy(a$apex)[, tag := factor(tag, c("shipped", "log_corr"), c("Before (rank fix)", "After (log fix)"))]
+p_c <- ggplot(ap, aes(tag, cover80, fill = tag)) +
+  geom_col(width = 0.55) + geom_hline(yintercept = 0.8, linetype = 2, colour = INK) +
+  geom_text(aes(label = percent(cover80, 1)), vjust = 1.6, size = 6, colour = "white", fontface = "bold") +
+  annotate("text", x = 0.42, y = 0.82, label = "target 80%", hjust = 0, vjust = 0, size = 4.5) +
+  scale_fill_manual(values = c(OLD, MODEL), guide = "none") +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  labs(title = "80% range caught the truth", x = NULL, y = NULL)
+dd <- rbind(ap[, .(tag = as.character(tag), drop = pred_drop)],
+            data.table(tag = "What happened", drop = ap$act_drop[1]))
+dd[, tag := factor(tag, c("Before (rank fix)", "After (log fix)", "What happened"))]
+p_d <- ggplot(dd, aes(tag, drop, fill = tag)) +
+  geom_col(width = 0.55) + geom_text(aes(label = sprintf("%.1f", drop)), vjust = -0.4, size = 6) +
+  scale_fill_manual(values = c(OLD, MODEL, INK), guide = "none") +
+  scale_y_continuous(limits = c(0, 5.5)) +
+  labs(title = "Ranks lost next year", x = NULL, y = NULL)
+panels(p_c, p_d, title = "Top-6 WRs, every test year")
+```
+
+::: notes
+Here's the problem that took the longest.
+
+Across the board, the model's predicted moves were too big: it said players would move more than they did. My first fix was to shrink every predicted move and nudge it, in units of rank. Overall that looked great.
+
+But at the very top it broke. For the top six receivers, the 80% range caught the real outcome only 41% of the time. It thought stars would lose almost five spots; they lost about two and a half. So it was overcharging elite players for this season and making their win-later look too small.
+
+The fix on the next slide gets the range right far more often. To be fair, it now leans a little optimistic on stars: about one rank of drop predicted against two and a half real. I'll take that trade, but it's on the list.
+:::
+
+## The fix: think in ratios, not ranks
+
+```{r logfix, fig.height=4.6}
+arrows <- data.table(from = c(3, 30), to = c(6, 60), lab = c("WR3 to WR6", "WR30 to WR60"), y = c(2, 1))
+mk <- function(trans, title) ggplot(arrows) +
+  geom_segment(aes(x = from, xend = to, y = y, yend = y, colour = lab), linewidth = 3,
+               arrow = arrow(length = unit(0.35, "cm"), type = "closed")) +
+  geom_text(aes(x = from, y = y + 0.38, label = lab, colour = lab), hjust = 0, size = 5.5) +
+  scale_x_continuous(trans = trans, breaks = c(1, 3, 6, 10, 30, 60, 100), limits = c(1, 110)) +
+  scale_colour_manual(values = c(NOW, LATER), guide = "none") +
+  scale_y_continuous(limits = c(0.5, 2.7)) +
+  labs(title = title, x = "Positional rank", y = NULL) +
+  theme(axis.text.y = element_blank(), panel.grid.major.y = element_blank())
+panels(mk("identity", "In ranks: tiny vs. huge"), mk("log10", "In ratios: the same move"), ncol = 1)
+```
+
+::: notes
+The issue was the units. In plain ranks, WR3 falling to WR6 is three spots and WR30 falling to WR60 is thirty. So any one correction in rank units is way too strong at the top and too weak at the bottom. And at the top you hit the wall: nobody can be better than 1.
+
+If you think in ratios, those two moves are the same size, both "you got twice as far from the top." So I moved the whole resampling step into log rank. Once I did, the systematic tilt mostly disappeared on its own, with no special nudge needed, and the top-WR range went from 41% to 74%.
+
+The lesson I took: when a correction keeps needing to be bigger in one corner, check whether you're measuring in the wrong units.
+:::
+
+## What that did to the split
+
+```{r beforeafter, fig.height=4.8}
+ba <- o[order(dyn_rank)][pos == "WR" & dyn_rank <= 40][1:6]
+ba <- melt(ba[, .(player_name, Before = win_later_old / cur_value, After = win_later / cur_value)],
+           id.vars = "player_name")
+ggplot(ba, aes(value, reorder(player_name, value), colour = variable)) +
+  geom_line(aes(group = player_name), colour = GREY, linewidth = 1.2) +
+  geom_point(size = 5) +
+  scale_colour_manual(values = c(Before = OLD, After = MODEL)) +
+  scale_x_continuous(labels = percent, limits = c(0.7, 1.02), breaks = c(.7, .8, .9, 1)) +
+  labs(x = "Share of today's price still there next year (win later)", y = NULL,
+       subtitle = "Top dynasty WRs, preseason 2026")
+```
+
+::: notes
+And here's what that meant for the actual decision. These are the top dynasty receivers going into this season. Before the fix, the model said a big chunk of each of their prices would be gone after one year. After it, much more of the price survives. That's closer to what history shows for elite receivers, maybe a touch too generous.
+:::
+
+## Small thing, big effect: median, not mean
+
+```{r median, fig.height=4.6}
+dr <- b$draws[fantasypros_id == EX$fantasypros_id]
+mm <- data.table(stat = c("Mean", "Median"), v = c(mean(dr$next_value), median(dr$next_value)))
+ggplot(dr, aes(next_value)) +
+  geom_histogram(bins = 50, fill = "#cbd2d9", colour = BG) +
+  geom_vline(data = mm, aes(xintercept = v, colour = stat), linewidth = 1.3) +
+  geom_label(data = mm, aes(x = v, y = Inf, label = paste(stat, k(v)), colour = stat),
+             vjust = c(1.4, 2.8), hjust = c(-0.05, 1.05), fill = BG, label.size = 0, size = 5.5) +
+  scale_colour_manual(values = c(Mean = OLD, Median = MODEL), guide = "none") +
+  scale_x_continuous(labels = k) +
+  labs(x = paste(EX$player_name, "- dynasty value next preseason"), y = NULL) +
+  theme(axis.text.y = element_blank(), panel.grid.major.y = element_blank())
+```
+
+::: notes
+Quick one. Value climbs steeply toward the top of the rankings, so a few great outcomes drag the average up. In the backtest the average overstated next-year value, while the median was close to unbiased.
+
+So for one player's outlook I use the median. When I'm adding up a whole roster or comparing trade packages, the average is the right thing to add, and the inflation mostly cancels between sides.
+:::
+
+## Live check: this season so far
+
+```{r live, fig.height=4.6}
+ic <- copy(b$live_ic)[, tier := factor(tier, c("All", "Top 120", "1-24", "25-60", "61-120", "121+"))]
+ggplot(ic, aes(tier, ic, fill = tier %in% c("All", "Top 120"))) +
+  geom_col(width = 0.6) + geom_hline(yintercept = 0, colour = INK) +
+  geom_errorbar(aes(ymin = lo, ymax = hi), width = 0.15, colour = INK, na.rm = TRUE) +
+  geom_text(aes(y = 0.2, label = sprintf("%+.2f", ic)), size = 6, fontface = "bold", colour = INK) +
+  scale_fill_manual(values = c(`TRUE` = MODEL, `FALSE` = GREY), guide = "none") +
+  scale_y_continuous(limits = c(-0.32, 0.24), breaks = c(-0.3, -0.2, -0.1, 0, 0.1), labels = function(x) sprintf("%+.1f", x)) +
+  labs(x = "Players grouped by July dynasty rank", y = "Rank correlation",
+       subtitle = sprintf("Preseason forecast vs. FantasyPros, %s to %s, %d rostered players",
+                          format(b$live_meta$start, "%b %d"), format(b$live_meta$now, "%b %d"), nrow(b$live)))
+```
+
+::: notes
+I want to be straight about this one. This is the actual preseason forecast for every rostered player in one of my leagues, checked against where FantasyPros has them now.
+
+So far it's not working. Overall it's negative. The deep end is the worst: a batch of young receivers it wrote off have broken out in-season. In the top 120, the players people actually trade, it's about zero.
+
+What's happening in-season is that older, productive players are gaining ground. Age alone is negative in the top 120 too. The model's main bet is that age catches up with them.
+
+Two caveats: this is three months of a twelve-month forecast, and age markdowns may land mostly in the offseason. I can test that with the weekly archive but haven't yet. So it's a check in progress, not a verdict. The eleven-year backtest is the evidence; this is the smoke test.
+:::
+
+## Same problem in soccer
+
+| Fantasy | Soccer |
+|---|---|
+| Redraft rankings: the sharp line | Match and season markets, xG-based projections |
+| Dynasty price | Transfer fee / squad valuation |
+| Win now vs. win later | This season's contribution vs. resale value |
+| Falls off the board | Released, loaned out, drops a division |
+| Thin positions (TE, QB) | Thin positions (GK) |
+| Age curves | Age curves, contract years |
+
+::: notes
+This maps pretty directly. You have a sharp short-term market, a slow long-term one, and one price that mixes current contribution and future value. Same question: if a player has the season the sharp market expects, what happens to his long-term value? And exits are real outcomes in both: released, loaned out, relegated.
+:::
+
+## What I'd do differently
+
+- **Build the 11-test harness on day one**
+- **Question the units before patching**
+- **Partial pooling instead of matching**
+- **Judge injured seasons per game**
+- **Fix mid-tier exit rates** <span class="muted">(predicted ~3x too high)</span>
+
+::: notes
+Biggest one: I'd build the eleven-year backtest first. I made early calls off one year of results and some of them turned out to be noise.
+
+Second: I spent a while making a rank-unit correction more and more elaborate before realizing the units were the problem.
+
+Third: matching on features hits a wall because the pools get thin. A hierarchical model that partially pools across groups is the natural next step.
+
+And two known gaps. Injuries: a season lost to injury currently scores as a bust, which double-counts because the market has already priced the injury. And mid-tier players fall off the board less than the model thinks.
+:::
+
+## {.center}
+
+::: {.big}
+Take the sharp price as right.<br>Spend the effort on what it doesn't tell you.
+:::
+
+<br>
+
+::: {.muted}
+Questions
+:::
+
+# Appendix {.unnumbered}
+
+## A. The matching weights
+
+| Matched on | How close counts | |
+|---|---|---|
+| Position | exact | |
+| Dynasty positional rank | within 8 spots (triangular) | |
+| Age | within 3 years (triangular) | |
+| Season quality Q | within 0.25 (triangular) | |
+
+Exit chance is shrunk toward a broader rate when the pool is thin (effective sample size, kappa = 10). Moves are drawn in log rank, then lightly shrunk and widened per position (fit across all 11 tests).
+
+## B. Overall accuracy, before vs. after the log fix
+
+```{r pooled-tbl}
+pt <- copy(a$pooled)[, tag := c(shipped = "Before (rank fix)", log_corr = "After (log fix)")[tag]]
+knitr::kable(pt[, .(Model = tag, `80% range hit rate` = percent(cover80, 1), `Avg miss (ranks)` = round(mae, 2), Players = n)])
+```
+
+Players worth at least 150 in value, survivors only, all 11 tests.
+
+## C. Exit calibration
+
+```{r exit-tbl}
+knitr::kable(a$exit_cal[, .(`Predicted bucket` = exit_bin, `We said` = percent(pred, 1), Happened = percent(actual, 1), Players = n)])
+```
