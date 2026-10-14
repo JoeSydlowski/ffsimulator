@@ -43,7 +43,7 @@ own_eff <- rb[, .(mate = name, mate_own_yoe_att = ryoe / pmax(carries, 1), team)
 rb <- merge(rb, own_eff, by = c("team", "mate"), all.x = TRUE)
 rb <- rb[g_tr >= K - 1 & carries >= 20]
 rb[, `:=`(ryoe_att = ryoe / carries, recoe_tgt = fifelse(targets >= 5, recoe / targets, NA_real_),
-          carry_share_tr = carries / pmax(team_carries, 1), tm_ryoe = fifelse(tm_car >= 10, tm_ryoe_yds / tm_car, NA_real_))]
+          carry_share_tr = carries / pmax(team_carries, 1), tm_ryoe = fifelse(tm_car >= 10, tm_ryoe_yds / (tm_car + 30), NA_real_))]  # shrunk: 30 phantom carries at 0 YOE, so one long run on 2 carries cannot make a room look efficient
 prep(rb)
 rb[, p_bench := predict(fit, rb, type = "response")]
 # latest injury report, so hurt backs are flagged rather than scored as healthy

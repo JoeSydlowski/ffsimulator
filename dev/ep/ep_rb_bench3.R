@@ -47,7 +47,7 @@ for (s in SEAS) for (t in K:14) {
 }
 d <- rbindlist(rows)
 d[, `:=`(ryoe_att = ryoe / carries, recoe_tgt = fifelse(targets >= 5, recoe / targets, NA_real_),
-         carry_share_tr = carries / pmax(team_carries, 1), tm_ryoe = fifelse(tm_car >= 10, tm_ryoe_yds / tm_car, NA_real_))]
+         carry_share_tr = carries / pmax(team_carries, 1), tm_ryoe = fifelse(tm_car >= 10, tm_ryoe_yds / (tm_car + 30), NA_real_))]  # shrunk: 30 phantom carries at 0 YOE, so one long run on 2 carries cannot make a room look efficient
 d[, `:=`(benched = carry_share_fu < 0.6 * carry_share_tr, d_carry = carry_share_fu - carry_share_tr,
          era = fifelse(season <= 2021, "2013-21 (in-sample)", "2022-25 (out of sample)"))]
 z <- function(v) (v - mean(v, na.rm = TRUE)) / sd(v, na.rm = TRUE)
