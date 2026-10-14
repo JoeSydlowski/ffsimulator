@@ -42,6 +42,13 @@ if (feat == "exp")        options(ffsimulator.dyn_h_exp = 2)
 if (feat == "exp_strict") options(ffsimulator.dyn_h_exp = 2, ffsimulator.dyn_rookie_strict = TRUE)
 if (feat == "draft")      options(ffsimulator.dyn_h_draft = 2)
 if (feat == "momentum")   options(ffsimulator.dyn_h_momentum = 8)
+if (feat == "gap")        options(ffsimulator.dyn_h_gap = as.numeric(Sys.getenv("FFS_DYN_H_GAP", "0.5")))
+# Q mode: "actual" (default) plugs in the season each player really had, which
+# isolates the transition model. "preseason" draws Q ~ U(0,1) per draw instead:
+# if the redraft board is efficient, a player's season-quality percentile is
+# uniform whatever his rank, so this is the forecast you could make in August.
+q_mode <- Sys.getenv("FFS_DYN_Q_MODE", "actual")
+cat("q mode:", q_mode, "\n")
 # exit shrinkage is ON by default in production (kappa = 10, gated in on the
 # multi-year backtest below). Set it explicitly here so every run is
 # unambiguous: sweep with FFS_EXIT_KAPPA, or FFS_EXIT_KAPPA=0 for the
@@ -94,7 +101,8 @@ if (nzchar(feat)) cat("feature variant:", feat, "\n")
 # validate the shipped defaults
 cat("move_space:", getOption("ffsimulator.dyn_move_space", "log"), "\n")
 
-scoring_history <- readRDS(file.path(out_dir, "scoring_history_2012_2025.rds"))
+scoring_history <- readRDS(Sys.getenv("FFS_DYN_SCORING",
+                                      file.path(out_dir, "scoring_history_2012_2025.rds")))
 dp_id <- as.data.table(ffscrapr::dp_playerids())[
   !is.na(gsis_id) & !is.na(fantasypros_id), c("fantasypros_id", "gsis_id")
 ]
@@ -173,16 +181,20 @@ run_holdout <- function(fmt, Y) {
   prevY <- dynasty[season == Y - 1, list(fantasypros_id, prev_pos_rank = pos_rank)]
   hold <- merge(hold, prevY, by = "fantasypros_id", all.x = TRUE)
   hold[, prev_delta := pos_rank - prev_pos_rank]
+  hold[, redraft_gap := fifelse(!is.na(redraft_rank) & redraft_rank > 0, log(pos_rank / redraft_rank), NA_real_)]
   h_sd_val <- if (feat == "sd") 2 * stats::median(hold$sd, na.rm = TRUE) else
     getOption("ffsimulator.dyn_h_sd", NA)
 
   idx <- rep(seq_len(nrow(hold)), each = K)
+  q_draw <- hold$q[idx]
+  if (q_mode == "preseason") q_draw <- ifelse(is.na(q_draw), NA_real_, stats::runif(length(idx)))
   draws <- ffsimulator:::.ffs_draw_transition(
     pos = hold$pos[idx], age = hold$age[idx],
-    dyn_pos_rank = hold$pos_rank[idx], q = hold$q[idx],
+    dyn_pos_rank = hold$pos_rank[idx], q = q_draw,
     transitions = tr,
     years_exp = hold$years_exp[idx], draft_round = hold$draft_round[idx],
     prev_delta = hold$prev_delta[idx], ecr_sd = hold$sd[idx],
+    redraft_gap = hold$redraft_gap[idx],
     h_sd = h_sd_val, exit_transitions = exit_tr
   )
   pred <- data.table(

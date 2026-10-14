@@ -366,6 +366,7 @@ ffs_dynasty_outlook <- function(base_simulation,
   season <- fantasypros_id <- pos <- rank <- age <- gsis_id <- week <- points <- NULL
   next_rank <- redraft_rank <- total <- q <- last <- NULL
   draft_year <- draft_round <- first_season <- years_exp <- prev_pos_rank <- prev_delta <- NULL
+  redraft_gap <- NULL
 
   qb_format <- format  # avoid data.table NSE collision with the format column
   dynasty <- data.table::as.data.table(fp_dynasty_history())
@@ -412,6 +413,10 @@ ffs_dynasty_outlook <- function(base_simulation,
   prev <- dynasty[, list(season = season + 1L, fantasypros_id, prev_pos_rank = pos_rank)]
   transitions <- merge(transitions, prev, by = c("season", "fantasypros_id"), all.x = TRUE)
   transitions[, prev_delta := pos_rank - prev_pos_rank]
+  # redraft vs dynasty disagreement going in: log(dynasty pos rank / redraft pos
+  # rank), + = redraft ranks him better than dynasty does (optional h_gap term)
+  transitions[, redraft_gap := data.table::fifelse(
+    !is.na(redraft_rank) & redraft_rank > 0, log(pos_rank / redraft_rank), NA_real_)]
 
   # realized season points (same weeks as the simulator). A season still in
   # progress is not a season total: mid-season its 3-week sums would sit in the
@@ -505,6 +510,9 @@ ffs_dynasty_outlook <- function(base_simulation,
 #' - `prev_delta` with `h_momentum` - last year's positional-rank move
 #' - `ecr_sd` with `h_sd` - expert disagreement (matches uncertain players to
 #'   historically uncertain candidates, whose transitions were wider)
+#' - `redraft_gap` with `h_gap` - log(dynasty pos rank / redraft pos rank) going
+#'   in, i.e. how much more (or less) the redraft board likes him than the
+#'   dynasty board does
 #' Candidates missing an enabled feature get the neutral weight 0.3, matching
 #' the age/Q convention; targets missing it skip the term.
 #'
@@ -594,8 +602,9 @@ ffs_dynasty_outlook <- function(base_simulation,
 .ffs_draw_transition <- function(pos, age, dyn_pos_rank, q, transitions,
                                  h_rank = 8, h_age = 3, h_q = 0.25,
                                  years_exp = NULL, draft_round = NULL,
-                                 prev_delta = NULL, ecr_sd = NULL,
+                                 prev_delta = NULL, ecr_sd = NULL, redraft_gap = NULL,
                                  h_exp = getOption("ffsimulator.dyn_h_exp", NA),
+                                 h_gap = getOption("ffsimulator.dyn_h_gap", NA),
                                  h_draft = getOption("ffsimulator.dyn_h_draft", NA),
                                  h_momentum = getOption("ffsimulator.dyn_h_momentum", NA),
                                  h_sd = getOption("ffsimulator.dyn_h_sd", NA),
@@ -693,6 +702,7 @@ ffs_dynasty_outlook <- function(base_simulation,
     if (!is.null(draft_round)) w <- kern(w, cand$draft_round, draft_round[i], h_draft)
     if (!is.null(prev_delta))  w <- kern(w, cand$prev_delta,  prev_delta[i],  h_momentum)
     if (!is.null(ecr_sd))      w <- kern(w, cand$sd,          ecr_sd[i],      h_sd)
+    if (!is.null(redraft_gap)) w <- kern(w, cand$redraft_gap, redraft_gap[i], h_gap)
     if (sum(w) == 0) w <- pmax(0.001, 1 - abs(cand$pos_rank - dyn_pos_rank[i]) / (h_rank * 4))
     if (move_space == "rank" && exit_shrink <= 0 && is.null(exit_transitions) &&
         is.null(move_slope) && is.null(move_bias)) {
