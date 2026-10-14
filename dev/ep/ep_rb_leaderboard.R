@@ -38,6 +38,9 @@ rb[, mate := {
   cand <- top2[team == .BY$team & gsis_id != .BY$gsis_id]
   if (nrow(cand)) cand$name[1] else NA_character_
 }, by = .(team, gsis_id)]
+# the named teammate's OWN efficiency (the model uses the whole rest of the room, room_yoe_att)
+own_eff <- rb[, .(mate = name, mate_own_yoe_att = ryoe / pmax(carries, 1), team)]
+rb <- merge(rb, own_eff, by = c("team", "mate"), all.x = TRUE)
 rb <- rb[g_tr >= K - 1 & carries >= 20]
 rb[, `:=`(ryoe_att = ryoe / carries, recoe_tgt = fifelse(targets >= 5, recoe / targets, NA_real_),
           carry_share_tr = carries / pmax(team_carries, 1), tm_ryoe = fifelse(tm_car >= 10, tm_ryoe_yds / tm_car, NA_real_))]
@@ -54,14 +57,14 @@ cat(sprintf("\n==== 2026 RB benching leaderboard (weeks %d-%d, >= 20 carries, >=
             wk - K + 1, wk, K - 1, K))
 cat("p_bench = P(carry share next 4 games < 60% of the last 4 | healthy, no teammate returning)\n")
 out <- rb[order(-p_bench), .(rank = .I, name, team, carries, carry_share = round(carry_share_tr, 2), snap = round(snap_tr, 2),
-  rush_yoe_att = round(ryoe_att, 2), rec_yoe_tgt = round(recoe_tgt, 2), mate, mate_yoe_att = round(tm_ryoe, 2),
+  rush_yoe_att = round(ryoe_att, 2), rec_yoe_tgt = round(recoe_tgt, 2), mate, mate_own_yoe_att = round(mate_own_yoe_att, 2), room_yoe_att = round(tm_ryoe, 2),
   p_bench = round(p_bench, 3), injury = flag)]
 out[, role := fifelse(carry_share >= 0.45, "lead", "committee/backup")]
 base <- h[, .(base = mean(benched)), by = .(role = fifelse(carry_share_tr >= 0.45, "lead", "committee/backup"))]
 out <- merge(out, base, by = "role")[, x_base := round(p_bench / base, 1)]
 for (rl in c("lead", "committee/backup")) {
   cat(sprintf("\n-- %s backs (historical healthy base rate %.3f); x_base = multiple of that base\n", rl, base[role == rl]$base))
-  print(out[role == rl][order(-p_bench), .(name, team, carries, carry_share, snap, rush_yoe_att, rec_yoe_tgt, mate, mate_yoe_att,
+  print(out[role == rl][order(-p_bench), .(name, team, carries, carry_share, snap, rush_yoe_att, rec_yoe_tgt, mate, mate_own_yoe_att, room_yoe_att,
                                             p_bench, x_base, injury)], nrows = 40)
 }
 fwrite(out, file.path(S, sprintf("rb_bench_leaderboard_2026_wk%d_k%d.csv", wk, K)))
