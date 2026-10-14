@@ -20,6 +20,13 @@ opp <- opp[position %in% c("QB", "RB", "WR", "TE"),
     fp = total_fantasy_points, xfp = total_fantasy_points_exp,
     targets = rec_attempt, carries = rush_attempt, pass_att = pass_attempt,
     rec_xfp = rec_fantasy_points_exp, rush_xfp = rush_fantasy_points_exp, pass_xfp = pass_fantasy_points_exp,
+    rec_fp = rec_fantasy_points, rush_fp = rush_fantasy_points, pass_fp = pass_fantasy_points,
+    receptions, rec_yards = rec_yards_gained, rec_td = rec_touchdown, rush_yards = rush_yards_gained, rush_td = rush_touchdown,
+    # over-expected components (actual - expected), natural units
+    catch_oe = receptions_diff, rec_yds_oe = rec_yards_gained_diff, rec_td_oe = rec_touchdown_diff,
+    rec_fd_oe = rec_first_down_diff, rush_yds_oe = rush_yards_gained_diff, rush_td_oe = rush_touchdown_diff,
+    rush_fd_oe = rush_first_down_diff, pass_yds_oe = pass_yards_gained_diff, pass_td_oe = pass_touchdown_diff,
+    pass_int_oe = pass_interception_diff,
     team_xfp = total_fantasy_points_exp_team)]
 opp <- unique(opp, by = c("game_id", "gsis_id"))
 
@@ -37,7 +44,10 @@ opp <- opp[game_id %chin% reg_games]
 # universe = every snap game (bridged) plus any opportunity row the bridge missed
 p <- merge(snaps[!is.na(gsis_id)], opp, by = c("game_id", "gsis_id", "season", "week"), all = TRUE)
 p[, `:=`(no_touch = is.na(fp), no_snaps = is.na(snaps))]
-for (v in c("fp", "xfp", "targets", "carries", "pass_att", "rec_xfp", "rush_xfp", "pass_xfp")) set(p, which(is.na(p[[v]])), v, 0)
+zero_cols <- c("fp", "xfp", "targets", "carries", "pass_att", "rec_xfp", "rush_xfp", "pass_xfp", "rec_fp", "rush_fp", "pass_fp",
+               "receptions", "rec_yards", "rec_td", "rush_yards", "rush_td", "catch_oe", "rec_yds_oe", "rec_td_oe", "rec_fd_oe",
+               "rush_yds_oe", "rush_td_oe", "rush_fd_oe", "pass_yds_oe", "pass_td_oe", "pass_int_oe")
+for (v in zero_cols) set(p, which(is.na(p[[v]])), v, 0)
 p[is.na(position), position := fifelse(snap_pos == "FB", "RB", snap_pos)]
 p[is.na(name), name := snap_name]; p[is.na(team), team := snap_team]
 p <- p[position %in% c("QB", "RB", "WR", "TE")]
@@ -45,6 +55,9 @@ p <- p[position %in% c("QB", "RB", "WR", "TE")]
 # player's own row is missing)
 tx <- opp[, .(team_xfp_g = max(team_xfp, na.rm = TRUE)), by = .(game_id, team)]
 p <- merge(p[, -"team_xfp"], tx, by = c("game_id", "team"), all.x = TRUE)
+# team carries + targets per game (all skill players on the panel), for touch share
+tt <- p[, .(team_carries = sum(carries), team_targets = sum(targets)), by = .(game_id, team)]
+p <- merge(p, tt, by = c("game_id", "team"), all.x = TRUE)
 
 ps <- as.data.table(nflreadr::load_player_stats(seasons = SEASONS))[season_type == "REG",
   .(gsis_id = player_id, season = as.integer(season), week = as.integer(week), target_share, air_yards_share, wopr)]
