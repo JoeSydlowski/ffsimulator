@@ -10,7 +10,8 @@
 # a snap game with no opportunity row is a real zero.
 #   Rscript dev/ep/ep_panel.R      -> dev/ep/ep_panel.rds
 suppressPackageStartupMessages(library(data.table))
-SEASONS <- 2021:2025
+SEASONS <- eval(parse(text = Sys.getenv("FFS_EP_SEASONS", "2021:2025")))
+OUT_FILE <- Sys.getenv("FFS_EP_OUT", "ep_panel.rds")
 out <- here::here("dev", "ep")
 dir.create(out, showWarnings = FALSE)
 
@@ -87,5 +88,5 @@ print(ss[g_true >= 8, .(n = .N, median = round(median(inflate), 3), p90 = round(
 cat("\nbiggest inflation among fantasy-relevant players (>= 8 games, >= 6 fp/g):\n")
 print(ss[g_true >= 8 & fpg_true >= 6][order(-inflate)][1:12, .(season, name, position, g_true, g_opp,
       fpg_true = round(fpg_true, 1), fpg_opp = round(fpg_opp, 1))])
-saveRDS(p, file.path(out, "ep_panel.rds"))
-cat("\nsaved dev/ep/ep_panel.rds\n")
+saveRDS(p, file.path(out, OUT_FILE))
+cat("\nsaved dev/ep/", OUT_FILE, "\n", sep = "")
