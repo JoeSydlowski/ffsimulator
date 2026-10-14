@@ -87,6 +87,9 @@ cat("   yds_oe_total = rushing + receiving yards over expected (season); p_bench
 print(out26[order(yds_oe_total)][1:15, .(name, team, games, carries, ryoe = round(ryoe), ryoe_att = round(ryoe_att, 2),
   recyoe = round(recyoe), tdoe = round(tdoe, 1), carry_share = round(carry_share, 2), snap = round(snap, 2),
   fp_g = round(fp_g, 1), xfp_g = round(xfp_g, 1), p_bench = round(p_bench, 2))])
+cat("\n   same RBs ordered by rushing yards over expected PER CARRY (>= 40 carries), worst first:\n")
+print(out26[carries >= 40][order(ryoe_att)][1:12, .(name, team, carries, ryoe = round(ryoe), ryoe_att = round(ryoe_att, 2),
+  recyoe = round(recyoe), carry_share = round(carry_share, 2), snap = round(snap, 2), p_bench = round(p_bench, 2))])
 cat("\n   most ABOVE expected, for contrast:\n")
 print(out26[order(-yds_oe_total)][1:8, .(name, team, carries, ryoe = round(ryoe), ryoe_att = round(ryoe_att, 2), recyoe = round(recyoe),
   carry_share = round(carry_share, 2), fp_g = round(fp_g, 1), xfp_g = round(xfp_g, 1), p_bench = round(p_bench, 2))])

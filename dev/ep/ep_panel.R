@@ -32,7 +32,9 @@ opp <- opp[position %in% c("QB", "RB", "WR", "TE"),
 opp <- unique(opp, by = c("game_id", "gsis_id"))
 
 snaps <- as.data.table(nflreadr::load_snap_counts(seasons = SEASONS))[
-  game_type == "REG" & offense_snaps > 0 & position %in% c("QB", "RB", "WR", "TE", "FB"),
+  # PFR labels some backs "HB" from 2025 on (Chase Brown 2026) - drop it and the
+  # whole snap history for that player silently disappears
+  game_type == "REG" & offense_snaps > 0 & position %in% c("QB", "RB", "HB", "WR", "TE", "FB"),
   .(season = as.integer(season), week = as.integer(week), game_id, pfr_id = pfr_player_id, snap_name = player, snap_pos = position, snap_team = team,
     snaps = offense_snaps, snap_pct = offense_pct)]
 ids <- unique(as.data.table(nflreadr::load_ff_playerids())[!is.na(pfr_id) & !is.na(gsis_id),
@@ -49,7 +51,7 @@ zero_cols <- c("fp", "xfp", "targets", "carries", "pass_att", "rec_xfp", "rush_x
                "receptions", "rec_yards", "rec_td", "rush_yards", "rush_td", "catch_oe", "rec_yds_oe", "rec_td_oe", "rec_fd_oe",
                "rush_yds_oe", "rush_td_oe", "rush_fd_oe", "pass_yds_oe", "pass_td_oe", "pass_int_oe")
 for (v in zero_cols) set(p, which(is.na(p[[v]])), v, 0)
-p[is.na(position), position := fifelse(snap_pos == "FB", "RB", snap_pos)]
+p[is.na(position), position := fifelse(snap_pos %in% c("FB", "HB"), "RB", snap_pos)]
 p[is.na(name), name := snap_name]; p[is.na(team), team := snap_team]
 p <- p[position %in% c("QB", "RB", "WR", "TE")]
 # team expected points per game, for opportunity share (fill from teammates when the
